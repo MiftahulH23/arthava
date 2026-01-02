@@ -1,8 +1,8 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/screens/input_transaction_screen.dart';
-import 'package:catat_uang_app/screens/login_screen.dart';
 import 'package:catat_uang_app/screens/manage_category_screen.dart';
+import 'package:catat_uang_app/screens/settings_screen.dart';
 import 'package:catat_uang_app/screens/stats_screen.dart';
 import 'package:catat_uang_app/screens/transaction_history_screen.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +10,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/screens/export_screen.dart';
+import 'package:catat_uang_app/screens/budget_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -112,17 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await _supabase.auth.signOut();
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    }
-  }
-
-  // --- WIDGET HOME CONTENT (YANG DIPERBAIKI SCROLLNYA) ---
+  // --- WIDGET HOME CONTENT UPDATE ---
   Widget _buildHomeContent() {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -135,21 +127,18 @@ class _HomeScreenState extends State<HomeScreen> {
     ).format(DateTime.now());
 
     return SafeArea(
-      // GANTI SingleChildScrollView JADI Column
-      // Agar kita bisa membagi area Statis (Atas) dan Scrollable (Bawah)
       child: Column(
         children: [
-          // === BAGIAN 1: STATIS (TIDAK IKUT SCROLL) ===
-          // Ini berisi Header + Card Saldo + Judul "Terbaru"
+          // === BAGIAN 1: HEADER & CARD (STATIS) ===
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
             decoration: const BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
             ),
             child: Column(
               children: [
-                // HEADER (Halo Bos + Icons)
+                // HEADER (Halo Bos + Setting)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -173,42 +162,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const ManageCategoryScreen(),
-                            ),
+                    // TOMBOL SETTING (Icon Gerigi)
+                    GestureDetector(
+                      onTap: () async {
+                        // Tambah async
+                        // Tunggu sampai user kembali dari Settings
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
                           ),
-                          child: CircleAvatar(
-                            backgroundColor: Colors.white,
-                            child: Icon(
-                              PhosphorIcons.gear(),
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
+                        );
+                        // Setelah kembali, refresh data user (biar nama ke-update)
+                        _getUserProfile();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
                         ),
-                        const SizedBox(width: 10),
-                        GestureDetector(
-                          onTap: _logout,
-                          child: CircleAvatar(
-                            backgroundColor: Colors.white,
-                            child: Icon(
-                              PhosphorIcons.signOut(),
-                              color: Colors.red,
-                            ),
-                          ),
+                        child: const Icon(
+                          Icons.settings_outlined, // Icon Gerigi
+                          color: AppColors.textPrimary,
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 25),
 
-                // CARD SALDO (DARK BLUE)
+                // CARD SALDO
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
@@ -242,7 +226,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                       const SizedBox(height: 20),
                       Row(
                         children: [
@@ -340,13 +323,75 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
+
+                const SizedBox(height: 25),
+
+                // === MENU FITUR (4 TOMBOL BARU) ===
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start, // Biar teks panjang aman
+                  children: [
+                    // 1. KATEGORI
+                    _buildFeatureButton(
+                      icon: PhosphorIconsFill.squaresFour,
+                      label: "Kategori",
+                      color: Colors.orange,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ManageCategoryScreen(),
+                        ),
+                      ),
+                    ),
+                    // 2. EXPORT (Coming Soon)
+                    _buildFeatureButton(
+                      icon: PhosphorIconsFill.filePdf,
+                      label: "Export",
+                      color: Colors.blue,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ExportScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    // 3. ANGGARAN (Coming Soon)
+                    _buildFeatureButton(
+                      icon: PhosphorIconsFill.chartDonut, 
+                      label: "Anggaran",
+                      color: Colors.purple,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const BudgetScreen()),
+                        );
+                      },
+                    ),
+                    // 4. TARGET (Coming Soon)
+                    _buildFeatureButton(
+                      icon: PhosphorIconsFill.target,
+                      label: "Target",
+                      color: Colors.green,
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Fitur Target segera hadir!"),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
 
-          // JUDUL "TERBARU" (Juga Statis, tidak ikut scroll sesuai request)
+          // JUDUL TERBARU
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -362,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // === BAGIAN 2: SCROLLABLE (HANYA LIST INI YANG BISA SCROLL) ===
+          // === BAGIAN 2: SCROLLABLE LIST ===
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refreshData,
@@ -370,7 +415,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : _recentTransactions.isEmpty
                   ? SingleChildScrollView(
-                      // Biar bisa ditarik refresh walau kosong
                       physics: const AlwaysScrollableScrollPhysics(),
                       child: Padding(
                         padding: const EdgeInsets.only(top: 50),
@@ -384,7 +428,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      // physics: AlwaysScrollableScrollPhysics(), // Default
                       itemCount: _recentTransactions.length,
                       itemBuilder: (context, index) {
                         final trx = _recentTransactions[index];
@@ -456,6 +499,47 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // WIDGET TOMBOL FITUR (KOTAK PUTIH + ICON WARNA)
+  Widget _buildFeatureButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 60, // Ukuran kotak
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
             ),
           ),
         ],
