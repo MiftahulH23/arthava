@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/edit_profile_screen.dart'; // IMPORT INI PENTING
+import 'package:catat_uang_app/core/theme_mode_manager.dart'; // Import Manager Tema
+import 'package:catat_uang_app/screens/edit_profile_screen.dart';
 import 'package:catat_uang_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,7 +16,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isDarkMode = false;
+
+  // Ambil nilai awal dari themeNotifier
+  bool _isDarkMode = themeNotifier.value == ThemeMode.dark;
 
   Future<void> _logout() async {
     await _supabase.auth.signOut();
@@ -30,21 +33,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Cek apakah mode gelap sedang aktif (untuk styling UI halaman ini)
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final contentColor = isDark ? Colors.white : Colors.black;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      // Background otomatis ikut tema dari main.dart
       appBar: AppBar(
         title: Text(
           "Pengaturan",
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: contentColor,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
+        // Background & Icon AppBar otomatis ikut tema dari main.dart
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: contentColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -55,13 +62,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _buildSectionHeader("Umum"),
 
-            // 1. PROFIL AKUN (SUDAH AKTIF)
+            // 1. PROFIL AKUN
             _buildSettingItem(
               icon: PhosphorIconsFill.user,
               title: "Profil Akun",
               subtitle: "Atur nama dan info akun",
+              cardColor: cardColor,
+              contentColor: contentColor,
               onTap: () {
-                // NAVIGASI KE EDIT PROFILE
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -71,21 +79,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
 
-            // 2. MODE GELAP (DUMMY)
+            // 2. MODE GELAP (AKTIF)
             _buildSettingItem(
               icon: PhosphorIconsFill.moonStars,
               title: "Mode Gelap",
               subtitle: "Ganti tampilan aplikasi",
+              cardColor: cardColor,
+              contentColor: contentColor,
               trailing: Switch(
                 value: _isDarkMode,
                 activeColor: AppColors.primary,
                 onChanged: (val) {
                   setState(() => _isDarkMode = val);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Fitur Dark Mode segera hadir!"),
-                    ),
-                  );
+                  // Panggil fungsi ganti tema
+                  toggleTheme(val);
                 },
               ),
             ),
@@ -98,6 +105,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: PhosphorIconsFill.info,
               title: "Tentang Aplikasi",
               subtitle: "Versi 1.0.0",
+              cardColor: cardColor,
+              contentColor: contentColor,
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -112,6 +121,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: PhosphorIconsFill.signOut,
               title: "Keluar",
               subtitle: "Logout dari akun",
+              cardColor: cardColor,
+              contentColor: contentColor, // Text default
               iconColor: Colors.red,
               textColor: Colors.red,
               onTap: _logout,
@@ -139,6 +150,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSettingItem({
     required IconData icon,
     required String title,
+    required Color cardColor, // Warna kartu dinamis
+    required Color contentColor, // Warna teks dinamis
     String? subtitle,
     VoidCallback? onTap,
     Widget? trailing,
@@ -148,7 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor, // Pakai warna dinamis
         borderRadius: BorderRadius.circular(15),
       ),
       child: ListTile(
@@ -166,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title,
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
-            color: textColor ?? AppColors.textPrimary,
+            color: textColor ?? contentColor, // Pakai warna dinamis
           ),
         ),
         subtitle: subtitle != null
@@ -177,7 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             : null,
         trailing:
             trailing ??
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
       ),
     );
   }

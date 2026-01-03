@@ -17,14 +17,13 @@ class _StatsScreenState extends State<StatsScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   bool _isLoading = true;
 
-  // STATE TOGGLE (Default False = Pemasukan)
-  bool _showExpense = false;
-
-  // STATE FILTER
-  String _filterType = 'Bulanan'; // Default
+  bool _showExpense = true;
+  String _filterType = 'Bulanan';
   DateTime _selectedDate = DateTime.now();
 
   Map<String, double> _categoryTotals = {};
+  Map<String, List<Map<String, dynamic>>> _categoryTransactions = {};
+
   double _totalAmount = 0;
   int _touchedIndex = -1;
 
@@ -34,7 +33,6 @@ class _StatsScreenState extends State<StatsScreen> {
     _fetchStats();
   }
 
-  // 1. FETCH DATA (SAFETY MODE)
   Future<void> _fetchStats() async {
     setState(() => _isLoading = true);
 
@@ -43,7 +41,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
       var query = _supabase
           .from('transactions')
-          .select('amount, categories!inner(name, is_expense)')
+          .select('amount, date, note, categories!inner(name, is_expense)')
           .eq('user_id', userId)
           .eq('categories.is_expense', _showExpense);
 
@@ -73,6 +71,7 @@ class _StatsScreenState extends State<StatsScreen> {
       final List<dynamic> data = response;
 
       Map<String, double> tempTotals = {};
+      Map<String, List<Map<String, dynamic>>> tempDetails = {};
       double total = 0;
 
       for (var item in data) {
@@ -85,12 +84,16 @@ class _StatsScreenState extends State<StatsScreen> {
         } else {
           tempTotals[catName] = amount;
         }
+
+        if (!tempDetails.containsKey(catName)) tempDetails[catName] = [];
+        tempDetails[catName]!.add(item);
+
         total += amount;
       }
 
-      // FIX CRASH: Jika Total 0, anggap tidak ada data kategori (biar tidak render chart kosong)
       if (total == 0) {
         tempTotals.clear();
+        tempDetails.clear();
       }
 
       var sortedEntries = tempTotals.entries.toList()
@@ -99,44 +102,199 @@ class _StatsScreenState extends State<StatsScreen> {
       if (mounted) {
         setState(() {
           _categoryTotals = Map.fromEntries(sortedEntries);
+          _categoryTransactions = tempDetails;
           _totalAmount = total;
           _isLoading = false;
         });
       }
     } catch (e) {
+      debugPrint("Error Stats: $e");
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 2. PICKER TANGGAL PINTAR
+  // --- LOGIC TAMPILAN (RANKING) ---
+  Widget _buildRankBadge(int index) {
+    if (index == 0) return const Text("🥇", style: TextStyle(fontSize: 18));
+    if (index == 1) return const Text("🥈", style: TextStyle(fontSize: 18));
+    if (index == 2) return const Text("🥉", style: TextStyle(fontSize: 18));
+    return Container(
+      width: 20,
+      height: 20,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        "${index + 1}",
+        style: GoogleFonts.poppins(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey,
+        ),
+      ),
+    );
+  }
+
+  // --- LOGIC PICKER TANGGAL (PERBAIKAN DI SINI) ---
   Future<void> _pickSmartDate() async {
     if (_filterType == 'Harian') {
+      // 1. HARIAN: Pakai DatePicker Biasa
       final picked = await showDatePicker(
         context: context,
         initialDate: _selectedDate,
         firstDate: DateTime(2020),
         lastDate: DateTime(2030),
-        locale: const Locale('id', 'ID'),
-        builder: (context, child) {
-          return Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: AppColors.primary,
-                onPrimary: Colors.white,
-                onSurface: Colors.black,
-                surface: Colors.white,
-              ),
-              dialogBackgroundColor: Colors.white,
+        builder: (context, child) => Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+              surface: Colors.white,
             ),
-            child: child!,
-          );
-        },
+            dialogBackgroundColor: Colors.white,
+          ),
+          child: child!,
+        ),
       );
       if (picked != null) {
         setState(() => _selectedDate = picked);
         _fetchStats();
       }
+    } else if (_filterType == 'Bulanan') {
+      // 2. BULANAN: Pakai Dialog Dropdown (Bulan & Tahun) - SAMA SEPERTI BUDGET SCREEN
+      int tempMonth = _selectedDate.month;
+      int tempYear = _selectedDate.year;
+      final years = List.generate(11, (i) => (DateTime.now().year - 5) + i);
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                surfaceTintColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Pilih Periode",
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                content: SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          // Dropdown Bulan
+                          Expanded(
+                            flex: 3,
+                            child: DropdownButtonFormField<int>(
+                              value: tempMonth,
+                              isExpanded: true,
+                              dropdownColor: Colors.white, // FIX: Putih
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              items: List.generate(
+                                12,
+                                (index) => DropdownMenuItem(
+                                  value: index + 1,
+                                  child: Text(
+                                    DateFormat(
+                                      'MMMM',
+                                      'id_ID',
+                                    ).format(DateTime(2024, index + 1)),
+                                    style: GoogleFonts.poppins(fontSize: 14),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              onChanged: (val) =>
+                                  setDialogState(() => tempMonth = val!),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // Dropdown Tahun
+                          Expanded(
+                            flex: 2,
+                            child: DropdownButtonFormField<int>(
+                              value: tempYear,
+                              dropdownColor: Colors.white, // FIX: Putih
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              items: years
+                                  .map(
+                                    (y) => DropdownMenuItem(
+                                      value: y,
+                                      child: Text("$y"),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) =>
+                                  setDialogState(() => tempYear = val!),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        setState(
+                          () =>
+                              _selectedDate = DateTime(tempYear, tempMonth, 1),
+                        ); // Update state utama
+                        Navigator.pop(context);
+                        _fetchStats(); // Refresh data
+                      },
+                      child: const Text("Tampilkan"),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
     } else if (_filterType == 'Tahunan') {
+      // 3. TAHUNAN: Pakai YearPicker
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -159,110 +317,6 @@ class _StatsScreenState extends State<StatsScreen> {
           ),
         ),
       );
-    } else {
-      final months = [
-        "Januari",
-        "Februari",
-        "Maret",
-        "April",
-        "Mei",
-        "Juni",
-        "Juli",
-        "Agustus",
-        "September",
-        "Oktober",
-        "November",
-        "Desember",
-      ];
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          title: Text("Pilih Bulan (${_selectedDate.year})"),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: GridView.builder(
-              shrinkWrap: true,
-              itemCount: months.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 1.5,
-              ),
-              itemBuilder: (ctx, index) {
-                return InkWell(
-                  onTap: () {
-                    setState(
-                      () => _selectedDate = DateTime(
-                        _selectedDate.year,
-                        index + 1,
-                        1,
-                      ),
-                    );
-                    Navigator.pop(ctx);
-                    _fetchStats();
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.all(4),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: _selectedDate.month == (index + 1)
-                          ? AppColors.primary
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      months[index],
-                      style: TextStyle(
-                        color: _selectedDate.month == (index + 1)
-                            ? Colors.white
-                            : Colors.black,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: Colors.white,
-                    surfaceTintColor: Colors.transparent,
-                    title: const Text("Ganti Tahun"),
-                    content: SizedBox(
-                      width: 300,
-                      height: 300,
-                      child: YearPicker(
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                        selectedDate: _selectedDate,
-                        onChanged: (dt) {
-                          setState(
-                            () => _selectedDate = DateTime(
-                              dt.year,
-                              _selectedDate.month,
-                              1,
-                            ),
-                          );
-                          Navigator.pop(context);
-                          _fetchStats();
-                        },
-                      ),
-                    ),
-                  ),
-                );
-              },
-              child: Text("Ganti Tahun (${_selectedDate.year})"),
-            ),
-          ],
-        ),
-      );
     }
   }
 
@@ -275,13 +329,12 @@ class _StatsScreenState extends State<StatsScreen> {
     );
 
     String dateLabel = "";
-    if (_filterType == 'Harian') {
+    if (_filterType == 'Harian')
       dateLabel = DateFormat('d MMMM yyyy', 'id_ID').format(_selectedDate);
-    } else if (_filterType == 'Bulanan') {
+    else if (_filterType == 'Bulanan')
       dateLabel = DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate);
-    } else {
+    else
       dateLabel = DateFormat('yyyy', 'id_ID').format(_selectedDate);
-    }
 
     final themeColor = _showExpense ? AppColors.expense : AppColors.income;
 
@@ -291,7 +344,7 @@ class _StatsScreenState extends State<StatsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // === HEADER (STICKY) ===
+            // HEADER
             Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
@@ -312,8 +365,6 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // TOGGLE
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -328,8 +379,6 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                   ),
                   const SizedBox(height: 15),
-
-                  // FILTER & DATE
                   Row(
                     children: [
                       Container(
@@ -347,9 +396,6 @@ class _StatsScreenState extends State<StatsScreen> {
                               _fetchStats();
                             });
                           },
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
                           itemBuilder: (context) => [
                             _buildPopupItem("Harian", Icons.calendar_view_day),
                             _buildPopupItem(
@@ -359,10 +405,7 @@ class _StatsScreenState extends State<StatsScreen> {
                             _buildPopupItem("Tahunan", Icons.calendar_today),
                           ],
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
+                            padding: const EdgeInsets.all(12),
                             child: Row(
                               children: [
                                 const Icon(
@@ -409,7 +452,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       PhosphorIconsRegular.calendarBlank,
                                       size: 18,
                                       color: AppColors.primary,
@@ -440,13 +483,11 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
             ),
 
-            // === CONTENT ===
+            // CONTENT
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _categoryTotals.isEmpty ||
-                        _totalAmount ==
-                            0 // FIX: Cek Total Amount juga
+                  : _categoryTotals.isEmpty || _totalAmount == 0
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -465,13 +506,10 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                     )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 20,
-                      ),
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          // 1. CHART
+                          // 1. PIE CHART
                           SizedBox(
                             height: 250,
                             child: PieChart(
@@ -503,7 +541,7 @@ class _StatsScreenState extends State<StatsScreen> {
                           ),
                           const SizedBox(height: 30),
 
-                          // 2. TOTAL AMOUNT (CARD KEMBAR HISTORY)
+                          // 2. TOTAL CARD
                           Container(
                             margin: const EdgeInsets.only(bottom: 20),
                             padding: const EdgeInsets.all(16),
@@ -523,7 +561,6 @@ class _StatsScreenState extends State<StatsScreen> {
                             ),
                             child: Row(
                               children: [
-                                // Icon Box
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
@@ -539,8 +576,6 @@ class _StatsScreenState extends State<StatsScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 15),
-
-                                // Text Label
                                 Text(
                                   _showExpense
                                       ? "Total Pengeluaran"
@@ -551,9 +586,7 @@ class _StatsScreenState extends State<StatsScreen> {
                                     fontSize: 13,
                                   ),
                                 ),
-
-                                const Spacer(), // PENDORONG KE KANAN
-                                // Nominal (Kanan)
+                                const Spacer(),
                                 Text(
                                   currencyFormat.format(_totalAmount),
                                   style: GoogleFonts.poppins(
@@ -566,7 +599,7 @@ class _StatsScreenState extends State<StatsScreen> {
                             ),
                           ),
 
-                          // 3. LIST KATEGORI
+                          // 3. EXPANDABLE LIST (RANKING & FREKUENSI)
                           ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -575,64 +608,175 @@ class _StatsScreenState extends State<StatsScreen> {
                               final entry = _categoryTotals.entries.elementAt(
                                 index,
                               );
+                              final catName = entry.key;
+                              final total = entry.value;
                               final percentage = _totalAmount == 0
                                   ? "0.0"
-                                  : (entry.value / _totalAmount * 100)
+                                  : (total / _totalAmount * 100)
                                         .toStringAsFixed(1);
                               final color = _getColor(index);
 
+                              final details =
+                                  _categoryTransactions[catName] ?? [];
+                              final count = details.length;
+
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(15),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 5,
+                                    ),
+                                  ],
                                 ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
+                                child: Theme(
+                                  data: Theme.of(
+                                    context,
+                                  ).copyWith(dividerColor: Colors.transparent),
+                                  child: ExpansionTile(
+                                    tilePadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    title: Row(
                                       children: [
+                                        _buildRankBadge(index),
+                                        const SizedBox(width: 12),
                                         Container(
-                                          width: 12,
-                                          height: 12,
+                                          width: 10,
+                                          height: 10,
                                           decoration: BoxDecoration(
                                             color: color,
                                             shape: BoxShape.circle,
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          entry.key,
-                                          style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                catName,
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              Text(
+                                                "$count Transaksi",
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 11,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ],
                                           ),
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              currencyFormat.format(total),
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            Text(
+                                              "$percentage%",
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          currencyFormat.format(entry.value),
-                                          style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
+                                    children: [
+                                      Container(
+                                        color: Colors.grey.shade50,
+                                        constraints: const BoxConstraints(
+                                          maxHeight: 250,
                                         ),
-                                        Text(
-                                          "$percentage%",
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            color: Colors.grey,
-                                          ),
+                                        child: ListView.separated(
+                                          shrinkWrap: true,
+                                          padding: const EdgeInsets.all(16),
+                                          itemCount: details.length,
+                                          separatorBuilder: (c, i) =>
+                                              const Divider(height: 1),
+                                          itemBuilder: (context, i) {
+                                            final trx = details[i];
+                                            final trxNote =
+                                                trx['note'] ?? 'Tanpa Catatan';
+                                            final trxAmount =
+                                                (trx['amount'] as num)
+                                                    .toDouble();
+                                            final trxDate = DateTime.parse(
+                                              trx['date'],
+                                            );
+
+                                            return Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                  ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        trxNote,
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
+                                                      ),
+                                                      Text(
+                                                        DateFormat(
+                                                          'dd MMM yyyy',
+                                                        ).format(trxDate),
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                              fontSize: 10,
+                                                              color:
+                                                                  Colors.grey,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  Text(
+                                                    currencyFormat.format(
+                                                      trxAmount,
+                                                    ),
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 12,
+                                                      color:
+                                                          AppColors.textPrimary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
                                         ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               );
                             },
@@ -648,6 +792,7 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
+  // ... (WIDGET PENDUKUNG)
   PopupMenuItem<String> _buildPopupItem(String value, IconData icon) {
     return PopupMenuItem(
       value: value,
@@ -725,7 +870,6 @@ class _StatsScreenState extends State<StatsScreen> {
       final double percentage = _totalAmount == 0
           ? 0.0
           : (entry.value / _totalAmount * 100);
-
       final widget = PieChartSectionData(
         color: color,
         value: entry.value,

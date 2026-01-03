@@ -12,6 +12,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:catat_uang_app/screens/export_screen.dart';
 import 'package:catat_uang_app/screens/budget_screen.dart';
+import 'package:catat_uang_app/screens/target_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -360,13 +361,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     // 3. ANGGARAN (Coming Soon)
                     _buildFeatureButton(
-                      icon: PhosphorIconsFill.chartDonut, 
+                      icon: PhosphorIconsFill.chartDonut,
                       label: "Anggaran",
                       color: Colors.purple,
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const BudgetScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const BudgetScreen(),
+                          ),
                         );
                       },
                     ),
@@ -376,9 +379,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       label: "Target",
                       color: Colors.green,
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Fitur Target segera hadir!"),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TargetScreen(),
                           ),
                         );
                       },

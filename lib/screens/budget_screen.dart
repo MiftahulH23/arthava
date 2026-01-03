@@ -589,7 +589,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Anggaran"),
+        title: Text(
+          "Anggaran",
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        
         centerTitle: true,
         backgroundColor: Colors.white,
       ),

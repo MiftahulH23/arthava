@@ -3,7 +3,6 @@ import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 class PdfService {
   Future<Uint8List> generateReport({
