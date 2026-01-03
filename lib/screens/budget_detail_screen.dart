@@ -72,7 +72,7 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
     }
   }
 
-  // DIALOG EDIT (UPDATE: Desain Senada dengan Dialog Tambah)
+  // DIALOG EDIT 
   Future<void> _editBudget() async {
     final amountController = TextEditingController(
       text: NumberFormat.currency(
@@ -126,7 +126,7 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                // Input Nominal (Sama persis style-nya)
+                // Input Nominal 
                 TextField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
@@ -223,7 +223,6 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ... (Kode build SAMA PERCIS, tidak perlu diubah, copy dari sebelumnya atau biarkan saja)
     final currency = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',

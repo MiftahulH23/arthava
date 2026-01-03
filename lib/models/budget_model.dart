@@ -4,8 +4,8 @@ class BudgetModel {
   final int id;
   final int categoryId;
   final double amount;
-  final int month; // Tambahan baru
-  final int year; // Tambahan baru
+  final int month;
+  final int year;
   final CategoryModel? category;
 
   BudgetModel({

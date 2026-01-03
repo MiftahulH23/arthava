@@ -51,7 +51,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     _fetchBudgets();
   }
 
-  // --- POPUP FILTER PERIODE (Fixed Background White) ---
+  // --- POPUP FILTER PERIODE  ---
   void _showMonthYearPicker() {
     int tempMonth = _selectedMonth.month;
     int tempYear = _selectedMonth.year;
@@ -99,7 +99,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           child: DropdownButtonFormField<int>(
                             value: tempMonth,
                             isExpanded: true,
-                            dropdownColor: Colors.white, // <--- FIX WARNA PUTIH
+                            dropdownColor: Colors.white, 
                             decoration: InputDecoration(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -132,7 +132,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           flex: 2,
                           child: DropdownButtonFormField<int>(
                             value: tempYear,
-                            dropdownColor: Colors.white, // <--- FIX WARNA PUTIH
+                            dropdownColor: Colors.white, 
                             decoration: InputDecoration(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -187,7 +187,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
     );
   }
 
-  // --- LOGIC LAINNYA TETAP SAMA ---
   Future<void> _copyFromLastMonth() async {
     setState(() => _isLoading = true);
     try {
@@ -385,7 +384,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               value: selectedMonth,
                               isExpanded: true,
                               dropdownColor:
-                                  Colors.white, // <--- FIX WARNA PUTIH
+                                  Colors.white, 
                               items: List.generate(
                                 12,
                                 (index) => DropdownMenuItem(
@@ -418,7 +417,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             child: DropdownButtonFormField<int>(
                               value: selectedYear,
                               dropdownColor:
-                                  Colors.white, // <--- FIX WARNA PUTIH
+                                  Colors.white, 
                               items: years
                                   .map(
                                     (y) => DropdownMenuItem(
@@ -446,7 +445,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       DropdownButtonFormField<int>(
                         hint: const Text("Pilih Kategori"),
                         value: selectedCatId,
-                        dropdownColor: Colors.white, // <--- FIX WARNA PUTIH
+                        dropdownColor: Colors.white, 
                         items: dropdownOptions
                             .map(
                               (c) => DropdownMenuItem(

@@ -79,23 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
 
-            // 2. MODE GELAP (AKTIF)
-            _buildSettingItem(
-              icon: PhosphorIconsFill.moonStars,
-              title: "Mode Gelap",
-              subtitle: "Ganti tampilan aplikasi",
-              cardColor: cardColor,
-              contentColor: contentColor,
-              trailing: Switch(
-                value: _isDarkMode,
-                activeColor: AppColors.primary,
-                onChanged: (val) {
-                  setState(() => _isDarkMode = val);
-                  // Panggil fungsi ganti tema
-                  toggleTheme(val);
-                },
-              ),
-            ),
+           
 
             const SizedBox(height: 20),
             _buildSectionHeader("Lainnya"),

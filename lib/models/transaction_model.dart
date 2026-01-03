@@ -20,12 +20,10 @@ class TransactionModel {
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     return TransactionModel(
       id: json['id'],
-      // Pastikan amount dibaca sebagai double meskipun dari DB bulat
       amount: (json['amount'] as num).toDouble(),
       date: DateTime.parse(json['date']),
       note: json['note'],
       categoryId: json['category_id'],
-      // Jika kita melakukan query select(..., categories(*)), data kategori akan masuk sini
       category: json['categories'] != null 
           ? CategoryModel.fromJson(json['categories']) 
           : null,

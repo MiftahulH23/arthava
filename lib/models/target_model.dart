@@ -4,7 +4,7 @@ class TargetModel {
   final double targetAmount;
   final double savedAmount;
   final DateTime? deadline;
-  final String? storageLocation; // Kolom Baru
+  final String? storageLocation; 
 
   TargetModel({
     required this.id,
