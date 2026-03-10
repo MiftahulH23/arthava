@@ -510,10 +510,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                             itemCount: _transactions.length,
                             itemBuilder: (context, index) {
                               final trx = _transactions[index];
-                              final String noteText =
-                                  (trx.note != null && trx.note!.isNotEmpty)
-                                  ? trx.note!
-                                  : "Tidak ada catatan";
+                             String noteText = "Tidak ada catatan";
+                              if (trx.note != null && trx.note!.isNotEmpty) {
+                                noteText = trx.note!.replaceAll(RegExp(r'\s*\[SAVING_ID:\d+\]'), '');
+                              }
                               final Color noteColor =
                                   (trx.note != null && trx.note!.isNotEmpty)
                                   ? Colors.grey.shade600

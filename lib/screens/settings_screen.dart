@@ -1,5 +1,4 @@
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/core/theme_mode_manager.dart'; // Import Manager Tema
 import 'package:catat_uang_app/screens/edit_profile_screen.dart';
 import 'package:catat_uang_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -16,9 +15,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
-
-  // Ambil nilai awal dari themeNotifier
-  bool _isDarkMode = themeNotifier.value == ThemeMode.dark;
 
   Future<void> _logout() async {
     await _supabase.auth.signOut();

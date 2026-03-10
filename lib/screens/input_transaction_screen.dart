@@ -10,8 +10,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InputTransactionScreen extends StatefulWidget {
   final TransactionModel? transactionToEdit;
+  // [UPDATE 1] Tambahkan parameter untuk setting default tab
+  final bool initialIsExpense;
 
-  const InputTransactionScreen({super.key, this.transactionToEdit});
+  const InputTransactionScreen({
+    super.key,
+    this.transactionToEdit,
+    this.initialIsExpense = false, // Default pemasukan jika tidak dikirim
+  });
 
   @override
   State<InputTransactionScreen> createState() => _InputTransactionScreenState();
@@ -32,18 +38,36 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _categories = [];
 
-  // FIX: Default False (Pemasukan) agar sesuai posisi kiri
-  bool _isExpense = false;
+  late bool
+  _isExpense; // [UPDATE 2] Gunakan "late" agar bisa diisi di initState
+
+  int? _tabunganCategoryId;
+  bool _isReadOnly = false;
+  String? _hiddenSavingMarker;
 
   @override
   void initState() {
     super.initState();
+
+    // [UPDATE 3] Set toggle awal berdasarkan darimana dia diklik
+    _isExpense = widget.initialIsExpense;
+
     _fetchCategories();
 
     if (widget.transactionToEdit != null) {
       final trx = widget.transactionToEdit!;
       _amountController.text = _currencyFormat.format(trx.amount);
-      _noteController.text = trx.note ?? '';
+
+      String rawNote = trx.note ?? '';
+      final match = RegExp(r'\s*\[SAVING_ID:\d+\]').firstMatch(rawNote);
+      if (match != null) {
+        _hiddenSavingMarker = match.group(0);
+        _noteController.text = rawNote.replaceAll(match.group(0)!, '');
+        _isReadOnly = true;
+      } else {
+        _noteController.text = rawNote;
+      }
+
       _selectedDate = trx.date;
       _selectedCategoryId = trx.categoryId;
     }
@@ -51,8 +75,14 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
 
   IconData _getCategoryIcon(String categoryName) {
     final name = categoryName.toLowerCase();
-    if (name.contains('makan') || name.contains('minum'))
+    // [UPDATE 4] Pisahkan icon Makan dan Minum
+    if (name.contains('makan'))
       return PhosphorIcons.bowlFood(PhosphorIconsStyle.fill);
+    if (name.contains('minum') ||
+        name.contains('kopi') ||
+        name.contains('cafe'))
+      return PhosphorIcons.coffee(PhosphorIconsStyle.fill);
+
     if (name.contains('transport') || name.contains('bensin'))
       return PhosphorIcons.bus(PhosphorIconsStyle.fill);
     if (name.contains('belanja') || name.contains('mart'))
@@ -67,6 +97,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
       return PhosphorIcons.money(PhosphorIconsStyle.fill);
     if (name.contains('bonus'))
       return PhosphorIcons.gift(PhosphorIconsStyle.fill);
+    if (name.contains('tabung'))
+      return PhosphorIcons.bank(PhosphorIconsStyle.fill);
     return PhosphorIcons.tag(PhosphorIconsStyle.fill);
   }
 
@@ -82,7 +114,15 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
         setState(() {
           _categories = List<Map<String, dynamic>>.from(response);
 
-          // LOGIKA PENTING: Jika mode Edit, paksa toggle mengikuti data transaksi
+          try {
+            final tabungCat = _categories.firstWhere(
+              (c) => c['name'].toString().toLowerCase().contains('tabung'),
+            );
+            _tabunganCategoryId = tabungCat['id'];
+          } catch (e) {
+            _tabunganCategoryId = null;
+          }
+
           if (widget.transactionToEdit != null && _selectedCategoryId != null) {
             final selectedCat = _categories.firstWhere(
               (e) => e['id'] == _selectedCategoryId,
@@ -106,6 +146,14 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
       return;
     }
 
+    if (_selectedCategoryId == _tabunganCategoryId && !_isReadOnly) {
+      AppNotification.error(
+        context,
+        "Untuk mencatat tabungan, silakan gunakan menu Tabungan di Beranda.",
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final userId = _supabase.auth.currentUser!.id;
@@ -115,12 +163,19 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
       );
       final amount = int.parse(cleanAmount);
 
+      String finalNote = _noteController.text.trim();
+      if (_hiddenSavingMarker != null) {
+        finalNote = finalNote.isEmpty
+            ? _hiddenSavingMarker!
+            : '$finalNote $_hiddenSavingMarker';
+      }
+
       final data = {
         'user_id': userId,
         'category_id': _selectedCategoryId,
         'amount': amount,
         'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-        'note': _noteController.text,
+        'note': finalNote,
       };
 
       if (widget.transactionToEdit == null) {
@@ -147,6 +202,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
   }
 
   Future<void> _pickDate() async {
+    if (_isReadOnly) return;
+
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -164,12 +221,14 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
         .toList();
 
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          widget.transactionToEdit == null
-              ? "Tambah Transaksi"
-              : "Edit Transaksi",
+          _isReadOnly
+              ? "Detail Tabungan"
+              : (widget.transactionToEdit == null
+                    ? "Tambah Transaksi"
+                    : "Edit Transaksi"),
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.bold,
             color: Colors.black,
@@ -189,7 +248,34 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. TOGGLE (PEMASUKAN KIRI, PENGELUARAN KANAN)
+            if (_isReadOnly)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(PhosphorIconsFill.info, color: Colors.blue),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Ini adalah catatan otomatis dari fitur Tabungan. Silakan gunakan Menu Tabungan di Beranda untuk mengedit data ini.",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // 1. TOGGLE
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
@@ -198,11 +284,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
               ),
               child: Row(
                 children: [
-                  _buildToggleBtn("Pemasukan", false), // False = Income (Kiri)
-                  _buildToggleBtn(
-                    "Pengeluaran",
-                    true,
-                  ), // True = Expense (Kanan)
+                  _buildToggleBtn("Pemasukan", false),
+                  _buildToggleBtn("Pengeluaran", true),
                 ],
               ),
             ),
@@ -216,6 +299,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _amountController,
+              enabled: !_isReadOnly,
               keyboardType: TextInputType.number,
               style: GoogleFonts.poppins(
                 fontSize: 32,
@@ -246,6 +330,9 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                 focusedBorder: const UnderlineInputBorder(
                   borderSide: BorderSide(color: AppColors.primary, width: 2),
                 ),
+                disabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
               ),
               onChanged: (string) {
                 string = string.replaceAll(RegExp(r'[^0-9]'), '');
@@ -275,16 +362,17 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(15),
+                color: _isReadOnly ? Colors.grey.shade100 : Colors.white,
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<int>(
+                  dropdownColor: Colors.white,
                   value:
                       filteredCategories.any(
                         (cat) => cat['id'] == _selectedCategoryId,
                       )
                       ? _selectedCategoryId
                       : null,
-
                   hint: Text(
                     _categories.isEmpty ? "Memuat..." : "Pilih Kategori",
                     style: GoogleFonts.poppins(color: Colors.grey),
@@ -308,15 +396,18 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                             cat['name'],
                             style: GoogleFonts.poppins(
                               fontWeight: FontWeight.w500,
+                              color: Colors.black,
                             ),
                           ),
                         ],
                       ),
                     );
                   }).toList(),
-                  onChanged: (val) {
-                    setState(() => _selectedCategoryId = val);
-                  },
+                  onChanged: _isReadOnly
+                      ? null
+                      : (val) {
+                          setState(() => _selectedCategoryId = val);
+                        },
                 ),
               ),
             ),
@@ -338,12 +429,13 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(15),
+                  color: _isReadOnly ? Colors.grey.shade100 : Colors.white,
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       PhosphorIconsFill.calendarBlank,
-                      color: AppColors.textPrimary,
+                      color: Colors.black,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -352,7 +444,10 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                         'EEEE, d MMMM yyyy',
                         'id_ID',
                       ).format(_selectedDate),
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
                     ),
                   ],
                 ),
@@ -368,9 +463,12 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _noteController,
+              enabled: !_isReadOnly,
               maxLines: 1,
-              style: GoogleFonts.poppins(),
+              style: GoogleFonts.poppins(color: Colors.black),
               decoration: InputDecoration(
+                filled: true,
+                fillColor: _isReadOnly ? Colors.grey.shade100 : Colors.white,
                 hintText: "Contoh: Beli Nasi Padang",
                 hintStyle: GoogleFonts.poppins(color: Colors.grey.shade400),
                 contentPadding: const EdgeInsets.symmetric(
@@ -384,6 +482,10 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
                   borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
@@ -406,9 +508,13 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
           width: double.infinity,
           height: 55,
           child: ElevatedButton(
-            onPressed: _isLoading ? null : _saveTransaction,
+            onPressed: _isReadOnly
+                ? () => Navigator.pop(context)
+                : (_isLoading ? null : _saveTransaction),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.textPrimary,
+              backgroundColor: _isReadOnly
+                  ? Colors.grey.shade300
+                  : AppColors.textPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -424,11 +530,11 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                     ),
                   )
                 : Text(
-                    "Simpan Transaksi",
+                    _isReadOnly ? "Kembali" : "Simpan Transaksi",
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: _isReadOnly ? Colors.black87 : Colors.white,
                     ),
                   ),
           ),
@@ -439,16 +545,17 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
 
   Widget _buildToggleBtn(String title, bool isExpenseBtn) {
     final bool isSelected = _isExpense == isExpenseBtn;
+
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _isExpense = isExpenseBtn;
-            // Reset kategori HANYA jika user yang klik tombol ganti tab
-            // Jangan reset otomatis di build()
-            _selectedCategoryId = null;
-          });
-        },
+        onTap: _isReadOnly
+            ? null
+            : () {
+                setState(() {
+                  _isExpense = isExpenseBtn;
+                  _selectedCategoryId = null;
+                });
+              },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12),

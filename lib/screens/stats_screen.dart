@@ -712,8 +712,8 @@ class _StatsScreenState extends State<StatsScreen> {
                                               const Divider(height: 1),
                                           itemBuilder: (context, i) {
                                             final trx = details[i];
-                                            final trxNote =
-                                                trx['note'] ?? 'Tanpa Catatan';
+                                            String rawNote = trx['note'] ?? 'Tanpa Catatan';
+                                            final trxNote = rawNote.replaceAll(RegExp(r'\s*\[SAVING_ID:\d+\]'), '');
                                             final trxAmount =
                                                 (trx['amount'] as num)
                                                     .toDouble();

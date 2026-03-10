@@ -25,6 +25,49 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
     _fetchCategories();
   }
 
+  // [UPDATE: Fungsi pintar untuk membaca icon_name atau menebak dari namanya]
+  IconData _getCategoryIcon(String categoryName, String? iconName) {
+    final name = categoryName.toLowerCase();
+
+    // 1. Prioritaskan jika iconName dari database cocok dengan string
+    if (iconName == 'food' || name.contains('makan'))
+      return PhosphorIcons.bowlFood(PhosphorIconsStyle.fill);
+    if (iconName == 'drink' ||
+        name.contains('minum') ||
+        name.contains('kopi') ||
+        name.contains('cafe'))
+      return PhosphorIcons.coffee(PhosphorIconsStyle.fill);
+    if (iconName == 'transport' ||
+        name.contains('transport') ||
+        name.contains('bensin'))
+      return PhosphorIcons.bus(PhosphorIconsStyle.fill);
+    if (iconName == 'shopping' ||
+        name.contains('belanja') ||
+        name.contains('mart'))
+      return PhosphorIcons.shoppingBag(PhosphorIconsStyle.fill);
+    if (iconName == 'entertainment' ||
+        name.contains('hiburan') ||
+        name.contains('nonton'))
+      return PhosphorIcons.gameController(PhosphorIconsStyle.fill);
+    if (iconName == 'health' ||
+        name.contains('kesehatan') ||
+        name.contains('obat'))
+      return PhosphorIcons.firstAid(PhosphorIconsStyle.fill);
+    if (iconName == 'bill' ||
+        name.contains('tagihan') ||
+        name.contains('listrik'))
+      return PhosphorIcons.lightning(PhosphorIconsStyle.fill);
+    if (iconName == 'salary' || name.contains('gaji'))
+      return PhosphorIcons.money(PhosphorIconsStyle.fill);
+    if (iconName == 'gift' || name.contains('bonus'))
+      return PhosphorIcons.gift(PhosphorIconsStyle.fill);
+    if (iconName == 'bank' || name.contains('tabung'))
+      return PhosphorIcons.bank(PhosphorIconsStyle.fill);
+
+    // Default Icon
+    return PhosphorIcons.tag(PhosphorIconsStyle.fill);
+  }
+
   Future<void> _fetchCategories() async {
     setState(() => _isLoadingList = true);
     try {
@@ -56,7 +99,7 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
       'name': name,
       'is_expense': _isExpense,
       'user_id': _supabase.auth.currentUser!.id,
-      'icon_name': 'star',
+      'icon_name': 'tag', // Beri default tag untuk kategori buatan user
     });
   }
 
@@ -79,7 +122,6 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
     }
   }
 
-  // --- DIALOG MODAL YANG SUDAH DIPERBAIKI UI-NYA ---
   void _showInputDialog({CategoryModel? categoryToEdit}) {
     final isEditing = categoryToEdit != null;
     final controller = TextEditingController(
@@ -95,11 +137,8 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              // 1. FIX WARNA PINK: Set surfaceTintColor transparan
               surfaceTintColor: Colors.transparent,
               backgroundColor: Colors.white,
-
-              // 2. LEBARKAN MODAL: Atur inset padding
               insetPadding: const EdgeInsets.symmetric(horizontal: 20),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -120,9 +159,8 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                 ),
               ),
 
-              // 3. KONTEN LEBIH RAPI DENGAN WIDTH MAKSIMAL
               content: SizedBox(
-                width: double.maxFinite, // Paksa lebar maksimal
+                width: double.maxFinite,
                 child: TextField(
                   controller: controller,
                   style: GoogleFonts.poppins(
@@ -136,8 +174,7 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                       fontSize: 14,
                     ),
                     filled: true,
-                    fillColor: AppColors
-                        .background, // Abu muda biar kontras sama putih
+                    fillColor: AppColors.background,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 16,
@@ -164,16 +201,10 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                 ),
               ),
 
-              actionsPadding: const EdgeInsets.fromLTRB(
-                20,
-                0,
-                20,
-                24,
-              ), // Padding tombol
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               actions: [
                 Row(
                   children: [
-                    // TOMBOL BATAL (Expanded)
                     Expanded(
                       child: TextButton(
                         onPressed: isSaving ? null : () => Navigator.pop(ctx),
@@ -194,7 +225,6 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                     ),
                     const SizedBox(width: 10),
 
-                    // TOMBOL SIMPAN (Expanded & Dark Blue)
                     Expanded(
                       child: ElevatedButton(
                         onPressed: isSaving
@@ -230,7 +260,7 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                                 }
                               },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary, // Dark Blue
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           elevation: 0,
@@ -340,10 +370,9 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                                     : AppColors.income.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                              // [UPDATE: Panggil fungsi getCategoryIcon di sini]
                               child: Icon(
-                                isSystem
-                                    ? PhosphorIcons.lockKey()
-                                    : PhosphorIcons.tag(),
+                                _getCategoryIcon(cat.name, cat.iconName),
                                 color: _isExpense
                                     ? AppColors.expense
                                     : AppColors.income,

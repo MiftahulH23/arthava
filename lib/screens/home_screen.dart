@@ -13,6 +13,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:catat_uang_app/screens/export_screen.dart';
 import 'package:catat_uang_app/screens/budget_screen.dart';
 import 'package:catat_uang_app/screens/target_screen.dart';
+import 'package:catat_uang_app/screens/savings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _monthlyBalance = 0;
 
   bool _isLoading = true;
+  int _refreshCounter = 0;
 
   @override
   void initState() {
@@ -92,11 +94,15 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
+      // [UPDATE FIX BUG] Menambahkan pengurutan ganda:
+      // 1. Berdasarkan tanggal terbaru
+      // 2. Jika tanggal sama, urutkan berdasarkan ID terbaru (data yang baru diinput)
       final recentResponse = await _supabase
           .from('transactions')
           .select('*, categories(*)')
           .eq('user_id', userId)
           .order('date', ascending: false)
+          .order('id', ascending: false) // <--- INI OBAT BUG-NYA BRO!
           .limit(5);
 
       if (mounted) {
@@ -115,7 +121,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // --- WIDGET HOME CONTENT UPDATE ---
   Widget _buildHomeContent() {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -130,16 +135,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return SafeArea(
       child: Column(
         children: [
-          // === BAGIAN 1: HEADER & CARD (STATIS) ===
           Container(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
             decoration: const BoxDecoration(
-              color: AppColors.background,
+              color: Colors.white,
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
             ),
             child: Column(
               children: [
-                // HEADER (Halo Bos + Setting)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -149,43 +152,39 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           "Halo, Bos!",
                           style: GoogleFonts.poppins(
-                            color: AppColors.textSecondary,
+                            color: Colors.grey,
                             fontSize: 14,
                           ),
                         ),
                         Text(
                           _userName,
                           style: GoogleFonts.poppins(
-                            color: AppColors.textPrimary,
+                            color: Colors.black,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    // TOMBOL SETTING (Icon Gerigi)
                     GestureDetector(
                       onTap: () async {
-                        // Tambah async
-                        // Tunggu sampai user kembali dari Settings
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const SettingsScreen(),
                           ),
                         );
-                        // Setelah kembali, refresh data user (biar nama ke-update)
                         _getUserProfile();
                       },
                       child: Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.settings_outlined, // Icon Gerigi
-                          color: AppColors.textPrimary,
+                          Icons.settings_outlined,
+                          color: Colors.black,
                         ),
                       ),
                     ),
@@ -327,67 +326,85 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 25),
 
-                // === MENU FITUR (4 TOMBOL BARU) ===
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start, // Biar teks panjang aman
-                  children: [
-                    // 1. KATEGORI
-                    _buildFeatureButton(
-                      icon: PhosphorIconsFill.squaresFour,
-                      label: "Kategori",
-                      color: Colors.orange,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ManageCategoryScreen(),
+                // === MENU FITUR ===
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFeatureButton(
+                        icon: PhosphorIconsFill.squaresFour,
+                        label: "Kategori",
+                        color: Colors.orange,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ManageCategoryScreen(),
+                          ),
                         ),
                       ),
-                    ),
-                    // 2. EXPORT (Coming Soon)
-                    _buildFeatureButton(
-                      icon: PhosphorIconsFill.filePdf,
-                      label: "Export",
-                      color: Colors.blue,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ExportScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    // 3. ANGGARAN (Coming Soon)
-                    _buildFeatureButton(
-                      icon: PhosphorIconsFill.chartDonut,
-                      label: "Anggaran",
-                      color: Colors.purple,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const BudgetScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    // 4. TARGET (Coming Soon)
-                    _buildFeatureButton(
-                      icon: PhosphorIconsFill.target,
-                      label: "Target",
-                      color: Colors.green,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const TargetScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                      const SizedBox(width: 20),
+                      _buildFeatureButton(
+                        icon: PhosphorIconsFill.filePdf,
+                        label: "Export",
+                        color: Colors.blue,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ExportScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 20),
+                      _buildFeatureButton(
+                        icon: PhosphorIconsFill.chartDonut,
+                        label: "Anggaran",
+                        color: Colors.purple,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const BudgetScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 20),
+                      _buildFeatureButton(
+                        icon: PhosphorIconsFill.target,
+                        label: "Target",
+                        color: Colors.green,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TargetScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 20),
+                      _buildFeatureButton(
+                        icon: PhosphorIconsFill.piggyBank,
+                        label: "Tabungan",
+                        color: const Color(0xFF009688),
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SavingsScreen(),
+                            ),
+                          );
+                          _refreshData();
+                          setState(() {
+                            _refreshCounter++;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -404,14 +421,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: Colors.black,
                   ),
                 ),
               ],
             ),
           ),
 
-          // === BAGIAN 2: SCROLLABLE LIST ===
+          // === LIST TERBARU ===
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refreshData,
@@ -441,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.white,
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(15),
                           ),
                           child: Row(
@@ -472,7 +489,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       trx.category?.name ?? "Umum",
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary,
+                                        color: Colors.black,
                                       ),
                                     ),
                                     Text(
@@ -481,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         'id_ID',
                                       ).format(trx.date),
                                       style: const TextStyle(
-                                        color: AppColors.textSecondary,
+                                        color: Colors.grey,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -510,7 +527,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // WIDGET TOMBOL FITUR (KOTAK PUTIH + ICON WARNA)
   Widget _buildFeatureButton({
     required IconData icon,
     required String label,
@@ -522,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           Container(
-            width: 60, // Ukuran kotak
+            width: 60,
             height: 60,
             decoration: BoxDecoration(
               color: Colors.white,
@@ -543,7 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: GoogleFonts.poppins(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+              color: Colors.black,
             ),
           ),
         ],
@@ -553,17 +569,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activeColor = AppColors.primary;
+    final inactiveColor = Colors.grey;
+
     final List<Widget> pages = [
       _buildHomeContent(),
-      const TransactionHistoryScreen(
-        key: ValueKey('pemasukan'),
+      TransactionHistoryScreen(
+        key: ValueKey('pemasukan_$_refreshCounter'),
         isExpense: false,
       ),
-      const TransactionHistoryScreen(
-        key: ValueKey('pengeluaran'),
+      TransactionHistoryScreen(
+        key: ValueKey('pengeluaran_$_refreshCounter'),
         isExpense: true,
       ),
-      const StatsScreen(),
+      StatsScreen(key: ValueKey('stats_$_refreshCounter')),
     ];
 
     return Scaffold(
@@ -572,15 +591,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          bool isPengeluaran = false;
+          if (_selectedIndex == 2) {
+            isPengeluaran = true;
+          }
+
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const InputTransactionScreen(),
+              builder: (context) =>
+                  InputTransactionScreen(initialIsExpense: isPengeluaran),
             ),
           );
+
           if (result == true) {
             _refreshData();
-            setState(() {});
+            setState(() {
+              _refreshCounter++;
+            });
           }
         },
         backgroundColor: AppColors.primary,
@@ -592,7 +620,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 10.0,
-        color: AppColors.white,
+        color: Colors.white,
         elevation: 10,
         child: SizedBox(
           height: 60,
@@ -605,9 +633,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _selectedIndex == 0
                       ? PhosphorIcons.house(PhosphorIconsStyle.fill)
                       : PhosphorIcons.house(),
-                  color: _selectedIndex == 0
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
+                  color: _selectedIndex == 0 ? activeColor : inactiveColor,
                 ),
                 onPressed: () => setState(() => _selectedIndex = 0),
               ),
@@ -617,9 +643,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _selectedIndex == 1
                       ? PhosphorIcons.wallet(PhosphorIconsStyle.fill)
                       : PhosphorIcons.wallet(),
-                  color: _selectedIndex == 1
-                      ? AppColors.income
-                      : AppColors.textSecondary,
+                  color: _selectedIndex == 1 ? AppColors.income : inactiveColor,
                 ),
                 onPressed: () => setState(() => _selectedIndex = 1),
               ),
@@ -632,7 +656,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       : PhosphorIcons.receipt(),
                   color: _selectedIndex == 2
                       ? AppColors.expense
-                      : AppColors.textSecondary,
+                      : inactiveColor,
                 ),
                 onPressed: () => setState(() => _selectedIndex = 2),
               ),
@@ -642,9 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _selectedIndex == 3
                       ? PhosphorIcons.chartPieSlice(PhosphorIconsStyle.fill)
                       : PhosphorIcons.chartPieSlice(),
-                  color: _selectedIndex == 3
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
+                  color: _selectedIndex == 3 ? activeColor : inactiveColor,
                 ),
                 onPressed: () => setState(() => _selectedIndex = 3),
               ),
