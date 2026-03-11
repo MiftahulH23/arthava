@@ -10,13 +10,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InputTransactionScreen extends StatefulWidget {
   final TransactionModel? transactionToEdit;
-  // [UPDATE 1] Tambahkan parameter untuk setting default tab
   final bool initialIsExpense;
 
   const InputTransactionScreen({
     super.key,
     this.transactionToEdit,
-    this.initialIsExpense = false, // Default pemasukan jika tidak dikirim
+    this.initialIsExpense = false,
   });
 
   @override
@@ -38,21 +37,23 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
   bool _isLoading = false;
   List<Map<String, dynamic>> _categories = [];
 
-  late bool
-  _isExpense; // [UPDATE 2] Gunakan "late" agar bisa diisi di initState
+  late bool _isExpense;
 
   int? _tabunganCategoryId;
   bool _isReadOnly = false;
   String? _hiddenSavingMarker;
 
+  // --- LOGIKA SUMBER DANA ---
+  Map<String, double> _savingsBalances = {};
+  List<String> _fundSources = ['Kas / Saldo Utama'];
+  String _selectedFundSource = 'Kas / Saldo Utama';
+
   @override
   void initState() {
     super.initState();
-
-    // [UPDATE 3] Set toggle awal berdasarkan darimana dia diklik
     _isExpense = widget.initialIsExpense;
-
     _fetchCategories();
+    _fetchSavingsBalances(); // Ambil data tabungan
 
     if (widget.transactionToEdit != null) {
       final trx = widget.transactionToEdit!;
@@ -73,16 +74,73 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     }
   }
 
+  // Mengambil saldo tabungan untuk ditampilkan di Dropdown Sumber Dana
+  Future<void> _fetchSavingsBalances() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final res = await _supabase
+          .from('savings')
+          .select('name, amount')
+          .eq('user_id', userId);
+
+      Map<String, double> balances = {};
+      for (var item in res) {
+        String name = item['name'].toString().trim();
+        balances[name] =
+            (balances[name] ?? 0) + (item['amount'] as num).toDouble();
+      }
+
+      if (mounted) {
+        setState(() {
+          _savingsBalances = balances;
+          // Hanya masukkan tabungan yang saldonya lebih dari 0
+          for (var key in balances.keys) {
+            if (balances[key]! > 0) {
+              _fundSources.add(key);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching savings: $e");
+    }
+  }
+
+  // Helper untuk membuat kategori Pemasukan (Pencairan) jika belum ada
+  Future<int> _getOrCreateWithdrawCategory() async {
+    final userId = _supabase.auth.currentUser!.id;
+    final checkRes = await _supabase
+        .from('categories')
+        .select('id')
+        .eq('is_expense', false)
+        .ilike('name', '%Cair%')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (checkRes != null) return checkRes['id'] as int;
+
+    final insertRes = await _supabase
+        .from('categories')
+        .insert({
+          'user_id': userId,
+          'name': 'Pencairan Tabungan',
+          'is_expense': false,
+          'icon_name': 'bank',
+        })
+        .select('id')
+        .single();
+
+    return insertRes['id'] as int;
+  }
+
   IconData _getCategoryIcon(String categoryName) {
     final name = categoryName.toLowerCase();
-    // [UPDATE 4] Pisahkan icon Makan dan Minum
     if (name.contains('makan'))
       return PhosphorIcons.bowlFood(PhosphorIconsStyle.fill);
     if (name.contains('minum') ||
         name.contains('kopi') ||
         name.contains('cafe'))
       return PhosphorIcons.coffee(PhosphorIconsStyle.fill);
-
     if (name.contains('transport') || name.contains('bensin'))
       return PhosphorIcons.bus(PhosphorIconsStyle.fill);
     if (name.contains('belanja') || name.contains('mart'))
@@ -113,7 +171,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
       if (mounted) {
         setState(() {
           _categories = List<Map<String, dynamic>>.from(response);
-
           try {
             final tabungCat = _categories.firstWhere(
               (c) => c['name'].toString().toLowerCase().contains('tabung'),
@@ -128,10 +185,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
               (e) => e['id'] == _selectedCategoryId,
               orElse: () => {},
             );
-
-            if (selectedCat.isNotEmpty) {
-              _isExpense = selectedCat['is_expense'];
-            }
+            if (selectedCat.isNotEmpty) _isExpense = selectedCat['is_expense'];
           }
         });
       }
@@ -149,20 +203,100 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     if (_selectedCategoryId == _tabunganCategoryId && !_isReadOnly) {
       AppNotification.error(
         context,
-        "Untuk mencatat tabungan, silakan gunakan menu Tabungan di Beranda.",
+        "Untuk nabung, silakan gunakan menu Tabungan di Beranda.",
       );
       return;
     }
 
+    final cleanAmount = _amountController.text.replaceAll(
+      RegExp(r'[^0-9]'),
+      '',
+    );
+    final amount = int.parse(cleanAmount);
+    final userId = _supabase.auth.currentUser!.id;
+
+    // ====================================================================
+    // LOGIKA SPESIAL: PENGELUARAN YANG DIAMBIL LANGSUNG DARI TABUNGAN
+    // ====================================================================
+    if (_isExpense &&
+        _selectedFundSource != 'Kas / Saldo Utama' &&
+        widget.transactionToEdit == null) {
+      // 1. Cek apakah saldo tabungan cukup
+      double currentBal = _savingsBalances[_selectedFundSource] ?? 0;
+      if (amount > currentBal) {
+        final limitRp = NumberFormat.currency(
+          locale: 'id_ID',
+          symbol: 'Rp ',
+          decimalDigits: 0,
+        ).format(currentBal);
+        AppNotification.error(
+          context,
+          "Saldo tabungan tidak cukup! Sisa: $limitRp",
+        );
+        return;
+      }
+
+      setState(() => _isLoading = true);
+      try {
+        // Step A: Catat Penarikan di Tabel Savings (Minus)
+        final insertedSaving = await _supabase
+            .from('savings')
+            .insert({
+              'user_id': userId,
+              'name': _selectedFundSource,
+              'amount': -amount,
+              'notes': _noteController.text.trim().isNotEmpty 
+                   ? _noteController.text.trim() 
+                   : 'Dipakai untuk pengeluaran',
+            })
+            .select('id')
+            .single();
+
+        final savingId = insertedSaving['id'];
+        final noteMarker = "[SAVING_ID:$savingId]";
+
+        // Step B: Catat Pemasukan (Pencairan) agar uang kas kembali balance
+        final incomeCatId = await _getOrCreateWithdrawCategory();
+        await _supabase.from('transactions').insert({
+          'user_id': userId,
+          'category_id': incomeCatId,
+          'amount': amount,
+          'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+          'note': 'Pencairan otomatis $noteMarker',
+        });
+
+        // Step C: Catat Pengeluaran aslinya (Bengkel, dll)
+        String finalNote = _noteController.text.trim();
+        finalNote = finalNote.isEmpty ? noteMarker : '$finalNote $noteMarker';
+
+        await _supabase.from('transactions').insert({
+          'user_id': userId,
+          'category_id': _selectedCategoryId,
+          'amount': amount,
+          'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+          'note': finalNote,
+        });
+
+        if (mounted) {
+          AppNotification.success(
+            context,
+            "Berhasil! Uang dipotong dari tabungan.",
+          );
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) AppNotification.error(context, "Gagal memproses data.");
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+      return; // Stop fungsi di sini agar tidak menjalankan logika normal di bawah
+    }
+
+    // ====================================================================
+    // LOGIKA NORMAL (PAKAI SALDO UTAMA) ATAU EDIT TRANSAKSI
+    // ====================================================================
     setState(() => _isLoading = true);
     try {
-      final userId = _supabase.auth.currentUser!.id;
-      final cleanAmount = _amountController.text.replaceAll(
-        RegExp(r'[^0-9]'),
-        '',
-      );
-      final amount = int.parse(cleanAmount);
-
       String finalNote = _noteController.text.trim();
       if (_hiddenSavingMarker != null) {
         finalNote = finalNote.isEmpty
@@ -225,7 +359,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
       appBar: AppBar(
         title: Text(
           _isReadOnly
-              ? "Detail Tabungan"
+              ? "Detail Transaksi"
               : (widget.transactionToEdit == null
                     ? "Tambah Transaksi"
                     : "Edit Transaksi"),
@@ -264,7 +398,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        "Ini adalah catatan otomatis dari fitur Tabungan. Silakan gunakan Menu Tabungan di Beranda untuk mengedit data ini.",
+                        "Ini adalah catatan otomatis dari fitur Tabungan. Silakan gunakan Menu Tabungan di Beranda untuk mengedit/menghapus data ini.",
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           color: Colors.blue.shade800,
@@ -275,7 +409,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                 ),
               ),
 
-            // 1. TOGGLE
+            // 1. TOGGLE PEMASUKAN / PENGELUARAN
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
@@ -290,6 +424,67 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
               ),
             ),
             const SizedBox(height: 25),
+
+            // [NEW UI] SUMBER DANA (Hanya tampil di Tab Pengeluaran & Bukan mode Edit)
+            if (_isExpense &&
+                !_isReadOnly &&
+                widget.transactionToEdit == null) ...[
+              Text(
+                "Sumber Dana",
+                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(15),
+                  color: Colors.white,
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    dropdownColor: Colors.white,
+                    value: _selectedFundSource,
+                    isExpanded: true,
+                    icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                    items: _fundSources.map((source) {
+                      final isWallet = source == 'Kas / Saldo Utama';
+                      return DropdownMenuItem<String>(
+                        value: source,
+                        child: Row(
+                          children: [
+                            Icon(
+                              isWallet
+                                  ? PhosphorIconsFill.wallet
+                                  : PhosphorIconsFill.bank,
+                              color: isWallet
+                                  ? AppColors.primary
+                                  : const Color(0xFF009688),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              source,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      setState(() => _selectedFundSource = val!);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // 2. NOMINAL
             Text(
@@ -469,7 +664,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
               decoration: InputDecoration(
                 filled: true,
                 fillColor: _isReadOnly ? Colors.grey.shade100 : Colors.white,
-                hintText: "Contoh: Beli Nasi Padang",
+                hintText: "Contoh: Beli Nasi Padang / Bayar Bengkel",
                 hintStyle: GoogleFonts.poppins(color: Colors.grey.shade400),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -554,6 +749,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                 setState(() {
                   _isExpense = isExpenseBtn;
                   _selectedCategoryId = null;
+                  // Jika pindah ke pemasukan, reset Sumber Dana ke Kas Utama karena kita cuma narik dari tabungan buat pengeluaran
+                  if (!isExpenseBtn) _selectedFundSource = 'Kas / Saldo Utama';
                 });
               },
         child: AnimatedContainer(

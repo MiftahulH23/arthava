@@ -355,10 +355,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // BARIS 1: Waktu & Tanggal (FIXED OVERFLOW)
+                  // BARIS 1: Waktu & Tanggal
                   Row(
                     children: [
-                      // Filter Waktu (Flex 2) - Kasih porsi 40%
                       Expanded(
                         flex: 2,
                         child: _buildDropdownFilter(
@@ -373,10 +372,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           },
                         ),
                       ),
-
                       const SizedBox(width: 10),
-
-                      // Tanggal (Flex 3) - Kasih porsi 60% biar lega
                       Expanded(
                         flex: 3,
                         child: InkWell(
@@ -399,12 +395,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                   color: themeColor,
                                 ),
                                 const SizedBox(width: 8),
-                                // FIX OVERFLOW DISINI: Bungkus Text dengan Expanded
                                 Expanded(
                                   child: Text(
                                     dateLabel,
-                                    overflow: TextOverflow
-                                        .ellipsis, // Titik-titik kalau kepanjangan
+                                    overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
                                     style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.w500,
@@ -424,7 +418,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 10),
 
                   // BARIS 2: Kategori
@@ -510,9 +503,16 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                             itemCount: _transactions.length,
                             itemBuilder: (context, index) {
                               final trx = _transactions[index];
-                             String noteText = "Tidak ada catatan";
+                              String noteText = "Tidak ada catatan";
+                              final bool isSavingTrx =
+                                  trx.note != null &&
+                                  trx.note!.contains('[SAVING_ID:');
+
                               if (trx.note != null && trx.note!.isNotEmpty) {
-                                noteText = trx.note!.replaceAll(RegExp(r'\s*\[SAVING_ID:\d+\]'), '');
+                                noteText = trx.note!.replaceAll(
+                                  RegExp(r'\s*\[SAVING_ID:\d+\]'),
+                                  '',
+                                );
                               }
                               final Color noteColor =
                                   (trx.note != null && trx.note!.isNotEmpty)
@@ -535,29 +535,86 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                     color: Colors.white,
                                   ),
                                 ),
-                                confirmDismiss: (d) async => await showDialog(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    backgroundColor: Colors.white,
-                                    surfaceTintColor: Colors.transparent,
-                                    title: const Text("Hapus?"),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, false),
-                                        child: const Text("Batal"),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, true),
-                                        child: const Text(
-                                          "Hapus",
-                                          style: TextStyle(color: Colors.red),
+                                // [UPDATE] LOGIKA CEGAT HAPUS UNTUK TABUNGAN
+                                confirmDismiss: (d) async {
+                                  if (isSavingTrx) {
+                                    // Tampilkan Alert Blockir
+                                    await showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        backgroundColor: Colors.white,
+                                        surfaceTintColor: Colors.transparent,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            15,
+                                          ),
                                         ),
+                                        title: Row(
+                                          children: [
+                                            const Icon(
+                                              PhosphorIconsFill.warningCircle,
+                                              color: Colors.orange,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                "Tidak Bisa Dihapus",
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        content: Text(
+                                          "Ini adalah catatan pengeluaran otomatis. Untuk menghapusnya, silakan hapus data aslinya melalui menu Tabungan di Beranda.",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(ctx),
+                                            child: Text(
+                                              "Mengerti",
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    );
+                                    return false; // Mengagalkan aksi swipe
+                                  }
+
+                                  // Tampilkan Alert Konfirmasi Normal
+                                  return await showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      backgroundColor: Colors.white,
+                                      surfaceTintColor: Colors.transparent,
+                                      title: const Text("Hapus?"),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          child: const Text("Batal"),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          child: const Text(
+                                            "Hapus",
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                                 onDismissed: (d) => _deleteTransaction(trx.id),
                                 child: GestureDetector(
                                   onTap: () async {
@@ -606,9 +663,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                             children: [
                                               Text(
                                                 trx.category?.name ?? "Umum",
-                                                style: const TextStyle(
+                                                // [UPDATE] Ukuran font diperkecil jadi 14
+                                                style: GoogleFonts.poppins(
                                                   fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
+                                                  fontSize: 14,
                                                   color: AppColors.textPrimary,
                                                 ),
                                               ),
@@ -636,7 +694,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                           children: [
                                             Text(
                                               currencyFormat.format(trx.amount),
-                                              style: TextStyle(
+                                              // [UPDATE] Menggunakan font poppins dengan size proporsional
+                                              style: GoogleFonts.poppins(
                                                 fontWeight: FontWeight.bold,
                                                 color: themeColor,
                                                 fontSize: 14,
@@ -710,7 +769,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
             children: [
               Icon(icon, size: 18, color: AppColors.textPrimary),
               const SizedBox(width: 8),
-              // Bungkus Text dengan Expanded juga biar aman
               Expanded(
                 child: Text(
                   label,
@@ -730,7 +788,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     );
   }
 
-  // WIDGET KATEGORI FULL WIDTH (FIXED: PAKE ID -1)
   Widget _buildCategoryFilter(String label) {
     return Container(
       width: double.infinity,

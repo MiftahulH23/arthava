@@ -137,10 +137,9 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  // --- LOGIC PICKER TANGGAL (PERBAIKAN DI SINI) ---
+  // --- LOGIC PICKER TANGGAL ---
   Future<void> _pickSmartDate() async {
     if (_filterType == 'Harian') {
-      // 1. HARIAN: Pakai DatePicker Biasa
       final picked = await showDatePicker(
         context: context,
         initialDate: _selectedDate,
@@ -164,7 +163,6 @@ class _StatsScreenState extends State<StatsScreen> {
         _fetchStats();
       }
     } else if (_filterType == 'Bulanan') {
-      // 2. BULANAN: Pakai Dialog Dropdown (Bulan & Tahun) - SAMA SEPERTI BUDGET SCREEN
       int tempMonth = _selectedDate.month;
       int tempYear = _selectedDate.year;
       final years = List.generate(11, (i) => (DateTime.now().year - 5) + i);
@@ -203,13 +201,12 @@ class _StatsScreenState extends State<StatsScreen> {
                     children: [
                       Row(
                         children: [
-                          // Dropdown Bulan
                           Expanded(
                             flex: 3,
                             child: DropdownButtonFormField<int>(
                               value: tempMonth,
                               isExpanded: true,
-                              dropdownColor: Colors.white, // FIX: Putih
+                              dropdownColor: Colors.white,
                               decoration: InputDecoration(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -237,12 +234,11 @@ class _StatsScreenState extends State<StatsScreen> {
                             ),
                           ),
                           const SizedBox(width: 10),
-                          // Dropdown Tahun
                           Expanded(
                             flex: 2,
                             child: DropdownButtonFormField<int>(
                               value: tempYear,
-                              dropdownColor: Colors.white, // FIX: Putih
+                              dropdownColor: Colors.white,
                               decoration: InputDecoration(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -280,9 +276,9 @@ class _StatsScreenState extends State<StatsScreen> {
                         setState(
                           () =>
                               _selectedDate = DateTime(tempYear, tempMonth, 1),
-                        ); // Update state utama
+                        );
                         Navigator.pop(context);
-                        _fetchStats(); // Refresh data
+                        _fetchStats();
                       },
                       child: const Text("Tampilkan"),
                     ),
@@ -294,7 +290,6 @@ class _StatsScreenState extends State<StatsScreen> {
         },
       );
     } else if (_filterType == 'Tahunan') {
-      // 3. TAHUNAN: Pakai YearPicker
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -452,7 +447,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       PhosphorIconsRegular.calendarBlank,
                                       size: 18,
                                       color: AppColors.primary,
@@ -541,7 +536,7 @@ class _StatsScreenState extends State<StatsScreen> {
                           ),
                           const SizedBox(height: 30),
 
-                          // 2. TOTAL CARD
+                          // 2. TOTAL CARD (DIUBAH AGAR TIDAK OVERFLOW)
                           Container(
                             margin: const EdgeInsets.only(bottom: 20),
                             padding: const EdgeInsets.all(16),
@@ -576,22 +571,27 @@ class _StatsScreenState extends State<StatsScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 15),
-                                Text(
-                                  _showExpense
-                                      ? "Total Pengeluaran"
-                                      : "Total Pemasukan",
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 13,
+                                Expanded(
+                                  // <-- DITAMBAHKAN EXPANDED DI SINI
+                                  child: Text(
+                                    _showExpense
+                                        ? "Total Pengeluaran"
+                                        : "Total Pemasukan",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const Spacer(),
+                                const SizedBox(width: 10), // Jarak aman
                                 Text(
                                   currencyFormat.format(_totalAmount),
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize:
+                                        15, // Diperkecil sedikit biar aman
                                     color: themeColor,
                                   ),
                                 ),
@@ -712,8 +712,12 @@ class _StatsScreenState extends State<StatsScreen> {
                                               const Divider(height: 1),
                                           itemBuilder: (context, i) {
                                             final trx = details[i];
-                                            String rawNote = trx['note'] ?? 'Tanpa Catatan';
-                                            final trxNote = rawNote.replaceAll(RegExp(r'\s*\[SAVING_ID:\d+\]'), '');
+                                            String rawNote =
+                                                trx['note'] ?? 'Tanpa Catatan';
+                                            final trxNote = rawNote.replaceAll(
+                                              RegExp(r'\s*\[SAVING_ID:\d+\]'),
+                                              '',
+                                            );
                                             final trxAmount =
                                                 (trx['amount'] as num)
                                                     .toDouble();
@@ -792,7 +796,6 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  // ... (WIDGET PENDUKUNG)
   PopupMenuItem<String> _buildPopupItem(String value, IconData icon) {
     return PopupMenuItem(
       value: value,
