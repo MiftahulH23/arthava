@@ -115,7 +115,17 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       for (var item in data) {
         final trx = TransactionModel.fromJson(item);
         loadedTrx.add(trx);
-        tempTotal += trx.amount;
+
+        final note = trx.note ?? '';
+        final catName = trx.category?.name.toLowerCase() ?? '';
+        final hasSavingMarker = note.contains('[SAVING_ID:');
+        final isSystemCat =
+            catName.contains('tabung') || catName.contains('cair');
+
+        // Hanya hitung ke Total Real jika BUKAN mutasi murni
+        if (!(hasSavingMarker && isSystemCat)) {
+          tempTotal += trx.amount;
+        }
       }
 
       if (mounted) {
@@ -441,7 +451,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          // CARD TOTAL
+                          // CARD TOTAL (Tidak termasuk tabungan)
                           Container(
                             width: double.infinity,
                             margin: const EdgeInsets.only(bottom: 20),
@@ -477,7 +487,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                     ),
                                     const SizedBox(width: 10),
                                     Text(
-                                      "Total",
+                                      "Total Real", // Ditambahkan kata "Real" agar user ngerti ini tidak termasuk tabungan
                                       style: GoogleFonts.poppins(
                                         color: Colors.grey,
                                         fontWeight: FontWeight.w600,
@@ -514,8 +524,13 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                   '',
                                 );
                               }
-                              final Color noteColor =
-                                  (trx.note != null && trx.note!.isNotEmpty)
+
+                              // [UPDATE TAMPILAN] Bedakan visual kalau dia transaksi tabungan
+                              final Color noteColor = isSavingTrx
+                                  ? const Color(
+                                      0xFF009688,
+                                    ) // Warna teal khusus kalau dia dari tabungan
+                                  : (trx.note != null && trx.note!.isNotEmpty)
                                   ? Colors.grey.shade600
                                   : Colors.grey.shade400;
 
@@ -535,7 +550,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                     color: Colors.white,
                                   ),
                                 ),
-                                // [UPDATE] LOGIKA CEGAT HAPUS UNTUK TABUNGAN
                                 confirmDismiss: (d) async {
                                   if (isSavingTrx) {
                                     // Tampilkan Alert Blockir
@@ -568,7 +582,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                           ],
                                         ),
                                         content: Text(
-                                          "Ini adalah catatan pengeluaran otomatis. Untuk menghapusnya, silakan hapus data aslinya melalui menu Tabungan di Beranda.",
+                                          "Ini adalah catatan otomatis (Mutasi Tabungan). Untuk menghapusnya, silakan hapus data aslinya melalui menu Tabungan di Beranda.",
                                           style: GoogleFonts.poppins(
                                             fontSize: 14,
                                           ),
@@ -635,6 +649,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(15),
+                                      // [UPDATE TAMPILAN] Kasih border khusus kalau dari tabungan
+                                      border: isSavingTrx
+                                          ? Border.all(
+                                              color: const Color(
+                                                0xFF009688,
+                                              ).withOpacity(0.3),
+                                            )
+                                          : null,
                                     ),
                                     child: Row(
                                       crossAxisAlignment:
@@ -643,16 +665,25 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                         Container(
                                           padding: const EdgeInsets.all(10),
                                           decoration: BoxDecoration(
-                                            color: themeColor.withOpacity(0.1),
+                                            // [UPDATE TAMPILAN] Warna icon beda kalau dari tabungan
+                                            color: isSavingTrx
+                                                ? const Color(
+                                                    0xFF009688,
+                                                  ).withOpacity(0.1)
+                                                : themeColor.withOpacity(0.1),
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
                                           ),
                                           child: Icon(
-                                            widget.isExpense
-                                                ? PhosphorIcons.arrowUp()
-                                                : PhosphorIcons.arrowDown(),
-                                            color: themeColor,
+                                            isSavingTrx
+                                                ? PhosphorIconsFill.bank
+                                                : (widget.isExpense
+                                                      ? PhosphorIcons.arrowUp()
+                                                      : PhosphorIcons.arrowDown()),
+                                            color: isSavingTrx
+                                                ? const Color(0xFF009688)
+                                                : themeColor,
                                           ),
                                         ),
                                         const SizedBox(width: 15),
@@ -661,14 +692,54 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                trx.category?.name ?? "Umum",
-                                                // [UPDATE] Ukuran font diperkecil jadi 14
-                                                style: GoogleFonts.poppins(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                  color: AppColors.textPrimary,
-                                                ),
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    trx.category?.name ??
+                                                        "Umum",
+                                                    style: GoogleFonts.poppins(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                      color:
+                                                          AppColors.textPrimary,
+                                                    ),
+                                                  ),
+                                                  // [UPDATE TAMPILAN] Badge "MUTASI"
+                                                  if (isSavingTrx) ...[
+                                                    const SizedBox(width: 6),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                            vertical: 2,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFF009688,
+                                                        ).withOpacity(0.1),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              4,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        "Mutasi",
+                                                        style:
+                                                            GoogleFonts.poppins(
+                                                              fontSize: 8,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF009688,
+                                                                  ),
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
@@ -694,11 +765,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                           children: [
                                             Text(
                                               currencyFormat.format(trx.amount),
-                                              // [UPDATE] Menggunakan font poppins dengan size proporsional
                                               style: GoogleFonts.poppins(
                                                 fontWeight: FontWeight.bold,
-                                                color: themeColor,
+                                                // [UPDATE TAMPILAN] Warna abu-abu kalau mutasi tabungan
+                                                color: isSavingTrx
+                                                    ? Colors.grey.shade600
+                                                    : themeColor,
                                                 fontSize: 14,
+                                                decoration: isSavingTrx
+                                                    ? TextDecoration.lineThrough
+                                                    : null, // Coret angka biar tau ga masuk hitungan total
+                                                decorationColor:
+                                                    Colors.grey.shade400,
                                               ),
                                             ),
                                             const SizedBox(height: 4),

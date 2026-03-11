@@ -55,13 +55,12 @@ class _HomeScreenState extends State<HomeScreen> {
           .select()
           .eq('id', user.id)
           .maybeSingle();
-      if (mounted) {
+      if (mounted)
         setState(
           () => _userName = data != null
               ? data['name']
               : (user.userMetadata?['name'] ?? "User"),
         );
-      }
     } catch (e) {
       debugPrint("Error user: $e");
     }
@@ -74,35 +73,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final allTrxResponse = await _supabase
           .from('transactions')
-          .select('amount, date, categories(is_expense)')
+          // [UPDATE] Ambil nama kategori biar bisa dicek
+          .select('amount, date, note, categories(name, is_expense)')
           .eq('user_id', userId);
 
-      double income = 0;
-      double expense = 0;
+      double displayIncome = 0;
+      double displayExpense = 0;
+      double calcIncome = 0;
+      double calcExpense = 0;
 
       for (var item in allTrxResponse) {
         final amount = (item['amount'] as num).toDouble();
         final date = DateTime.parse(item['date']);
         final isExpense = item['categories']['is_expense'] as bool;
 
+        // --- LOGIKA AKUNTANSI PINTAR ---
+        final note = item['note']?.toString() ?? '';
+        final catName =
+            item['categories']['name']?.toString().toLowerCase() ?? '';
+
+        final hasSavingMarker = note.contains('[SAVING_ID:');
+        final isSystemCat =
+            catName.contains('tabung') || catName.contains('cair');
+
+        // Mutasi murni hanya jika dia punya marker DAN kategorinya tabungan/pencairan
+        final isPureMutation = hasSavingMarker && isSystemCat;
+
         if (date.year == now.year && date.month == now.month) {
           if (isExpense) {
-            expense += amount;
+            calcExpense += amount;
+            if (!isPureMutation)
+              displayExpense += amount; // Pengeluaran real (Bengkel dihitung!)
           } else {
-            income += amount;
+            calcIncome += amount;
+            if (!isPureMutation) displayIncome += amount;
           }
         }
       }
 
-      // [UPDATE FIX BUG] Menambahkan pengurutan ganda:
-      // 1. Berdasarkan tanggal terbaru
-      // 2. Jika tanggal sama, urutkan berdasarkan ID terbaru (data yang baru diinput)
       final recentResponse = await _supabase
           .from('transactions')
           .select('*, categories(*)')
           .eq('user_id', userId)
           .order('date', ascending: false)
-          .order('id', ascending: false) // <--- INI OBAT BUG-NYA BRO!
+          .order('id', ascending: false)
           .limit(5);
 
       if (mounted) {
@@ -110,9 +124,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _recentTransactions = (recentResponse as List)
               .map((json) => TransactionModel.fromJson(json))
               .toList();
-          _monthlyIncome = income;
-          _monthlyExpense = expense;
-          _monthlyBalance = income - expense;
+          _monthlyIncome = displayIncome;
+          _monthlyExpense = displayExpense;
+          _monthlyBalance = calcIncome - calcExpense;
           _isLoading = false;
         });
       }
@@ -121,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // --- KODE WIDGET UI DI BAWAH INI SAMA SEPERTI SEBELUMNYA ---
   Widget _buildHomeContent() {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -211,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Sisa Saldo ($currentMonthLabel)",
+                        "Sisa Saldo Kas Utama ($currentMonthLabel)",
                         style: GoogleFonts.poppins(
                           color: Colors.white70,
                           fontSize: 12,
@@ -323,10 +338,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 25),
 
-                // === MENU FITUR ===
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -348,42 +361,36 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: PhosphorIconsFill.filePdf,
                         label: "Export",
                         color: Colors.blue,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ExportScreen(),
-                            ),
-                          );
-                        },
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ExportScreen(),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 20),
                       _buildFeatureButton(
                         icon: PhosphorIconsFill.chartDonut,
                         label: "Anggaran",
                         color: Colors.purple,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const BudgetScreen(),
-                            ),
-                          );
-                        },
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const BudgetScreen(),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 20),
                       _buildFeatureButton(
                         icon: PhosphorIconsFill.target,
                         label: "Target",
                         color: Colors.green,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const TargetScreen(),
-                            ),
-                          );
-                        },
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TargetScreen(),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 20),
                       _buildFeatureButton(
@@ -398,9 +405,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
                           _refreshData();
-                          setState(() {
-                            _refreshCounter++;
-                          });
+                          setState(() => _refreshCounter++);
                         },
                       ),
                     ],
@@ -410,7 +415,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // JUDUL TERBARU
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Row(
@@ -428,7 +432,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // === LIST TERBARU ===
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refreshData,
@@ -588,14 +591,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: pages[_selectedIndex],
-
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           bool isPengeluaran = false;
-          if (_selectedIndex == 2) {
-            isPengeluaran = true;
-          }
-
+          if (_selectedIndex == 2) isPengeluaran = true;
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -603,12 +602,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   InputTransactionScreen(initialIsExpense: isPengeluaran),
             ),
           );
-
           if (result == true) {
             _refreshData();
-            setState(() {
-              _refreshCounter++;
-            });
+            setState(() => _refreshCounter++);
           }
         },
         backgroundColor: AppColors.primary,
@@ -616,7 +612,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 10.0,

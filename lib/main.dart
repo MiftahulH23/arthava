@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/core/theme_mode_manager.dart'; // Import Manager Tema
 import 'package:catat_uang_app/screens/home_screen.dart';
 import 'package:catat_uang_app/screens/login_screen.dart';
+import 'package:catat_uang_app/screens/lock_screen.dart'; // [NEW] Import Halaman Gembok
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -52,8 +53,7 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: AppColors.primary,
               brightness: Brightness.light,
-              surface: Colors
-                  .white, // [FIX] Ini bikin Card jadi Putih (Gak perlu CardTheme)
+              surface: Colors.white, // [FIX] Ini bikin Card jadi Putih (Gak perlu CardTheme)
             ),
             textTheme: GoogleFonts.poppinsTextTheme(
               ThemeData.light().textTheme,
@@ -75,9 +75,7 @@ class MyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: AppColors.primary,
               brightness: Brightness.dark,
-              surface: const Color(
-                0xFF1E1E1E,
-              ), // [FIX] Ini bikin Card jadi Abu Gelap
+              surface: const Color(0xFF1E1E1E), // [FIX] Ini bikin Card jadi Abu Gelap
             ),
             // Sesuaikan Text agar warna putih di dark mode
             textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
@@ -101,8 +99,10 @@ class MyApp extends StatelessWidget {
           ],
           supportedLocales: const [Locale('id', 'ID'), Locale('en', 'US')],
 
-          // 4. Navigasi Awal
-          home: user != null ? const HomeScreen() : const LoginScreen(),
+          // 4. Navigasi Awal (UPDATE LOGIKA DISINI BRO!)
+          // Jika User sudah Login, arahkan ke Gembok (LockScreen) dulu.
+          // Jika belum Login, suruh LoginScreen.
+          home: user != null ? const LockScreen() : const LoginScreen(),
         );
       },
     );

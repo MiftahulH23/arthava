@@ -80,7 +80,7 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
     );
     final locationController = TextEditingController(
       text: saving.location ?? '',
-    ); // [FIX] Location buat form edit
+    );
     final notesController = TextEditingController(text: saving.notes ?? '');
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -125,7 +125,10 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                     keyboardType: TextInputType.number,
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.bold,
-                      color: isDeposit ? Colors.black : AppColors.income,
+                      color: isDeposit
+                          ? Colors.black
+                          : AppColors
+                                .expense, // [UPDATE] Tarikan = Merah di edit
                     ),
                     decoration: InputDecoration(
                       filled: true,
@@ -159,7 +162,6 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                   ),
                   const SizedBox(height: 15),
 
-                  // [FIX] KEMBALIKAN INPUT TEMPAT SIMPAN DI EDIT FORM
                   Text(
                     "Tempat Simpan",
                     style: GoogleFonts.poppins(
@@ -244,8 +246,7 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                         .from('savings')
                         .update({
                           'amount': finalAmount,
-                          'location': locationController.text
-                              .trim(), // [FIX] Disimpan pas edit
+                          'location': locationController.text.trim(),
                           'notes': notesController.text.trim(),
                         })
                         .eq('id', saving.id);
@@ -371,6 +372,12 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                       final item = _history[index];
                       final isWithdrawal = item.amount < 0;
 
+                      // [UPDATE PERUBAHAN WARNA DISINI]
+                      // Dari kacamata Buku Tabungan: Setor = Hijau, Tarik = Merah
+                      final Color cardColor = isWithdrawal
+                          ? AppColors.expense
+                          : AppColors.income;
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
@@ -390,19 +397,17 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: isWithdrawal
-                                    ? AppColors.income.withOpacity(0.1)
-                                    : AppColors.expense.withOpacity(0.1),
+                                color: cardColor.withOpacity(0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 isWithdrawal
-                                    ? PhosphorIconsFill.arrowUpRight
-                                    : PhosphorIconsFill.downloadSimple,
+                                    ? PhosphorIconsFill
+                                          .arrowUpRight // Narik keluar
+                                    : PhosphorIconsFill
+                                          .downloadSimple, // Setor masuk
                                 size: 18,
-                                color: isWithdrawal
-                                    ? AppColors.income
-                                    : AppColors.expense,
+                                color: cardColor,
                               ),
                             ),
                             const SizedBox(width: 15),
@@ -419,7 +424,6 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                                       fontSize: 14,
                                     ),
                                   ),
-                                  // [FIX] KEMBALIKAN TAMPILAN TEMPAT SIMPAN
                                   if (item.location != null &&
                                       item.location!.isNotEmpty)
                                     Padding(
@@ -475,9 +479,8 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                                       currency.format(item.amount.abs()),
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.bold,
-                                    color: isWithdrawal
-                                        ? AppColors.income
-                                        : AppColors.expense,
+                                    color:
+                                        cardColor, // Mengikuti warna baru (Setor=Hijau, Tarik=Merah)
                                     fontSize: 14,
                                   ),
                                 ),

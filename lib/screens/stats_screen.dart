@@ -78,6 +78,18 @@ class _StatsScreenState extends State<StatsScreen> {
         final category = item['categories'];
         final catName = category['name'] as String;
         final amount = (item['amount'] as num).toDouble();
+        final note = item['note']?.toString() ?? '';
+
+        // --- LOGIKA AKUNTANSI PINTAR ---
+        final hasSavingMarker = note.contains('[SAVING_ID:');
+        final isSystemCat =
+            catName.toLowerCase().contains('tabung') ||
+            catName.toLowerCase().contains('cair');
+
+        // Abaikan HANYA mutasi murni (Nabung / Pencairan ke dompet)
+        if (hasSavingMarker && isSystemCat) {
+          continue;
+        }
 
         if (tempTotals.containsKey(catName)) {
           tempTotals[catName] = tempTotals[catName]! + amount;
@@ -113,7 +125,6 @@ class _StatsScreenState extends State<StatsScreen> {
     }
   }
 
-  // --- LOGIC TAMPILAN (RANKING) ---
   Widget _buildRankBadge(int index) {
     if (index == 0) return const Text("🥇", style: TextStyle(fontSize: 18));
     if (index == 1) return const Text("🥈", style: TextStyle(fontSize: 18));
@@ -137,7 +148,6 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  // --- LOGIC PICKER TANGGAL ---
   Future<void> _pickSmartDate() async {
     if (_filterType == 'Harian') {
       final picked = await showDatePicker(
@@ -339,7 +349,6 @@ class _StatsScreenState extends State<StatsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER
             Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
@@ -478,7 +487,6 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
             ),
 
-            // CONTENT
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -504,7 +512,6 @@ class _StatsScreenState extends State<StatsScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          // 1. PIE CHART
                           SizedBox(
                             height: 250,
                             child: PieChart(
@@ -536,7 +543,6 @@ class _StatsScreenState extends State<StatsScreen> {
                           ),
                           const SizedBox(height: 30),
 
-                          // 2. TOTAL CARD (DIUBAH AGAR TIDAK OVERFLOW)
                           Container(
                             margin: const EdgeInsets.only(bottom: 20),
                             padding: const EdgeInsets.all(16),
@@ -572,7 +578,6 @@ class _StatsScreenState extends State<StatsScreen> {
                                 ),
                                 const SizedBox(width: 15),
                                 Expanded(
-                                  // <-- DITAMBAHKAN EXPANDED DI SINI
                                   child: Text(
                                     _showExpense
                                         ? "Total Pengeluaran"
@@ -585,13 +590,12 @@ class _StatsScreenState extends State<StatsScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const SizedBox(width: 10), // Jarak aman
+                                const SizedBox(width: 10),
                                 Text(
                                   currencyFormat.format(_totalAmount),
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.bold,
-                                    fontSize:
-                                        15, // Diperkecil sedikit biar aman
+                                    fontSize: 15,
                                     color: themeColor,
                                   ),
                                 ),
@@ -599,7 +603,6 @@ class _StatsScreenState extends State<StatsScreen> {
                             ),
                           ),
 
-                          // 3. EXPANDABLE LIST (RANKING & FREKUENSI)
                           ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
