@@ -16,16 +16,25 @@ class StatsScreen extends StatefulWidget {
 class _StatsScreenState extends State<StatsScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   bool _isLoading = true;
+  bool _isExpense = true;
 
-  bool _showExpense = true;
+  // [KEMBALIKAN FITUR FILTER]
   String _filterType = 'Bulanan';
   DateTime _selectedDate = DateTime.now();
 
-  Map<String, double> _categoryTotals = {};
-  Map<String, List<Map<String, dynamic>>> _categoryTransactions = {};
-
   double _totalAmount = 0;
-  int _touchedIndex = -1;
+  List<Map<String, dynamic>> _categoryData = [];
+
+  final List<Color> _chartColors = [
+    Colors.blue,
+    Colors.red,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+    Colors.teal,
+    Colors.pink,
+    Colors.amber,
+  ];
 
   @override
   void initState() {
@@ -35,292 +44,217 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Future<void> _fetchStats() async {
     setState(() => _isLoading = true);
-
     try {
       final userId = _supabase.auth.currentUser!.id;
 
-      var query = _supabase
-          .from('transactions')
-          .select('amount, date, note, categories!inner(name, is_expense)')
-          .eq('user_id', userId)
-          .eq('categories.is_expense', _showExpense);
-
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      DateTime startDate;
+      DateTime endDate;
 
       if (_filterType == 'Harian') {
-        query = query.eq('date', dateStr);
-      } else if (_filterType == 'Bulanan') {
-        final startMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
-        final nextMonth = DateTime(
+        startDate = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+        );
+        endDate = DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          23,
+          59,
+          59,
+        );
+      } else if (_filterType == 'Tahunan') {
+        startDate = DateTime(_selectedDate.year, 1, 1);
+        endDate = DateTime(_selectedDate.year, 12, 31, 23, 59, 59);
+      } else {
+        startDate = DateTime(_selectedDate.year, _selectedDate.month, 1);
+        endDate = DateTime(
           _selectedDate.year,
           _selectedDate.month + 1,
-          1,
+          0,
+          23,
+          59,
+          59,
         );
-        query = query
-            .gte('date', DateFormat('yyyy-MM-dd').format(startMonth))
-            .lt('date', DateFormat('yyyy-MM-dd').format(nextMonth));
-      } else if (_filterType == 'Tahunan') {
-        final startYear = DateTime(_selectedDate.year, 1, 1);
-        final nextYear = DateTime(_selectedDate.year + 1, 1, 1);
-        query = query
-            .gte('date', DateFormat('yyyy-MM-dd').format(startYear))
-            .lt('date', DateFormat('yyyy-MM-dd').format(nextYear));
       }
 
-      final response = await query;
-      final List<dynamic> data = response;
+      final response = await _supabase
+          .from('transactions')
+          .select('*, categories(*)')
+          .eq('user_id', userId)
+          .eq('categories.is_expense', _isExpense)
+          .gte('date', DateFormat('yyyy-MM-dd').format(startDate))
+          .lte('date', DateFormat('yyyy-MM-dd').format(endDate));
 
-      Map<String, double> tempTotals = {};
-      Map<String, List<Map<String, dynamic>>> tempDetails = {};
       double total = 0;
+      Map<String, Map<String, dynamic>> grouped = {};
 
-      for (var item in data) {
-        final category = item['categories'];
-        final catName = category['name'] as String;
-        final amount = (item['amount'] as num).toDouble();
+      for (var item in response as List) {
+        if (item['categories'] == null) continue;
+
         final note = item['note']?.toString() ?? '';
+        final catName =
+            item['categories']['name']?.toString().toLowerCase() ?? '';
+        final isPureMutation =
+            note.contains('[SAVING_ID:') &&
+            (catName.contains('tabung') || catName.contains('cair'));
 
-        // --- LOGIKA AKUNTANSI PINTAR ---
-        final hasSavingMarker = note.contains('[SAVING_ID:');
-        final isSystemCat =
-            catName.toLowerCase().contains('tabung') ||
-            catName.toLowerCase().contains('cair');
+        if (isPureMutation) continue;
 
-        // Abaikan HANYA mutasi murni (Nabung / Pencairan ke dompet)
-        if (hasSavingMarker && isSystemCat) {
-          continue;
-        }
-
-        if (tempTotals.containsKey(catName)) {
-          tempTotals[catName] = tempTotals[catName]! + amount;
-        } else {
-          tempTotals[catName] = amount;
-        }
-
-        if (!tempDetails.containsKey(catName)) tempDetails[catName] = [];
-        tempDetails[catName]!.add(item);
+        final amount = (item['amount'] as num).toDouble();
+        final catId = item['category_id'].toString();
+        final cName = item['categories']['name'];
 
         total += amount;
+
+        if (grouped.containsKey(catId)) {
+          grouped[catId]!['amount'] += amount;
+          grouped[catId]!['count'] += 1;
+          grouped[catId]!['transactions'].add(item);
+        } else {
+          grouped[catId] = {
+            'name': cName,
+            'amount': amount,
+            'count': 1,
+            'transactions': [item],
+          };
+        }
       }
 
-      if (total == 0) {
-        tempTotals.clear();
-        tempDetails.clear();
-      }
-
-      var sortedEntries = tempTotals.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
+      final sortedList = grouped.values.toList()
+        ..sort(
+          (a, b) => (b['amount'] as double).compareTo(a['amount'] as double),
+        );
 
       if (mounted) {
         setState(() {
-          _categoryTotals = Map.fromEntries(sortedEntries);
-          _categoryTransactions = tempDetails;
           _totalAmount = total;
+          _categoryData = sortedList;
           _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint("Error Stats: $e");
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Widget _buildRankBadge(int index) {
-    if (index == 0) return const Text("🥇", style: TextStyle(fontSize: 18));
-    if (index == 1) return const Text("🥈", style: TextStyle(fontSize: 18));
-    if (index == 2) return const Text("🥉", style: TextStyle(fontSize: 18));
-    return Container(
-      width: 20,
-      height: 20,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        "${index + 1}",
-        style: GoogleFonts.poppins(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickSmartDate() async {
+  void _pickDate() async {
     if (_filterType == 'Harian') {
       final picked = await showDatePicker(
         context: context,
         initialDate: _selectedDate,
         firstDate: DateTime(2020),
         lastDate: DateTime(2030),
-        builder: (context, child) => Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-              surface: Colors.white,
-            ),
-            dialogBackgroundColor: Colors.white,
-          ),
-          child: child!,
-        ),
       );
       if (picked != null) {
         setState(() => _selectedDate = picked);
         _fetchStats();
       }
-    } else if (_filterType == 'Bulanan') {
-      int tempMonth = _selectedDate.month;
-      int tempYear = _selectedDate.year;
-      final years = List.generate(11, (i) => (DateTime.now().year - 5) + i);
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                surfaceTintColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                title: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Pilih Periode",
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                content: SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: DropdownButtonFormField<int>(
-                              value: tempMonth,
-                              isExpanded: true,
-                              dropdownColor: Colors.white,
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              items: List.generate(
-                                12,
-                                (index) => DropdownMenuItem(
-                                  value: index + 1,
-                                  child: Text(
-                                    DateFormat(
-                                      'MMMM',
-                                      'id_ID',
-                                    ).format(DateTime(2024, index + 1)),
-                                    style: GoogleFonts.poppins(fontSize: 14),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                              onChanged: (val) =>
-                                  setDialogState(() => tempMonth = val!),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 2,
-                            child: DropdownButtonFormField<int>(
-                              value: tempYear,
-                              dropdownColor: Colors.white,
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              items: years
-                                  .map(
-                                    (y) => DropdownMenuItem(
-                                      value: y,
-                                      child: Text("$y"),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (val) =>
-                                  setDialogState(() => tempYear = val!),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () {
-                        setState(
-                          () =>
-                              _selectedDate = DateTime(tempYear, tempMonth, 1),
-                        );
-                        Navigator.pop(context);
-                        _fetchStats();
-                      },
-                      child: const Text("Tampilkan"),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
     } else if (_filterType == 'Tahunan') {
       showDialog(
         context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          title: const Text("Pilih Tahun"),
-          content: SizedBox(
-            width: 300,
-            height: 300,
-            child: YearPicker(
-              firstDate: DateTime(2020),
-              lastDate: DateTime(2030),
-              selectedDate: _selectedDate,
-              onChanged: (dt) {
-                setState(() => _selectedDate = dt);
-                Navigator.pop(ctx);
-                _fetchStats();
-              },
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            title: const Text("Pilih Tahun"),
+            content: SizedBox(
+              width: 300,
+              height: 300,
+              child: YearPicker(
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                selectedDate: _selectedDate,
+                onChanged: (DateTime val) {
+                  setState(() => _selectedDate = val);
+                  Navigator.pop(context);
+                  _fetchStats();
+                },
+              ),
             ),
-          ),
+          );
+        },
+      );
+    } else {
+      DateTime tempDate = _selectedDate;
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            height: 300,
+            child: Column(
+              children: [
+                Text(
+                  "Pilih Bulan",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: YearPicker(
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                    selectedDate: tempDate,
+                    onChanged: (DateTime dateTime) {
+                      Navigator.pop(context);
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) {
+                          return GridView.builder(
+                            padding: const EdgeInsets.all(20),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  childAspectRatio: 2,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                ),
+                            itemCount: 12,
+                            itemBuilder: (context, index) {
+                              return InkWell(
+                                onTap: () {
+                                  setState(
+                                    () => _selectedDate = DateTime(
+                                      dateTime.year,
+                                      index + 1,
+                                    ),
+                                  );
+                                  Navigator.pop(context);
+                                  _fetchStats();
+                                },
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    DateFormat(
+                                      'MMM',
+                                    ).format(DateTime(2024, index + 1)),
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       );
     }
   }
@@ -333,577 +267,526 @@ class _StatsScreenState extends State<StatsScreen> {
       decimalDigits: 0,
     );
 
-    String dateLabel = "";
-    if (_filterType == 'Harian')
-      dateLabel = DateFormat('d MMMM yyyy', 'id_ID').format(_selectedDate);
-    else if (_filterType == 'Bulanan')
-      dateLabel = DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate);
-    else
+    String dateLabel = '';
+    if (_filterType == 'Harian') {
+      dateLabel = DateFormat('dd MMM yy', 'id_ID').format(_selectedDate);
+    } else if (_filterType == 'Tahunan') {
       dateLabel = DateFormat('yyyy', 'id_ID').format(_selectedDate);
+    } else {
+      dateLabel = DateFormat('MMM yyyy', 'id_ID').format(_selectedDate);
+    }
 
-    final themeColor = _showExpense ? AppColors.expense : AppColors.income;
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(25),
+    return SafeArea(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            color: Colors.white,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Laporan Keuangan",
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Laporan Keuangan",
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(15),
                   ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildToggleBtn("Pemasukan", false),
-                        _buildToggleBtn("Pengeluaran", true),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Row(
+                  child: Row(
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.white,
-                        ),
-                        child: PopupMenuButton<String>(
-                          color: Colors.white,
-                          surfaceTintColor: Colors.transparent,
-                          onSelected: (value) {
-                            setState(() {
-                              _filterType = value;
-                              _fetchStats();
-                            });
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() => _isExpense = false);
+                            _fetchStats();
                           },
-                          itemBuilder: (context) => [
-                            _buildPopupItem("Harian", Icons.calendar_view_day),
-                            _buildPopupItem(
-                              "Bulanan",
-                              Icons.calendar_view_month,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: !_isExpense
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: !_isExpense
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 5,
+                                      ),
+                                    ]
+                                  : [],
                             ),
-                            _buildPopupItem("Tahunan", Icons.calendar_today),
-                          ],
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  PhosphorIconsFill.faders,
-                                  size: 18,
-                                  color: AppColors.textPrimary,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _filterType,
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Icon(
-                                  Icons.arrow_drop_down,
-                                  size: 18,
-                                  color: Colors.grey,
-                                ),
-                              ],
+                            alignment: Alignment.center,
+                            child: Text(
+                              "Pemasukan",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                color: !_isExpense
+                                    ? AppColors.income
+                                    : Colors.grey,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
                       Expanded(
-                        child: InkWell(
-                          onTap: _pickSmartDate,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() => _isExpense = true);
+                            _fetchStats();
+                          },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
+                              color: _isExpense
+                                  ? Colors.white
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
-                              color: Colors.white,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      PhosphorIconsRegular.calendarBlank,
-                                      size: 18,
-                                      color: AppColors.primary,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      dateLabel,
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 13,
+                              boxShadow: _isExpense
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 5,
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const Icon(
-                                  Icons.arrow_drop_down,
-                                  size: 18,
-                                  color: Colors.grey,
-                                ),
-                              ],
+                                    ]
+                                  : [],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              "Pengeluaran",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                color: _isExpense
+                                    ? AppColors.expense
+                                    : Colors.grey,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _categoryTotals.isEmpty || _totalAmount == 0
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            PhosphorIcons.chartPieSlice(),
-                            size: 80,
-                            color: Colors.grey.shade300,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            "Belum ada data di periode ini",
-                            style: GoogleFonts.poppins(color: Colors.grey),
-                          ),
-                        ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.tune,
+                              size: 18,
+                              color: Colors.grey.shade700,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _filterType,
+                                  isExpanded: true,
+                                  icon: const Icon(
+                                    Icons.arrow_drop_down,
+                                    size: 20,
+                                  ),
+                                  items: ['Harian', 'Bulanan', 'Tahunan']
+                                      .map(
+                                        (e) => DropdownMenuItem(
+                                          value: e,
+                                          child: Text(
+                                            e,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() {
+                                        _filterType = v;
+                                        _selectedDate = DateTime.now();
+                                      });
+                                      _fetchStats();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: 250,
-                            child: PieChart(
-                              PieChartData(
-                                pieTouchData: PieTouchData(
-                                  touchCallback:
-                                      (FlTouchEvent event, pieTouchResponse) {
-                                        setState(() {
-                                          if (!event
-                                                  .isInterestedForInteractions ||
-                                              pieTouchResponse == null ||
-                                              pieTouchResponse.touchedSection ==
-                                                  null) {
-                                            _touchedIndex = -1;
-                                            return;
-                                          }
-                                          _touchedIndex = pieTouchResponse
-                                              .touchedSection!
-                                              .touchedSectionIndex;
-                                        });
-                                      },
-                                ),
-                                borderData: FlBorderData(show: false),
-                                sectionsSpace: 2,
-                                centerSpaceRadius: 40,
-                                sections: _generateSections(),
-                              ),
-                            ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _pickDate,
+                        child: Container(
+                          height: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(height: 30),
-
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 20),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: themeColor.withOpacity(0.2),
+                          child: Row(
+                            children: [
+                              Icon(
+                                PhosphorIconsRegular.calendarBlank,
+                                size: 18,
+                                color: Colors.grey.shade700,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: themeColor.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  dateLabel,
+                                  style: GoogleFonts.poppins(fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: themeColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    _showExpense
-                                        ? PhosphorIconsFill.trendDown
-                                        : PhosphorIconsFill.trendUp,
-                                    color: themeColor,
-                                    size: 24,
+                              ),
+                              const Icon(
+                                Icons.arrow_drop_down,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _categoryData.isEmpty
+                ? Center(
+                    child: Text(
+                      "Tidak ada data",
+                      style: GoogleFonts.poppins(color: Colors.grey),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 200,
+                          child: Stack(
+                            children: [
+                              PieChart(
+                                PieChartData(
+                                  sectionsSpace: 2,
+                                  centerSpaceRadius: 60,
+                                  sections: List.generate(
+                                    _categoryData.length,
+                                    (index) {
+                                      final item = _categoryData[index];
+                                      final percentage =
+                                          (item['amount'] / _totalAmount) * 100;
+                                      return PieChartSectionData(
+                                        color:
+                                            _chartColors[index %
+                                                _chartColors.length],
+                                        value: item['amount'],
+                                        title:
+                                            '${percentage.toStringAsFixed(0)}%',
+                                        radius: 40,
+                                        titleStyle: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
-                                const SizedBox(width: 15),
-                                Expanded(
-                                  child: Text(
-                                    _showExpense
-                                        ? "Total Pengeluaran"
-                                        : "Total Pemasukan",
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 13,
+                              ),
+                              Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "Total",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.grey,
+                                        fontSize: 14,
+                                      ),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  currencyFormat.format(_totalAmount),
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color: themeColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _categoryTotals.length,
-                            itemBuilder: (context, index) {
-                              final entry = _categoryTotals.entries.elementAt(
-                                index,
-                              );
-                              final catName = entry.key;
-                              final total = entry.value;
-                              final percentage = _totalAmount == 0
-                                  ? "0.0"
-                                  : (total / _totalAmount * 100)
-                                        .toStringAsFixed(1);
-                              final color = _getColor(index);
-
-                              final details =
-                                  _categoryTransactions[catName] ?? [];
-                              final count = details.length;
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(15),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.03),
-                                      blurRadius: 5,
+                                    Text(
+                                      currencyFormat.format(_totalAmount),
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
                                     ),
                                   ],
                                 ),
-                                child: Theme(
-                                  data: Theme.of(
-                                    context,
-                                  ).copyWith(dividerColor: Colors.transparent),
-                                  child: ExpansionTile(
-                                    tilePadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    title: Row(
-                                      children: [
-                                        _buildRankBadge(index),
-                                        const SizedBox(width: 12),
-                                        Container(
-                                          width: 10,
-                                          height: 10,
-                                          decoration: BoxDecoration(
-                                            color: color,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                catName,
-                                                style: GoogleFonts.poppins(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                              Text(
-                                                "$count Transaksi",
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: 11,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            Text(
-                                              currencyFormat.format(total),
-                                              style: GoogleFonts.poppins(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                            Text(
-                                              "$percentage%",
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    children: [
-                                      Container(
-                                        color: Colors.grey.shade50,
-                                        constraints: const BoxConstraints(
-                                          maxHeight: 250,
-                                        ),
-                                        child: ListView.separated(
-                                          shrinkWrap: true,
-                                          padding: const EdgeInsets.all(16),
-                                          itemCount: details.length,
-                                          separatorBuilder: (c, i) =>
-                                              const Divider(height: 1),
-                                          itemBuilder: (context, i) {
-                                            final trx = details[i];
-                                            String rawNote =
-                                                trx['note'] ?? 'Tanpa Catatan';
-                                            final trxNote = rawNote.replaceAll(
-                                              RegExp(r'\s*\[SAVING_ID:\d+\]'),
-                                              '',
-                                            );
-                                            final trxAmount =
-                                                (trx['amount'] as num)
-                                                    .toDouble();
-                                            final trxDate = DateTime.parse(
-                                              trx['date'],
-                                            );
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: _isExpense
+                                ? AppColors.expense.withOpacity(0.05)
+                                : AppColors.income.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: _isExpense
+                                  ? AppColors.expense.withOpacity(0.2)
+                                  : AppColors.income.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isExpense
+                                    ? PhosphorIconsBold.trendDown
+                                    : PhosphorIconsBold.trendUp,
+                                color: _isExpense
+                                    ? AppColors.expense
+                                    : AppColors.income,
+                              ),
+                              const SizedBox(width: 10),
+                              // [FIX OVERFLOW TOTAL]
+                              Expanded(
+                                child: Text(
+                                  "Total ${_isExpense ? 'Pengeluaran' : 'Pemasukan'}",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey.shade700,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                currencyFormat.format(_totalAmount),
+                                style: GoogleFonts.poppins(
+                                  color: _isExpense
+                                      ? AppColors.expense
+                                      : AppColors.income,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ...List.generate(_categoryData.length, (index) {
+                          final item = _categoryData[index];
+                          final percentage =
+                              (item['amount'] / _totalAmount) * 100;
+                          final color =
+                              _chartColors[index % _chartColors.length];
 
-                                            return Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 8,
-                                                  ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Column(
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: Theme(
+                              data: Theme.of(
+                                context,
+                              ).copyWith(dividerColor: Colors.transparent),
+                              child: ExpansionTile(
+                                tilePadding: const EdgeInsets.all(16),
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: color.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Icon(
+                                        index == 0
+                                            ? PhosphorIconsFill.medal
+                                            : (index == 1
+                                                  ? PhosphorIconsFill.medal
+                                                  : PhosphorIconsFill.circle),
+                                        size: index < 3 ? 24 : 12,
+                                        color: index == 0
+                                            ? Colors.amber
+                                            : (index == 1
+                                                  ? Colors.grey.shade400
+                                                  : color),
+                                      ),
+                                      if (index < 3)
+                                        Positioned(
+                                          bottom: 4,
+                                          child: Text(
+                                            "${index + 1}",
+                                            style: const TextStyle(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item['name'],
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      currencyFormat.format(item['amount']),
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "${item['count']} Transaksi",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      "${percentage.toStringAsFixed(1)}%",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: const BorderRadius.vertical(
+                                        bottom: Radius.circular(15),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: (item['transactions'] as List).map(
+                                        (t) {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 10,
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
                                                     crossAxisAlignment:
                                                         CrossAxisAlignment
                                                             .start,
                                                     children: [
                                                       Text(
-                                                        trxNote,
+                                                        t['note'] ??
+                                                            'Tanpa catatan',
                                                         style:
                                                             GoogleFonts.poppins(
-                                                              fontSize: 12,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
+                                                              fontSize: 13,
+                                                              color: Colors
+                                                                  .black87,
                                                             ),
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
+                                                      const SizedBox(height: 2),
                                                       Text(
                                                         DateFormat(
                                                           'dd MMM yyyy',
-                                                        ).format(trxDate),
+                                                        ).format(
+                                                          DateTime.parse(
+                                                            t['date'],
+                                                          ),
+                                                        ),
                                                         style:
                                                             GoogleFonts.poppins(
-                                                              fontSize: 10,
+                                                              fontSize: 11,
                                                               color:
                                                                   Colors.grey,
                                                             ),
                                                       ),
                                                     ],
                                                   ),
-                                                  Text(
-                                                    currencyFormat.format(
-                                                      trxAmount,
-                                                    ),
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 12,
-                                                      color:
-                                                          AppColors.textPrimary,
-                                                    ),
+                                                ),
+                                                const SizedBox(width: 15),
+                                                Text(
+                                                  currencyFormat.format(
+                                                    (t['amount'] as num)
+                                                        .toDouble(),
                                                   ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ).toList(),
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 50),
-                        ],
-                      ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
                     ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _buildPopupItem(String value, IconData icon) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: value == _filterType ? AppColors.primary : Colors.grey,
-          ),
-          const SizedBox(width: 10),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontWeight: value == _filterType
-                  ? FontWeight.bold
-                  : FontWeight.normal,
-              color: value == _filterType ? AppColors.primary : Colors.black,
-            ),
+                  ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildToggleBtn(String title, bool isExpenseBtn) {
-    final bool isSelected = _showExpense == isExpenseBtn;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          if (_showExpense != isExpenseBtn) {
-            setState(() {
-              _showExpense = isExpenseBtn;
-              _fetchStats();
-            });
-          }
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 5,
-                    ),
-                  ]
-                : [],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isSelected
-                  ? (isExpenseBtn ? AppColors.expense : AppColors.income)
-                  : Colors.grey,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<PieChartSectionData> _generateSections() {
-    int i = 0;
-    return _categoryTotals.entries.map((entry) {
-      final isTouched = i == _touchedIndex;
-      final fontSize = isTouched ? 18.0 : 12.0;
-      final radius = isTouched ? 60.0 : 50.0;
-      final color = _getColor(i);
-      final double percentage = _totalAmount == 0
-          ? 0.0
-          : (entry.value / _totalAmount * 100);
-      final widget = PieChartSectionData(
-        color: color,
-        value: entry.value,
-        title: '${percentage.toStringAsFixed(0)}%',
-        radius: radius,
-        titleStyle: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      );
-      i++;
-      return widget;
-    }).toList();
-  }
-
-  Color _getColor(int index) {
-    final colors = [
-      const Color(0xFF2962FF),
-      const Color(0xFFFF2B2B),
-      const Color(0xFFFFB300),
-      const Color(0xFF00E676),
-      const Color(0xFF9C27B0),
-      const Color(0xFF00BCD4),
-      const Color(0xFFFF4081),
-      const Color(0xFF795548),
-      const Color(0xFF607D8B),
-    ];
-    return colors[index % colors.length];
   }
 }

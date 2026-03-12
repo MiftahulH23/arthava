@@ -102,7 +102,7 @@ class MyApp extends StatelessWidget {
           // 4. Navigasi Awal (UPDATE LOGIKA DISINI BRO!)
           // Jika User sudah Login, arahkan ke Gembok (LockScreen) dulu.
           // Jika belum Login, suruh LoginScreen.
-          home: user != null ? const LockScreen() : const LoginScreen(),
+          home: user != null ? const HomeScreen() : const LoginScreen(),
         );
       },
     );
