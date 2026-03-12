@@ -1,6 +1,5 @@
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/core/theme_mode_manager.dart'; // Import Manager Tema
-import 'package:catat_uang_app/screens/home_screen.dart';
+import 'package:catat_uang_app/core/theme_mode_manager.dart';
 import 'package:catat_uang_app/screens/login_screen.dart';
 import 'package:catat_uang_app/screens/lock_screen.dart'; // [NEW] Import Halaman Gembok
 import 'package:flutter/material.dart';
@@ -102,7 +101,7 @@ class MyApp extends StatelessWidget {
           // 4. Navigasi Awal (UPDATE LOGIKA DISINI BRO!)
           // Jika User sudah Login, arahkan ke Gembok (LockScreen) dulu.
           // Jika belum Login, suruh LoginScreen.
-          home: user != null ? const HomeScreen() : const LoginScreen(),
+          home: user != null ? const LockScreen() : const LoginScreen(),
         );
       },
     );

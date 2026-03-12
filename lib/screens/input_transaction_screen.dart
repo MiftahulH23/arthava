@@ -1,12 +1,14 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
+import 'package:catat_uang_app/services/gemini_service.dart'; // [AI] Import Service AI
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart'; // [AI] Import Kamera
 
 class InputTransactionScreen extends StatefulWidget {
   final TransactionModel? transactionToEdit;
@@ -26,6 +28,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   final SupabaseClient _supabase = Supabase.instance.client;
+  final ImagePicker _picker = ImagePicker(); // [AI] Inisialisasi Kamera
+
   final _currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
     symbol: '',
@@ -48,12 +52,16 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
   List<String> _fundSources = ['Kas / Saldo Utama'];
   String _selectedFundSource = 'Kas / Saldo Utama';
 
+  // [NEW] Variabel untuk UI Smart Chips
+  bool _isFromSaving = false;
+  String? _selectedSavingName;
+
   @override
   void initState() {
     super.initState();
     _isExpense = widget.initialIsExpense;
     _fetchCategories();
-    _fetchSavingsBalances(); // Ambil data tabungan
+    _fetchSavingsBalances();
 
     if (widget.transactionToEdit != null) {
       final trx = widget.transactionToEdit!;
@@ -74,7 +82,152 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     }
   }
 
-  // Mengambil saldo tabungan untuk ditampilkan di Dropdown Sumber Dana
+  // ====================================================================
+  // [AI] FUNGSI SAKTI SCAN STRUK
+  // ====================================================================
+  Future<void> _scanReceipt(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
+      if (image == null) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+
+      final result = await GeminiService.scanReceipt(image);
+
+      if (mounted) Navigator.pop(context);
+
+      if (result != null) {
+        setState(() {
+          double total = (result['total'] as num?)?.toDouble() ?? 0;
+          if (total > 0) {
+            _amountController.value = TextEditingValue(
+              text: _currencyFormat.format(total),
+              selection: TextSelection.collapsed(
+                offset: _currencyFormat.format(total).length,
+              ),
+            );
+          }
+
+          String aiCategory = result['kategori'].toString().toLowerCase();
+          var matchedCat = _categories.where((c) {
+            String dbCat = c['name'].toString().toLowerCase();
+            return dbCat.contains(aiCategory) || aiCategory.contains(dbCat);
+          }).firstOrNull;
+
+          if (matchedCat != null) {
+            _selectedCategoryId = matchedCat['id'];
+            if (_noteController.text.isEmpty)
+              _noteController.text = "Hasil Scan AI";
+          } else {
+            _noteController.text =
+                "AI Kategori: ${result['kategori']} (Sesuaikan)";
+          }
+        });
+
+        if (mounted)
+          AppNotification.success(context, "Berhasil membaca struk! 🚀");
+      } else {
+        if (mounted) AppNotification.error(context, "AI gagal membaca struk.");
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) AppNotification.error(context, "Gagal: $e");
+    }
+  }
+
+  void _showImageSourceBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        height: 180,
+        child: Column(
+          children: [
+            Text(
+              "Pilih Gambar Struk",
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _scanReceipt(ImageSource.camera);
+                  },
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: AppColors.primary,
+                          size: 30,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Kamera",
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _scanReceipt(ImageSource.gallery);
+                  },
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.image,
+                          color: AppColors.primary,
+                          size: 30,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Galeri",
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _fetchSavingsBalances() async {
     try {
       final userId = _supabase.auth.currentUser!.id;
@@ -93,7 +246,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
       if (mounted) {
         setState(() {
           _savingsBalances = balances;
-          // Hanya masukkan tabungan yang saldonya lebih dari 0
           for (var key in balances.keys) {
             if (balances[key]! > 0) {
               _fundSources.add(key);
@@ -106,7 +258,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     }
   }
 
-  // Helper untuk membuat kategori Pemasukan (Pencairan) jika belum ada
   Future<int> _getOrCreateWithdrawCategory() async {
     final userId = _supabase.auth.currentUser!.id;
     final checkRes = await _supabase
@@ -200,6 +351,15 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
       return;
     }
 
+    // Validasi UI Smart Chips
+    if (_isExpense &&
+        _isFromSaving &&
+        _selectedSavingName == null &&
+        widget.transactionToEdit == null) {
+      AppNotification.error(context, "Pilih tabungan yang ingin digunakan!");
+      return;
+    }
+
     if (_selectedCategoryId == _tabunganCategoryId && !_isReadOnly) {
       AppNotification.error(
         context,
@@ -221,7 +381,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     if (_isExpense &&
         _selectedFundSource != 'Kas / Saldo Utama' &&
         widget.transactionToEdit == null) {
-      // 1. Cek apakah saldo tabungan cukup
       double currentBal = _savingsBalances[_selectedFundSource] ?? 0;
       if (amount > currentBal) {
         final limitRp = NumberFormat.currency(
@@ -238,16 +397,15 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
 
       setState(() => _isLoading = true);
       try {
-        // Step A: Catat Penarikan di Tabel Savings (Minus)
         final insertedSaving = await _supabase
             .from('savings')
             .insert({
               'user_id': userId,
               'name': _selectedFundSource,
               'amount': -amount,
-              'notes': _noteController.text.trim().isNotEmpty 
-                   ? _noteController.text.trim() 
-                   : 'Dipakai untuk pengeluaran',
+              'notes': _noteController.text.trim().isNotEmpty
+                  ? _noteController.text.trim()
+                  : 'Dipakai untuk pengeluaran',
             })
             .select('id')
             .single();
@@ -255,7 +413,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
         final savingId = insertedSaving['id'];
         final noteMarker = "[SAVING_ID:$savingId]";
 
-        // Step B: Catat Pemasukan (Pencairan) agar uang kas kembali balance
         final incomeCatId = await _getOrCreateWithdrawCategory();
         await _supabase.from('transactions').insert({
           'user_id': userId,
@@ -265,7 +422,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
           'note': 'Pencairan otomatis $noteMarker',
         });
 
-        // Step C: Catat Pengeluaran aslinya (Bengkel, dll)
         String finalNote = _noteController.text.trim();
         finalNote = finalNote.isEmpty ? noteMarker : '$finalNote $noteMarker';
 
@@ -289,7 +445,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
-      return; // Stop fungsi di sini agar tidak menjalankan logika normal di bawah
+      return;
     }
 
     // ====================================================================
@@ -337,7 +493,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
 
   Future<void> _pickDate() async {
     if (_isReadOnly) return;
-
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -352,6 +507,10 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
   Widget build(BuildContext context) {
     final filteredCategories = _categories
         .where((c) => c['is_expense'] == _isExpense)
+        .toList();
+    // Filter list tabungan untuk dropdown (kecuali Kas Utama)
+    final savingOptions = _fundSources
+        .where((s) => s != 'Kas / Saldo Utama')
         .toList();
 
     return Scaffold(
@@ -376,7 +535,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -409,7 +567,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                 ),
               ),
 
-            // 1. TOGGLE PEMASUKAN / PENGELUARAN
+            // 1. TOGGLE
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
@@ -425,7 +583,9 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
             ),
             const SizedBox(height: 25),
 
-            // [NEW UI] SUMBER DANA (Hanya tampil di Tab Pengeluaran & Bukan mode Edit)
+            // =========================================================
+            // [UPDATE] SUMBER DANA: UI SMART CHIPS + ANIMATED DROPDOWN
+            // =========================================================
             if (_isExpense &&
                 !_isReadOnly &&
                 widget.transactionToEdit == null) ...[
@@ -434,62 +594,214 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                 style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
               ),
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(15),
-                  color: Colors.white,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    dropdownColor: Colors.white,
-                    value: _selectedFundSource,
-                    isExpanded: true,
-                    icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                    items: _fundSources.map((source) {
-                      final isWallet = source == 'Kas / Saldo Utama';
-                      return DropdownMenuItem<String>(
-                        value: source,
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        _isFromSaving = false;
+                        _selectedSavingName = null;
+                        _selectedFundSource = 'Kas / Saldo Utama';
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: !_isFromSaving
+                              ? AppColors.primary.withOpacity(0.1)
+                              : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: !_isFromSaving
+                                ? AppColors.primary
+                                : Colors.transparent,
+                          ),
+                        ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              isWallet
-                                  ? PhosphorIconsFill.wallet
-                                  : PhosphorIconsFill.bank,
-                              color: isWallet
+                              PhosphorIconsFill.wallet,
+                              size: 18,
+                              color: !_isFromSaving
                                   ? AppColors.primary
-                                  : const Color(0xFF009688),
-                              size: 20,
+                                  : Colors.grey,
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             Text(
-                              source,
+                              "Kas Utama",
                               style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                                color: !_isFromSaving
+                                    ? AppColors.primary
+                                    : Colors.grey,
+                                fontSize: 13,
                               ),
                             ),
                           ],
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      setState(() => _selectedFundSource = val!);
-                    },
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        _isFromSaving = true;
+                        // Auto-select tabungan pertama jika belum ada yang dipilih
+                        if (savingOptions.isNotEmpty &&
+                            _selectedSavingName == null) {
+                          _selectedSavingName = savingOptions.first;
+                          _selectedFundSource = _selectedSavingName!;
+                        }
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _isFromSaving
+                              ? Colors.teal.withOpacity(0.1)
+                              : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _isFromSaving
+                                ? Colors.teal
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              PhosphorIconsFill.piggyBank,
+                              size: 18,
+                              color: _isFromSaving ? Colors.teal : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Tabungan",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                color: _isFromSaving
+                                    ? Colors.teal
+                                    : Colors.grey,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Dropdown Pilih Tabungan (Auto Expand)
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: _isFromSaving
+                    ? Container(
+                        margin: const EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 15,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: Colors.teal.shade200),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: savingOptions.contains(_selectedSavingName)
+                                ? _selectedSavingName
+                                : null,
+                            hint: Text(
+                              savingOptions.isEmpty
+                                  ? "Belum ada tabungan"
+                                  : "Pilih Tabungan...",
+                              style: GoogleFonts.poppins(
+                                color: Colors.teal.shade700,
+                                fontSize: 13,
+                              ),
+                            ),
+                            isExpanded: true,
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.teal.shade700,
+                            ),
+                            items: savingOptions.map((savingName) {
+                              final balance = _savingsBalances[savingName] ?? 0;
+                              return DropdownMenuItem<String>(
+                                value: savingName,
+                                child: Text(
+                                  "$savingName (Sisa: ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0).format(balance)})",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: savingOptions.isEmpty
+                                ? null
+                                : (val) {
+                                    setState(() {
+                                      _selectedSavingName = val;
+                                      _selectedFundSource = val!;
+                                    });
+                                  },
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
               const SizedBox(height: 20),
             ],
 
-            // 2. NOMINAL
-            Text(
-              "Nominal",
-              style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
+            // 2. NOMINAL + AI SCAN BUTTON
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Nominal",
+                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
+                ),
+                if (_isExpense && !_isReadOnly)
+                  GestureDetector(
+                    onTap: _showImageSourceBottomSheet,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            PhosphorIconsFill.magicWand,
+                            color: Colors.purple,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            "Scan Struk",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             TextFormField(
@@ -682,9 +994,9 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                   borderRadius: BorderRadius.circular(15),
                   borderSide: BorderSide(color: Colors.grey.shade200),
                 ),
-                focusedBorder: OutlineInputBorder(
+                focusedBorder:  OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(color: AppColors.primary),
+                  borderSide: BorderSide(color: AppColors.primary),
                 ),
               ),
             ),
@@ -740,7 +1052,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
 
   Widget _buildToggleBtn(String title, bool isExpenseBtn) {
     final bool isSelected = _isExpense == isExpenseBtn;
-
     return Expanded(
       child: GestureDetector(
         onTap: _isReadOnly
@@ -749,8 +1060,11 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                 setState(() {
                   _isExpense = isExpenseBtn;
                   _selectedCategoryId = null;
-                  // Jika pindah ke pemasukan, reset Sumber Dana ke Kas Utama karena kita cuma narik dari tabungan buat pengeluaran
-                  if (!isExpenseBtn) _selectedFundSource = 'Kas / Saldo Utama';
+                  if (!isExpenseBtn) {
+                    _isFromSaving = false;
+                    _selectedSavingName = null;
+                    _selectedFundSource = 'Kas / Saldo Utama';
+                  }
                 });
               },
         child: AnimatedContainer(

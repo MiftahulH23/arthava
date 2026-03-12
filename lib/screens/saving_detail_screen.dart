@@ -366,7 +366,7 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                     itemCount: _history.length,
                     itemBuilder: (context, index) {
                       final item = _history[index];
