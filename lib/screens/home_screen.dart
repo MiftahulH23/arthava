@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/screens/input_transaction_screen.dart';
@@ -15,6 +16,8 @@ import 'package:catat_uang_app/screens/budget_screen.dart';
 import 'package:catat_uang_app/screens/target_screen.dart';
 import 'package:catat_uang_app/screens/savings_screen.dart';
 import 'package:catat_uang_app/screens/recurring_screen.dart';
+import 'package:catat_uang_app/screens/ai_advisor_screen.dart';
+import 'package:catat_uang_app/screens/calendar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,12 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   String _userName = "Memuat...";
-  List<TransactionModel> _recentTransactions = [];
 
   double _monthlyIncome = 0;
   double _monthlyExpense = 0;
   double _monthlyBalance = 0;
-  double _totalSavings = 0; // [NEW] Variabel untuk nyimpan Total Tabungan
+  double _totalSavings = 0;
 
   bool _isLoading = true;
   int _refreshCounter = 0;
@@ -127,13 +129,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final userId = _supabase.auth.currentUser!.id;
       final now = DateTime.now();
 
-      // 1. Ambil data transaksi
       final allTrxResponse = await _supabase
           .from('transactions')
           .select('amount, date, note, categories(name, is_expense)')
           .eq('user_id', userId);
 
-      // 2. [NEW] Ambil total tabungan (Semua uang yang nyangkut di tabungan)
       final savingsResponse = await _supabase
           .from('savings')
           .select('amount')
@@ -174,23 +174,12 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
-      final recentResponse = await _supabase
-          .from('transactions')
-          .select('*, categories(*)')
-          .eq('user_id', userId)
-          .order('date', ascending: false)
-          .order('id', ascending: false)
-          .limit(5);
-
       if (mounted) {
         setState(() {
-          _recentTransactions = (recentResponse as List)
-              .map((json) => TransactionModel.fromJson(json))
-              .toList();
           _monthlyIncome = displayIncome;
           _monthlyExpense = displayExpense;
           _monthlyBalance = calcIncome - calcExpense;
-          _totalSavings = tempTotalSavings; // Simpan total tabungan ke state
+          _totalSavings = tempTotalSavings;
           _isLoading = false;
         });
       }
@@ -199,7 +188,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // [NEW] Widget khusus untuk memecah card info jadi 3 kolom (Vertical Stack biar hemat tempat)
   Widget _buildCardStatItem({
     required IconData icon,
     required Color color,
@@ -239,6 +227,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildFeatureButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 55,
+            height: 55,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHomeContent() {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -250,17 +279,20 @@ class _HomeScreenState extends State<HomeScreen> {
       'id_ID',
     ).format(DateTime.now());
 
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SafeArea(
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-            ),
+      child: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
             child: Column(
               children: [
+                // HEADER PROFIL
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -310,9 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 25),
 
-                // ==========================================
-                // [UPDATE] CARD SALDO 3 KOLOM SUPER ESTETIK
-                // ==========================================
+                // CARD SALDO UTAMA
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
@@ -348,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Garis pembatas elegan
+                      // Garis pembatas
                       Container(
                         padding: const EdgeInsets.only(top: 15),
                         decoration: BoxDecoration(
@@ -375,7 +405,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               amount: _monthlyExpense,
                               currencyFormat: currencyFormat,
                             ),
-                            // Ini dia Bintang Utamanya bro! 🌟
                             _buildCardStatItem(
                               icon: PhosphorIconsFill.piggyBank,
                               color: Colors.tealAccent,
@@ -389,92 +418,149 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 35),
 
-                // MENU FITUR
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                // ==========================================
+                // MENU FITUR GRID (4 ATAS, 4 BAWAH - SIMETRIS)
+                // ==========================================
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Column(
                     children: [
-                      _buildFeatureButton(
-                        icon: PhosphorIconsFill.calendarPlus,
-                        label: "Tagihan",
-                        color: Colors.redAccent,
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RecurringScreen(),
+                      // BARIS PERTAMA
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildFeatureButton(
+                              icon: PhosphorIconsFill.calendarPlus,
+                              label: "Tagihan",
+                              color: Colors.redAccent,
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const RecurringScreen(),
+                                  ),
+                                );
+                                _refreshData();
+                                setState(() => _refreshCounter++);
+                              },
                             ),
-                          );
-                          _refreshData(); // Refresh paksa
-                          setState(() => _refreshCounter++);
-                        },
-                      ),
-                      const SizedBox(width: 20),
-                      _buildFeatureButton(
-                        icon: PhosphorIconsFill.piggyBank,
-                        label: "Tabungan",
-                        color: const Color(0xFF009688),
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SavingsScreen(),
+                          ),
+                          Expanded(
+                            child: _buildFeatureButton(
+                              icon: PhosphorIconsFill.piggyBank,
+                              label: "Tabungan",
+                              color: const Color(0xFF009688),
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SavingsScreen(),
+                                  ),
+                                );
+                                _refreshData();
+                                setState(() => _refreshCounter++);
+                              },
                             ),
-                          );
-                          _refreshData(); // Refresh paksa
-                          setState(() => _refreshCounter++);
-                        },
-                      ),
-                      const SizedBox(width: 20),
-                      _buildFeatureButton(
-                        icon: PhosphorIconsFill.chartDonut,
-                        label: "Anggaran",
-                        color: Colors.purple,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const BudgetScreen(),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      _buildFeatureButton(
-                        icon: PhosphorIconsFill.target,
-                        label: "Target",
-                        color: Colors.green,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const TargetScreen(),
+                          Expanded(
+                            child: _buildFeatureButton(
+                              icon: PhosphorIconsFill.chartDonut,
+                              label: "Anggaran",
+                              color: Colors.purple,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const BudgetScreen(),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      _buildFeatureButton(
-                        icon: PhosphorIconsFill.squaresFour,
-                        label: "Kategori",
-                        color: Colors.orange,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ManageCategoryScreen(),
+                          Expanded(
+                            child: _buildFeatureButton(
+                              icon: PhosphorIconsFill.target,
+                              label: "Target",
+                              color: Colors.green,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const TargetScreen(),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 20),
-                      _buildFeatureButton(
-                        icon: PhosphorIconsFill.filePdf,
-                        label: "Export",
-                        color: Colors.blue,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ExportScreen(),
+                      const SizedBox(height: 25),
+                      // BARIS KEDUA
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildFeatureButton(
+                              icon: PhosphorIconsFill.squaresFour,
+                              label: "Kategori",
+                              color: Colors.orange,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ManageCategoryScreen(),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          Expanded(
+                            child: _buildFeatureButton(
+                              icon: PhosphorIconsFill.filePdf,
+                              label: "Export",
+                              color: Colors.blue,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ExportScreen(),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildFeatureButton(
+                              icon: PhosphorIconsFill.robot,
+                              label: "AI Advisor",
+                              color: Colors.indigo,
+                              onTap: () {
+                                // [NEW] Pindah ke layar AI Advisor
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AiAdvisorScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          // [NEW] TOMBOL KALENDER KEUANGAN
+                          Expanded(
+                            child: _buildFeatureButton(
+                              icon: PhosphorIconsFill.calendar,
+                              label: "Kalender",
+                              color: Colors.pinkAccent,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const CalendarScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -482,158 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Terbaru",
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshData,
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _recentTransactions.isEmpty
-                  ? SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 50),
-                        child: Center(
-                          child: Text(
-                            "Belum ada transaksi",
-                            style: GoogleFonts.poppins(color: Colors.grey),
-                          ),
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: _recentTransactions.length,
-                      itemBuilder: (context, index) {
-                        final trx = _recentTransactions[index];
-                        final isExpense = trx.category?.isExpense ?? true;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: isExpense
-                                      ? AppColors.expense.withOpacity(0.1)
-                                      : AppColors.income.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  isExpense
-                                      ? PhosphorIcons.arrowUp()
-                                      : PhosphorIcons.arrowDown(),
-                                  color: isExpense
-                                      ? AppColors.expense
-                                      : AppColors.income,
-                                ),
-                              ),
-                              const SizedBox(width: 15),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      trx.category?.name ?? "Umum",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    Text(
-                                      DateFormat(
-                                        'd MMM yyyy',
-                                        'id_ID',
-                                      ).format(trx.date),
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                (isExpense ? "- " : "+ ") +
-                                    currencyFormat.format(trx.amount),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isExpense
-                                      ? AppColors.expense
-                                      : AppColors.income,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.black,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -663,7 +598,6 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () async {
           bool isPengeluaran = false;
           if (_selectedIndex == 2) isPengeluaran = true;
-          // [UPDATE] Tunggu layar selesai, lalu PAKSA REFRESH tanpa peduli result
           await Navigator.push(
             context,
             MaterialPageRoute(

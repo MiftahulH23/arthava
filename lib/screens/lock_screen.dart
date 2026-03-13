@@ -203,7 +203,7 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
 
                 const Spacer(),
                 Text(
-                  "Aman bersama CatatUang",
+                  "Aman bersama DompetKu",
                   style: GoogleFonts.poppins(
                     color: textColor.withOpacity(0.3),
                     fontSize: 10,
