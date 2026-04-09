@@ -18,12 +18,24 @@ class ExportScreen extends StatefulWidget {
 
 class _ExportScreenState extends State<ExportScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  bool _isCustomRange = false;
   DateTime _selectedMonth = DateTime.now();
+  DateTimeRange? _selectedDateRange;
   bool _isGenerating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedDateRange = DateTimeRange(
+      start: DateTime(now.year, now.month, 1),
+      end: now,
+    );
+  }
 
   Future<void> _pickMonth() async {
     final currentYear = DateTime.now().year;
-    // Generate tahun dari 5 tahun lalu sampai 5 tahun ke depan
     final years = List.generate(11, (i) => (currentYear - 5) + i);
 
     await showDialog(
@@ -37,8 +49,6 @@ class _ExportScreenState extends State<ExportScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-
-              // HEADER: JUDUL & DROPDOWN TAHUN
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -50,8 +60,6 @@ class _ExportScreenState extends State<ExportScreen> {
                       color: AppColors.textPrimary,
                     ),
                   ),
-
-                  // DROPDOWN TAHUN
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -64,7 +72,6 @@ class _ExportScreenState extends State<ExportScreen> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<int>(
                         value: _selectedMonth.year,
-                        // FIX: SET WARNA BACKGROUND PUTIH
                         dropdownColor: Colors.white,
                         isDense: true,
                         icon: const Icon(
@@ -85,18 +92,18 @@ class _ExportScreenState extends State<ExportScreen> {
                         }).toList(),
                         onChanged: (val) {
                           if (val != null) {
-                            setDialogState(() {
-                              _selectedMonth = DateTime(
+                            setDialogState(
+                              () => _selectedMonth = DateTime(
                                 val,
                                 _selectedMonth.month,
-                              );
-                            });
-                            setState(() {
-                              _selectedMonth = DateTime(
+                              ),
+                            );
+                            setState(
+                              () => _selectedMonth = DateTime(
                                 val,
                                 _selectedMonth.month,
-                              );
-                            });
+                              ),
+                            );
                           }
                         },
                       ),
@@ -104,8 +111,6 @@ class _ExportScreenState extends State<ExportScreen> {
                   ),
                 ],
               ),
-
-              // BODY: GRID BULAN
               content: SizedBox(
                 width: 300,
                 height: 300,
@@ -180,73 +185,153 @@ class _ExportScreenState extends State<ExportScreen> {
     );
   }
 
-  Future<void> _generatePdf() async {
+  Future<void> _pickDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      initialDateRange: _selectedDateRange,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDateRange = picked;
+      });
+    }
+  }
+
+ Future<void> _generatePdf() async {
     setState(() => _isGenerating = true);
     try {
       final userId = _supabase.auth.currentUser!.id;
-      final start = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-      final end = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+      
+      DateTime startDate;
+      DateTime endDate;
+      String reportTitle;
 
-      final userResponse = await _supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', userId)
-          .maybeSingle();
+      if (_isCustomRange && _selectedDateRange != null) {
+        startDate = _selectedDateRange!.start;
+        endDate = DateTime(_selectedDateRange!.end.year, _selectedDateRange!.end.month, _selectedDateRange!.end.day, 23, 59, 59);
+        reportTitle = 'Laporan_${DateFormat('ddMMMyy').format(startDate)}_sd_${DateFormat('ddMMMyy').format(endDate)}';
+      } else {
+        startDate = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+        endDate = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0, 23, 59, 59);
+        reportTitle = 'Laporan_Keuangan_${DateFormat('MMMM_yyyy', 'id_ID').format(_selectedMonth)}';
+      }
+
+      final userResponse = await _supabase.from('profiles').select('name').eq('id', userId).maybeSingle();
       final userName = userResponse != null ? userResponse['name'] : "User";
+
+      final savingsRes = await _supabase.from('savings').select('id, name, amount').eq('user_id', userId);
+      Map<String, String> savingNames = {};
+      double totalSavings = 0;
+      
+      for (var row in savingsRes as List) {
+        savingNames[row['id'].toString()] = row['name'].toString();
+        totalSavings += (row['amount'] as num).toDouble();
+      }
 
       final response = await _supabase
           .from('transactions')
           .select('*, categories!inner(*)')
           .eq('user_id', userId)
-          .gte('date', DateFormat('yyyy-MM-dd').format(start))
-          .lt('date', DateFormat('yyyy-MM-dd').format(end))
+          .gte('date', DateFormat('yyyy-MM-dd').format(startDate))
+          .lte('date', DateFormat('yyyy-MM-dd').format(endDate))
           .order('date', ascending: true);
 
-      final List<TransactionModel> transactions = (response as List)
-          .map((x) => TransactionModel.fromJson(x))
-          .toList();
+      final List<TransactionModel> validTransactions = [];
+      double income = 0;
+      double expense = 0;
+      
+      // [NEW] Variabel buat ngitung Sisa Kas Utama yang beneran akurat!
+      double rawIncome = 0;
+      double rawExpense = 0;
 
-      if (transactions.isEmpty) {
-        if (mounted)
-          AppNotification.error(context, "Tidak ada transaksi di bulan ini.");
+      for (var item in response as List) {
+        Map<String, dynamic> itemData = Map<String, dynamic>.from(item);
+        
+        // Hitung semua uang keluar-masuk buat Kas Utama
+        final isExpenseRaw = itemData['categories']?['is_expense'] == true;
+        final amountRaw = (itemData['amount'] as num).toDouble();
+        if (isExpenseRaw) {
+          rawExpense += amountRaw;
+        } else {
+          rawIncome += amountRaw;
+        }
+
+        String noteStr = itemData['note']?.toString() ?? '';
+        final catStr = itemData['categories']?['name']?.toString().toLowerCase() ?? '';
+        final isSystemCat = catStr.contains('tabung') || catStr.contains('cair');
+        final isPureMutation = noteStr.contains('[SAVING_ID:') && isSystemCat;
+
+        if (!isPureMutation) {
+          final match = RegExp(r'\[SAVING_ID:(\d+)\]').firstMatch(noteStr);
+          if (match != null) {
+            String savingId = match.group(1)!;
+            String savingName = savingNames[savingId] ?? 'Tabungan'; 
+            noteStr = noteStr.replaceAll(match.group(0)!, '(Sumber: $savingName)').trim();
+            itemData['note'] = noteStr; 
+          }
+
+          final trx = TransactionModel.fromJson(itemData);
+          validTransactions.add(trx);
+          
+          if (trx.category?.isExpense == true) {
+            expense += trx.amount;
+          } else {
+            income += trx.amount;
+          }
+        }
+      }
+
+      if (validTransactions.isEmpty) {
+        if (mounted) AppNotification.error(context, "Tidak ada transaksi di periode ini.");
         setState(() => _isGenerating = false);
         return;
       }
 
-      double income = 0;
-      double expense = 0;
-      for (var t in transactions) {
-        if (t.category?.isExpense == true) {
-          expense += t.amount;
-        } else {
-          income += t.amount;
-        }
-      }
+      // [NEW] Hitung Sisa Kas Utama
+      double mainCashBalance = rawIncome - rawExpense;
 
       final pdfBytes = await PdfService().generateReport(
-        month: _selectedMonth,
-        transactions: transactions,
+        month: _isCustomRange ? startDate : _selectedMonth, 
+        transactions: validTransactions,
         userName: userName,
         totalIncome: income,
         totalExpense: expense,
+        totalSavings: totalSavings, 
+        mainCashBalance: mainCashBalance, // <--- KIRIM DATA KAS UTAMA KE PDF
+        isCustomRange: _isCustomRange,
+        endDate: endDate,
       );
 
       await Printing.layoutPdf(
         onLayout: (format) async => pdfBytes,
-        name:
-            'Laporan_Keuangan_${DateFormat('MM_yyyy').format(_selectedMonth)}',
+        name: reportTitle,
       );
+      
     } catch (e) {
       if (mounted) AppNotification.error(context, "Gagal membuat PDF: $e");
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
-    final monthLabel = DateFormat('MMMM yyyy', 'id_ID').format(_selectedMonth);
-
+    // ... KODINGAN BUILD UI SAMA PERSIS KAYA SEBELUMNYA ...
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -290,7 +375,7 @@ class _ExportScreenState extends State<ExportScreen> {
                   ),
                   const SizedBox(height: 15),
                   Text(
-                    "Pilih Periode Laporan",
+                    "Cetak Laporan Keuangan",
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -298,54 +383,198 @@ class _ExportScreenState extends State<ExportScreen> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    "Laporan akan dicetak dalam format PDF",
+                    "Pilih mode periode laporan di bawah ini",
                     style: GoogleFonts.poppins(
                       color: Colors.grey,
                       fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 20),
-
-                  InkWell(
-                    onTap: _pickMonth,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 15,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                PhosphorIconsRegular.calendarBlank,
-                                color: AppColors.primary,
+                  const SizedBox(height: 25),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isCustomRange = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !_isCustomRange
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              const SizedBox(width: 10),
-                              Text(
-                                monthLabel,
+                              alignment: Alignment.center,
+                              child: Text(
+                                "Satu Bulan",
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,
+                                  color: !_isCustomRange
+                                      ? Colors.white
+                                      : Colors.grey.shade600,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                          const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                        ],
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isCustomRange = true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _isCustomRange
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "Pilih Tanggal",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  color: _isCustomRange
+                                      ? Colors.white
+                                      : Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  AnimatedCrossFade(
+                    duration: const Duration(milliseconds: 300),
+                    crossFadeState: _isCustomRange
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
+                    firstChild: InkWell(
+                      onTap: _pickMonth,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 15,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(15),
+                          color: Colors.white,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  PhosphorIconsFill.calendarBlank,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Bulan Laporan",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    Text(
+                                      DateFormat(
+                                        'MMMM yyyy',
+                                        'id_ID',
+                                      ).format(_selectedMonth),
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.grey,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    secondChild: InkWell(
+                      onTap: _pickDateRange,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 15,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(15),
+                          color: Colors.white,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    PhosphorIconsFill.calendarPlus,
+                                    color: AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Rentang Tanggal",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                        Text(
+                                          _selectedDateRange != null
+                                              ? "${DateFormat('dd MMM yy', 'id_ID').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM yy', 'id_ID').format(_selectedDateRange!.end)}"
+                                              : "Pilih rentang",
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.grey,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-
             const Spacer(),
-
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -356,6 +585,8 @@ class _ExportScreenState extends State<ExportScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
+                  elevation: 5,
+                  shadowColor: AppColors.textPrimary.withOpacity(0.5),
                 ),
                 child: _isGenerating
                     ? const CircularProgressIndicator(color: Colors.white)
