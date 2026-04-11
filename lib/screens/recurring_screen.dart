@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/recurring_transaction_model.dart';
@@ -20,11 +21,38 @@ class _RecurringScreenState extends State<RecurringScreen> {
   List<RecurringTransactionModel> _recurringList = [];
   List<Map<String, dynamic>> _categories = [];
 
+  // [NEW] Nyimpen data dompet
+  List<Map<String, dynamic>> _wallets = [];
+  Map<int, String> _walletNames = {};
+
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    _fetchWallets(); // Panggil dompet dulu
     _fetchCategories();
+    _fetchData();
+  }
+
+  // [NEW] Tarik data dompet
+  Future<void> _fetchWallets() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final res = await _supabase
+          .from('wallets')
+          .select()
+          .eq('user_id', userId)
+          .order('name');
+      if (mounted) {
+        setState(() {
+          _wallets = List<Map<String, dynamic>>.from(res);
+          for (var w in _wallets) {
+            _walletNames[w['id']] = w['name'].toString();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetch wallets: $e");
+    }
   }
 
   Future<void> _fetchCategories() async {
@@ -86,9 +114,13 @@ class _RecurringScreenState extends State<RecurringScreen> {
     }
   }
 
-  void _showAddDialog() {
+  // [UX UPGRADE] Ubah Dialog jadi Bottom Sheet Modern
+  void _showAddSheet() {
     bool isExpense = true;
     int? selectedCatId;
+    int? selectedWalletId = _wallets.isNotEmpty
+        ? _wallets.first['id'] as int
+        : null;
     String selectedFreq = 'Bulanan';
     DateTime selectedDate = DateTime.now();
 
@@ -99,438 +131,590 @@ class _RecurringScreenState extends State<RecurringScreen> {
       symbol: '',
       decimalDigits: 0,
     );
-
     final frequencies = ['Harian', 'Mingguan', 'Bulanan', 'Tahunan'];
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (context, setSheetState) {
             final filteredCats = _categories
                 .where((c) => c['is_expense'] == isExpense)
                 .toList();
 
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Buat Tagihan Otomatis",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: MediaQuery.of(context).size.width,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // TOGGLE JENIS
-                      Container(
-                        padding: const EdgeInsets.all(4),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setDialogState(() {
-                                  isExpense = false;
-                                  selectedCatId = null;
-                                }),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: !isExpense
-                                        ? AppColors.income
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    "Pemasukan",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                      color: !isExpense
-                                          ? Colors.white
-                                          : Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setDialogState(() {
-                                  isExpense = true;
-                                  selectedCatId = null;
-                                }),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isExpense
-                                        ? AppColors.expense
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    "Pengeluaran",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                      color: isExpense
-                                          ? Colors.white
-                                          : Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      const SizedBox(height: 15),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Buat Jadwal Tagihan",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
 
-                      // NOMINAL
-                      Text(
-                        "Nominal",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: amountController,
-                        keyboardType: TextInputType.number,
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          color: isExpense
-                              ? AppColors.expense
-                              : AppColors.income,
-                        ),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Text(
-                              "Rp",
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // TOGGLE JENIS TRANSAKSI
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => setSheetState(() {
+                                        isExpense = false;
+                                        selectedCatId = null;
+                                      }),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: !isExpense
+                                              ? AppColors.income
+                                              : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          boxShadow: !isExpense
+                                              ? [
+                                                  BoxShadow(
+                                                    color: AppColors.income
+                                                        .withOpacity(0.3),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 3),
+                                                  ),
+                                                ]
+                                              : [],
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          "Pemasukan",
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            color: !isExpense
+                                                ? Colors.white
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => setSheetState(() {
+                                        isExpense = true;
+                                        selectedCatId = null;
+                                      }),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isExpense
+                                              ? AppColors.expense
+                                              : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          boxShadow: isExpense
+                                              ? [
+                                                  BoxShadow(
+                                                    color: AppColors.expense
+                                                        .withOpacity(0.3),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 3),
+                                                  ),
+                                                ]
+                                              : [],
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          "Pengeluaran",
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            color: isExpense
+                                                ? Colors.white
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // DOMPET (WALLET)
+                            Text(
+                              isExpense
+                                  ? "Potong Dari Dompet Mana?"
+                                  : "Masuk Ke Dompet Mana?",
                               style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
                                 color: Colors.grey,
                               ),
                             ),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        onChanged: (s) {
-                          s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                          if (s.isNotEmpty) {
-                            amountController.value = TextEditingValue(
-                              text: currencyFormat.format(int.parse(s)),
-                              selection: TextSelection.collapsed(
-                                offset: currencyFormat
-                                    .format(int.parse(s))
-                                    .length,
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
                               ),
-                            );
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 15),
-
-                      // KATEGORI (DENGAN ICON)
-                      Text(
-                        "Kategori",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            value:
-                                filteredCats.any(
-                                  (c) => c['id'] == selectedCatId,
-                                )
-                                ? selectedCatId
-                                : null,
-                            hint: Text(
-                              "Pilih Kategori",
-                              style: GoogleFonts.poppins(color: Colors.grey),
-                            ),
-                            isExpanded: true,
-                            dropdownColor: Colors.white,
-                            items: filteredCats.map((cat) {
-                              return DropdownMenuItem<int>(
-                                value: cat['id'] as int,
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: isExpense
-                                            ? AppColors.expense.withOpacity(0.1)
-                                            : AppColors.income.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                border: Border.all(color: Colors.grey.shade200),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value: selectedWalletId,
+                                  isExpanded: true,
+                                  dropdownColor: Colors.white,
+                                  hint: Text(
+                                    _wallets.isEmpty
+                                        ? "Belum ada dompet"
+                                        : "Pilih Dompet",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    PhosphorIconsRegular.caretDown,
+                                    color: Colors.grey,
+                                  ),
+                                  items: _wallets.map((w) {
+                                    return DropdownMenuItem<int>(
+                                      value: w['id'] as int,
+                                      child: Text(
+                                        "${w['name']}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black87,
+                                        ),
                                       ),
-                                      child: Icon(
-                                        isExpense
-                                            ? PhosphorIconsFill.arrowUpRight
-                                            : PhosphorIconsFill.arrowDownLeft,
-                                        size: 16,
-                                        color: isExpense
-                                            ? AppColors.expense
-                                            : AppColors.income,
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) => setSheetState(
+                                    () => selectedWalletId = val,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+
+                            // KATEGORI
+                            Text(
+                              "Kategori",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                border: Border.all(color: Colors.grey.shade200),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value:
+                                      filteredCats.any(
+                                        (c) => c['id'] == selectedCatId,
+                                      )
+                                      ? selectedCatId
+                                      : null,
+                                  hint: Text(
+                                    "Pilih Kategori",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  isExpanded: true,
+                                  dropdownColor: Colors.white,
+                                  items: filteredCats.map((cat) {
+                                    return DropdownMenuItem<int>(
+                                      value: cat['id'] as int,
+                                      child: Text(
+                                        cat['name'],
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) =>
+                                      setSheetState(() => selectedCatId = val),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+
+                            // NOMINAL
+                            Text(
+                              "Nominal",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: amountController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: isExpense
+                                    ? AppColors.expense
+                                    : AppColors.income,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 15,
+                                    right: 10,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        "Rp",
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                              onChanged: (s) {
+                                s = s.replaceAll(RegExp(r'[^0-9]'), '');
+                                if (s.isNotEmpty) {
+                                  amountController.value = TextEditingValue(
+                                    text: currencyFormat.format(int.parse(s)),
+                                    selection: TextSelection.collapsed(
+                                      offset: currencyFormat
+                                          .format(int.parse(s))
+                                          .length,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 15),
+
+                            // FREKUENSI
+                            Text(
+                              "Diulang Setiap",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                border: Border.all(color: Colors.grey.shade200),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedFreq,
+                                  isExpanded: true,
+                                  dropdownColor: Colors.white,
+                                  items: frequencies
+                                      .map(
+                                        (f) => DropdownMenuItem(
+                                          value: f,
+                                          child: Text(
+                                            f,
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setSheetState(() => selectedFreq = val!),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+
+                            // TANGGAL MULAI
+                            Text(
+                              "Mulai Tanggal (Jatuh Tempo Pertama)",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate,
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime(2030),
+                                  builder: (context, child) => Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: AppColors.primary,
+                                        surface: Colors.white,
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    child: child!,
+                                  ),
+                                );
+                                if (picked != null)
+                                  setSheetState(() => selectedDate = picked);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(15),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      PhosphorIconsRegular.calendarBlank,
+                                      color: AppColors.primary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
                                     Text(
-                                      cat['name'],
+                                      DateFormat(
+                                        'dd MMMM yyyy',
+                                        'id_ID',
+                                      ).format(selectedDate),
                                       style: GoogleFonts.poppins(
                                         fontWeight: FontWeight.w500,
-                                        color: Colors.black87,
                                       ),
                                     ),
                                   ],
                                 ),
-                              );
-                            }).toList(),
-                            onChanged: (val) =>
-                                setDialogState(() => selectedCatId = val),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
 
-                      // PERULANGAN (FREQUENCY)
-                      Text(
-                        "Diulang Setiap",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: selectedFreq,
-                            isExpanded: true,
-                            dropdownColor: Colors.white,
-                            items: frequencies
-                                .map(
-                                  (f) => DropdownMenuItem(
-                                    value: f,
-                                    child: Text(
-                                      f,
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
+                            // CATATAN
+                            Text(
+                              "Catatan (Cth: Bayar Kos / Tagihan WiFi)",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: noteController,
+                              style: GoogleFonts.poppins(fontSize: 14),
+                              decoration: InputDecoration(
+                                hintText: "Tulis catatan...",
+                                hintStyle: GoogleFonts.poppins(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 14,
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
                                   ),
-                                )
-                                .toList(),
-                            onChanged: (val) =>
-                                setDialogState(() => selectedFreq = val!),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-
-                      // TANGGAL MULAI
-                      Text(
-                        "Mulai Tanggal (Jatuh Tempo)",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030),
-                            builder: (context, child) => Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: const ColorScheme.light(
-                                  primary: AppColors.primary,
-                                  surface: Colors.white,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.primary,
+                                  ),
                                 ),
                               ),
-                              child: child!,
+                            ),
+                            const SizedBox(height: 25),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // TOMBOL SIMPAN
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          if (amountController.text.isEmpty ||
+                              selectedCatId == null ||
+                              selectedWalletId == null) {
+                            AppNotification.error(
+                              context,
+                              "Nominal, Kategori, dan Dompet wajib diisi!",
+                            );
+                            return;
+                          }
+
+                          double amount = double.parse(
+                            amountController.text.replaceAll(
+                              RegExp(r'[^0-9]'),
+                              '',
                             ),
                           );
-                          if (picked != null)
-                            setDialogState(() => selectedDate = picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                PhosphorIconsRegular.calendarBlank,
-                                color: AppColors.primary,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                DateFormat(
-                                  'dd MMMM yyyy',
-                                  'id_ID',
-                                ).format(selectedDate),
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
+                          final userId = _supabase.auth.currentUser!.id;
+                          final dateStr = DateFormat(
+                            'yyyy-MM-dd',
+                          ).format(selectedDate);
 
-                      // CATATAN
-                      Text(
-                        "Catatan (Cth: Bayar Kos)",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
+                          try {
+                            await _supabase
+                                .from('recurring_transactions')
+                                .insert({
+                                  'user_id': userId,
+                                  'category_id': selectedCatId,
+                                  'wallet_id':
+                                      selectedWalletId, // [NEW] Simpan Dompetnya
+                                  'amount': amount,
+                                  'note': noteController.text.trim(),
+                                  'frequency': selectedFreq,
+                                  'start_date': dateStr,
+                                  'next_run_date': dateStr,
+                                });
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _fetchData();
+                              AppNotification.success(
+                                context,
+                                "Jadwal berhasil dibuat!",
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted)
+                              AppNotification.error(
+                                context,
+                                "Gagal menyimpan jadwal",
+                              );
+                          }
+                        },
+                        child: Text(
+                          "Simpan Jadwal",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: noteController,
-                        style: GoogleFonts.poppins(fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: "Tulis catatan...",
-                          hintStyle: GoogleFonts.poppins(
-                            color: Colors.grey.shade400,
-                            fontSize: 14,
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              actions: [
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () async {
-                      if (amountController.text.isEmpty ||
-                          selectedCatId == null) {
-                        AppNotification.error(
-                          context,
-                          "Nominal dan Kategori wajib diisi!",
-                        );
-                        return;
-                      }
-
-                      double amount = double.parse(
-                        amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-                      );
-                      final userId = _supabase.auth.currentUser!.id;
-                      final dateStr = DateFormat(
-                        'yyyy-MM-dd',
-                      ).format(selectedDate);
-
-                      try {
-                        await _supabase.from('recurring_transactions').insert({
-                          'user_id': userId,
-                          'category_id': selectedCatId,
-                          'amount': amount,
-                          'note': noteController.text.trim(),
-                          'frequency': selectedFreq,
-                          'start_date': dateStr,
-                          'next_run_date':
-                              dateStr, // Eksekutor akan mengeksekusi ini saat jatuh tempo
-                        });
-
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          _fetchData();
-                          AppNotification.success(
-                            context,
-                            "Jadwal berhasil dibuat!",
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted)
-                          AppNotification.error(context, "Gagal menyimpan");
-                      }
-                    },
-                    child: const Text(
-                      "Simpan Tagihan",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
             );
           },
         );
@@ -551,9 +735,19 @@ class _RecurringScreenState extends State<RecurringScreen> {
       appBar: AppBar(
         title: Text(
           "Tagihan & Pemasukan Rutin",
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.black,
+          ),
         ),
         centerTitle: true,
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -569,7 +763,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    "Belum ada tagihan otomatis",
+                    "Belum ada jadwal otomatis",
                     style: GoogleFonts.poppins(color: Colors.grey),
                   ),
                 ],
@@ -584,21 +778,27 @@ class _RecurringScreenState extends State<RecurringScreen> {
                 final catName = item.category?['name'] ?? 'Umum';
                 final color = isExpense ? AppColors.expense : AppColors.income;
 
+                // [NEW] Tampilkan Nama Dompet
+                final walletName =
+                    _walletNames[item.walletId] ?? 'Dompet Dihapus';
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 15),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: item.isActive
-                          ? color.withOpacity(0.3)
-                          : Colors.grey.shade300,
+                          ? color.withOpacity(0.2)
+                          : Colors.grey.shade200,
+                      width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.02),
-                        blurRadius: 5,
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -608,12 +808,12 @@ class _RecurringScreenState extends State<RecurringScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: item.isActive
                                   ? color.withOpacity(0.1)
                                   : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                             child: Icon(
                               isExpense
@@ -627,42 +827,89 @@ class _RecurringScreenState extends State<RecurringScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  catName,
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color: item.isActive
-                                        ? Colors.black
-                                        : Colors.grey,
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        catName,
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: item.isActive
+                                              ? Colors.black
+                                              : Colors.grey,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 if (item.note != null && item.note!.isNotEmpty)
-                                  Text(
-                                    item.note!,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: Colors.grey,
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      item.note!,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    "Per ${item.frequency}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 10,
-                                      color: Colors.blue.shade700,
-                                      fontWeight: FontWeight.bold,
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        "Per ${item.frequency}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10,
+                                          color: Colors.blue.shade700,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    // [NEW] Badge Dompet
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            PhosphorIconsFill.wallet,
+                                            size: 10,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            walletName,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -674,21 +921,27 @@ class _RecurringScreenState extends State<RecurringScreen> {
                                 currency.format(item.amount),
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                                  fontSize: 16,
                                   color: item.isActive ? color : Colors.grey,
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              Switch(
-                                value: item.isActive,
-                                activeColor: AppColors.primary,
-                                onChanged: (val) => _toggleActive(item, val),
+                              SizedBox(
+                                height: 24,
+                                child: Switch(
+                                  value: item.isActive,
+                                  activeColor: AppColors.primary,
+                                  onChanged: (val) => _toggleActive(item, val),
+                                ),
                               ),
                             ],
                           ),
                         ],
                       ),
-                      const Divider(height: 25),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Divider(height: 1),
+                      ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -697,14 +950,14 @@ class _RecurringScreenState extends State<RecurringScreen> {
                               Icon(
                                 PhosphorIconsRegular.clock,
                                 size: 14,
-                                color: Colors.grey.shade600,
+                                color: Colors.grey.shade500,
                               ),
                               const SizedBox(width: 5),
                               Text(
                                 "Eksekusi Berikutnya: ",
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
-                                  color: Colors.grey.shade600,
+                                  color: Colors.grey.shade500,
                                 ),
                               ),
                               Text(
@@ -722,8 +975,6 @@ class _RecurringScreenState extends State<RecurringScreen> {
                               ),
                             ],
                           ),
-
-                          // [UPDATE] TOMBOL DELETE SEKARANG PAKAI KONFIRMASI (ALERT DIALOG)
                           GestureDetector(
                             onTap: () {
                               showDialog(
@@ -777,7 +1028,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                               child: const Icon(
                                 Icons.delete_outline,
                                 color: Colors.red,
-                                size: 18,
+                                size: 16,
                               ),
                             ),
                           ),
@@ -788,10 +1039,18 @@ class _RecurringScreenState extends State<RecurringScreen> {
                 );
               },
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDialog,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddSheet,
         backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
+        elevation: 4,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          "Buat Jadwal",
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/saving_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -58,221 +59,219 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
     }
   }
 
+  // [UPDATE LOGIKA] Hapus Tabungan & Kembalikan Saldo Dompet
   Future<void> _deleteSaving(SavingModel item) async {
     try {
-      await _supabase.from('savings').delete().eq('id', item.id);
       final noteMarker = "[SAVING_ID:${item.id}]";
-      await _supabase
-          .from('transactions')
-          .delete()
-          .like('note', '%$noteMarker%');
+      
+      // 1. Cari transaksi terkait buat ngecek ini pakai dompet mana
+      final trxRes = await _supabase.from('transactions').select('id, amount, wallet_id').like('note', '%$noteMarker%').maybeSingle();
+
+      if (trxRes != null && trxRes['wallet_id'] != null) {
+        final walletId = trxRes['wallet_id'];
+        final trxAmount = (trxRes['amount'] as num).toDouble(); // Nominal transaksi (selalu positif)
+        
+        // 2. Ambil saldo dompet saat ini
+        final walletRes = await _supabase.from('wallets').select('balance').eq('id', walletId).single();
+        double currentBal = (walletRes['balance'] as num).toDouble();
+        
+        // 3. Logika Refund: 
+        // Jika setor (item.amount > 0), dompet dulu berkurang. Skrg dihapus -> Dompet Bertambah
+        // Jika tarik (item.amount < 0), dompet dulu bertambah. Skrg dihapus -> Dompet Berkurang
+        double refundAmount = item.amount > 0 ? trxAmount : -trxAmount;
+        
+        await _supabase.from('wallets').update({'balance': currentBal + refundAmount}).eq('id', walletId);
+      }
+
+      // 4. Hapus Transaksi & Data Tabungan
+      await _supabase.from('transactions').delete().like('note', '%$noteMarker%');
+      await _supabase.from('savings').delete().eq('id', item.id);
+      
       _fetchDetail();
-      if (mounted) AppNotification.success(context, "Data dihapus!");
+      if (mounted) AppNotification.success(context, "Data dihapus & Saldo Dompet dikembalikan!");
     } catch (e) {
       if (mounted) AppNotification.error(context, "Gagal menghapus data.");
     }
   }
 
-  void _showEditDialog(SavingModel saving) {
+  // [UX UPGRADE] Ubah Dialog jadi Bottom Sheet Modern
+  void _showEditSheet(SavingModel saving) {
     bool isDeposit = saving.amount >= 0;
-    final amountController = TextEditingController(
-      text: saving.amount.abs().toInt().toString(),
-    );
-    final locationController = TextEditingController(
-      text: saving.location ?? '',
-    );
+    final amountController = TextEditingController();
+    final locationController = TextEditingController(text: saving.location ?? '');
     final notesController = TextEditingController(text: saving.notes ?? '');
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: '',
-      decimalDigits: 0,
-    );
+    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
+    
     amountController.text = currencyFormat.format(saving.amount.abs());
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            "Edit ${isDeposit ? 'Setoran' : 'Tarikan'}",
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Nominal",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey,
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40, height: 5,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      color: isDeposit
-                          ? Colors.black
-                          : AppColors
-                                .expense, // [UPDATE] Tarikan = Merah di edit
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Edit ${isDeposit ? 'Setoran' : 'Tarikan'}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)),
+                        IconButton(icon: const Icon(Icons.close, color: Colors.black), onPressed: () => Navigator.pop(context)),
+                      ],
                     ),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(15),
-                        child: Text(
-                          "Rp",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                          ),
+                    const SizedBox(height: 15),
+
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Nominal", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade700)),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: amountController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: isDeposit ? Colors.black : Colors.orange),
+                              decoration: InputDecoration(
+                                hintText: "0",
+                                filled: true, fillColor: Colors.grey.shade50,
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(left: 15, right: 10),
+                                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text("Rp", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey))]),
+                                ),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF009688))),
+                              ),
+                              onChanged: (s) {
+                                s = s.replaceAll(RegExp(r'[^0-9]'), '');
+                                if (s.isNotEmpty) {
+                                  amountController.value = TextEditingValue(text: currencyFormat.format(int.parse(s)), selection: TextSelection.collapsed(offset: currencyFormat.format(int.parse(s)).length));
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 15),
+
+                            Text("Tempat Simpan", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade700)),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: locationController,
+                              style: GoogleFonts.poppins(color: Colors.black),
+                              decoration: InputDecoration(
+                                hintText: "Contoh: Bank BCA",
+                                hintStyle: GoogleFonts.poppins(color: Colors.grey.shade400, fontSize: 14),
+                                filled: true, fillColor: Colors.grey.shade50,
+                                prefixIcon: const Icon(PhosphorIconsFill.bank, color: Colors.grey),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF009688))),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+
+                            Text("Catatan", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade700)),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: notesController,
+                              maxLines: 4, minLines: 1,
+                              style: GoogleFonts.poppins(color: Colors.black),
+                              decoration: InputDecoration(
+                                hintText: "Tulis catatan...",
+                                hintStyle: GoogleFonts.poppins(color: Colors.grey.shade400, fontSize: 14),
+                                filled: true, fillColor: Colors.grey.shade50,
+                                prefixIcon: const Icon(PhosphorIconsFill.notePencil, color: Colors.grey),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF009688))),
+                              ),
+                            ),
+                            const SizedBox(height: 25),
+                          ],
                         ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                    ),
+
+                    SizedBox(
+                      width: double.infinity, height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF009688),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          double rawAmount = double.parse(amountController.text.replaceAll(RegExp(r'[^0-9]'), ''));
+                          final finalAmount = isDeposit ? rawAmount : -rawAmount;
+
+                          try {
+                            // [UPDATE LOGIKA] Sesuaikan Ulang Saldo Dompet
+                            final noteMarker = "[SAVING_ID:${saving.id}]";
+                            final trxRes = await _supabase.from('transactions').select('id, amount, wallet_id').like('note', '%$noteMarker%').maybeSingle();
+
+                            if (trxRes != null && trxRes['wallet_id'] != null) {
+                              final walletId = trxRes['wallet_id'];
+                              final oldTrxAmount = (trxRes['amount'] as num).toDouble();
+                              
+                              final walletRes = await _supabase.from('wallets').select('balance').eq('id', walletId).single();
+                              double currentBal = (walletRes['balance'] as num).toDouble();
+                              
+                              // 1. Revert efek lama
+                              double revertAmount = saving.amount > 0 ? oldTrxAmount : -oldTrxAmount;
+                              double balanceAfterRevert = currentBal + revertAmount;
+                              
+                              // 2. Terapkan efek baru
+                              double applyAmount = isDeposit ? rawAmount : -rawAmount;
+                              double finalWalletBalance = balanceAfterRevert - applyAmount;
+                              
+                              await _supabase.from('wallets').update({'balance': finalWalletBalance}).eq('id', walletId);
+                            }
+
+                            // Update Transaksi & Tabungan
+                            await _supabase.from('savings').update({
+                              'amount': finalAmount,
+                              'location': locationController.text.trim(),
+                              'notes': notesController.text.trim(),
+                            }).eq('id', saving.id);
+
+                            await _supabase.from('transactions').update({'amount': rawAmount}).like('note', '%$noteMarker%');
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _fetchDetail();
+                              AppNotification.success(context, "Perubahan disimpan!");
+                            }
+                          } catch (e) {
+                            if (context.mounted) AppNotification.error(context, "Gagal update data.");
+                          }
+                        },
+                        child: Text("Simpan Perubahan", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
-                    onChanged: (s) {
-                      s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                      if (s.isNotEmpty) {
-                        amountController.value = TextEditingValue(
-                          text: currencyFormat.format(int.parse(s)),
-                          selection: TextSelection.collapsed(
-                            offset: currencyFormat.format(int.parse(s)).length,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text(
-                    "Tempat Simpan",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: locationController,
-                    style: GoogleFonts.poppins(color: Colors.black),
-                    decoration: InputDecoration(
-                      hintText: "Contoh: Bank BCA",
-                      hintStyle: GoogleFonts.poppins(
-                        color: Colors.grey.shade400,
-                        fontSize: 14,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text(
-                    "Catatan",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: notesController,
-                    maxLines: 4,
-                    minLines: 1,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: "Tulis catatan...",
-                      hintStyle: GoogleFonts.poppins(
-                        color: Colors.grey.shade400,
-                        fontSize: 14,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () async {
-                  double rawAmount = double.parse(
-                    amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-                  );
-                  final finalAmount = isDeposit ? rawAmount : -rawAmount;
-
-                  try {
-                    await _supabase
-                        .from('savings')
-                        .update({
-                          'amount': finalAmount,
-                          'location': locationController.text.trim(),
-                          'notes': notesController.text.trim(),
-                        })
-                        .eq('id', saving.id);
-
-                    final noteMarker = "[SAVING_ID:${saving.id}]";
-                    await _supabase
-                        .from('transactions')
-                        .update({'amount': rawAmount})
-                        .like('note', '%$noteMarker%');
-
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      _fetchDetail();
-                    }
-                  } catch (e) {
-                    if (context.mounted)
-                      AppNotification.error(context, "Gagal update");
-                  }
-                },
-                child: const Text(
-                  "Simpan Perubahan",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  ],
                 ),
               ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -280,134 +279,89 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
+    final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          widget.savingName,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
+        title: Text(widget.savingName, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black)),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context, true),
-        ),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context, true)),
       ),
       body: Column(
         children: [
+          // [UX UPGRADE] Kartu Total Saldo Jadi Premium Gradient
           Container(
-            padding: const EdgeInsets.all(20),
-            color: Colors.white,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF009688),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF009688).withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF009688), Color(0xFF00796B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Total Saldo",
-                        style: GoogleFonts.poppins(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                      ),
-                      Text(
-                        currency.format(_currentBalance),
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: const Color(0xFF009688).withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 8)),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Total Saldo Tabungan", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    Text(
+                      currency.format(_currentBalance),
+                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
                     ),
-                    child: const Icon(
-                      PhosphorIconsFill.piggyBank,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                  child: const Icon(PhosphorIconsFill.piggyBank, color: Colors.white, size: 32),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: 10),
 
+          // LIST HISTORY
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    physics: const BouncingScrollPhysics(),
                     itemCount: _history.length,
                     itemBuilder: (context, index) {
                       final item = _history[index];
                       final isWithdrawal = item.amount < 0;
-
-                      // [UPDATE PERUBAHAN WARNA DISINI]
-                      // Dari kacamata Buku Tabungan: Setor = Hijau, Tarik = Merah
-                      final Color cardColor = isWithdrawal
-                          ? AppColors.expense
-                          : AppColors.income;
+                      final Color cardColor = isWithdrawal ? AppColors.expense : AppColors.income;
 
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 15),
+                        padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 5,
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))],
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: cardColor.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(color: cardColor.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
                               child: Icon(
-                                isWithdrawal
-                                    ? PhosphorIconsFill
-                                          .arrowUpRight // Narik keluar
-                                    : PhosphorIconsFill
-                                          .downloadSimple, // Setor masuk
-                                size: 18,
-                                color: cardColor,
+                                isWithdrawal ? PhosphorIconsFill.arrowUpRight : PhosphorIconsFill.downloadSimple,
+                                size: 24, color: cardColor,
                               ),
                             ),
                             const SizedBox(width: 15),
@@ -415,59 +369,25 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    isWithdrawal
-                                        ? "Penarikan Dana"
-                                        : "Setoran Tabungan",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  if (item.location != null &&
-                                      item.location!.isNotEmpty)
+                                  Text(isWithdrawal ? "Penarikan Dana" : "Setoran Tabungan", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87)),
+                                  if (item.location != null && item.location!.isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4),
                                       child: Row(
                                         children: [
-                                          Icon(
-                                            PhosphorIconsFill.mapPin,
-                                            size: 12,
-                                            color: Colors.grey.shade500,
-                                          ),
+                                          Icon(PhosphorIconsFill.mapPin, size: 12, color: Colors.grey.shade500),
                                           const SizedBox(width: 4),
-                                          Text(
-                                            item.location!,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade500,
-                                            ),
-                                          ),
+                                          Expanded(child: Text(item.location!, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade500), maxLines: 1, overflow: TextOverflow.ellipsis)),
                                         ],
                                       ),
                                     ),
-                                  if (item.notes != null &&
-                                      item.notes!.isNotEmpty)
+                                  if (item.notes != null && item.notes!.isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4),
-                                      child: Text(
-                                        item.notes!,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
+                                      child: Text(item.notes!, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600)),
                                     ),
                                   const SizedBox(height: 8),
-                                  Text(
-                                    DateFormat(
-                                      'dd MMM yyyy, HH:mm',
-                                    ).format(item.createdAt),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 10,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                  ),
+                                  Text(DateFormat('dd MMM yyyy, HH:mm').format(item.createdAt), style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade400)),
                                 ],
                               ),
                             ),
@@ -475,63 +395,46 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  (isWithdrawal ? "- " : "+ ") +
-                                      currency.format(item.amount.abs()),
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        cardColor, // Mengikuti warna baru (Setor=Hijau, Tarik=Merah)
-                                    fontSize: 14,
-                                  ),
+                                  (isWithdrawal ? "- " : "+ ") + currency.format(item.amount.abs()),
+                                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: cardColor, fontSize: 15),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 12),
                                 Row(
                                   children: [
                                     GestureDetector(
-                                      onTap: () => _showEditDialog(item),
-                                      child: const Icon(
-                                        Icons.edit_outlined,
-                                        color: Colors.blue,
-                                        size: 18,
+                                      onTap: () => _showEditSheet(item),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                        child: const Icon(Icons.edit_outlined, color: Colors.blue, size: 16),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: 10),
                                     GestureDetector(
                                       onTap: () {
                                         showDialog(
                                           context: context,
                                           builder: (ctx) => AlertDialog(
                                             backgroundColor: Colors.white,
-                                            title: const Text("Hapus Histori?"),
-                                            content: const Text(
-                                              "Catatan ini dan efek saldonya akan dibatalkan.",
-                                            ),
+                                            title: Text("Hapus Histori?", style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                                            content: Text("Catatan ini dihapus dan saldonya dikembalikan ke dompet.", style: GoogleFonts.poppins()),
                                             actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(ctx),
-                                                child: const Text("Batal"),
-                                              ),
+                                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal", style: TextStyle(color: Colors.grey))),
                                               TextButton(
                                                 onPressed: () {
                                                   Navigator.pop(ctx);
                                                   _deleteSaving(item);
                                                 },
-                                                child: const Text(
-                                                  "Hapus",
-                                                  style: TextStyle(
-                                                    color: Colors.red,
-                                                  ),
-                                                ),
+                                                child: const Text("Hapus", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                                               ),
                                             ],
                                           ),
                                         );
                                       },
-                                      child: const Icon(
-                                        Icons.delete_outline,
-                                        color: Colors.red,
-                                        size: 18,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                        child: const Icon(Icons.delete_outline, color: Colors.red, size: 16),
                                       ),
                                     ),
                                   ],

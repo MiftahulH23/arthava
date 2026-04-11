@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/target_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -20,10 +21,28 @@ class _TargetScreenState extends State<TargetScreen> {
   List<TargetModel> _targets = [];
   double _totalSavings = 0;
 
+  List<Map<String, dynamic>> _wallets = [];
+
   @override
   void initState() {
     super.initState();
+    _fetchWallets();
     _fetchTargets();
+  }
+
+  Future<void> _fetchWallets() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final res = await _supabase
+          .from('wallets')
+          .select()
+          .eq('user_id', userId)
+          .order('name');
+      if (mounted)
+        setState(() => _wallets = List<Map<String, dynamic>>.from(res));
+    } catch (e) {
+      debugPrint("Error fetch wallets: $e");
+    }
   }
 
   Future<void> _fetchTargets() async {
@@ -55,7 +74,29 @@ class _TargetScreenState extends State<TargetScreen> {
     }
   }
 
-  // --- LOGIC: REKOMENDASI NABUNG CERDAS ---
+  Future<int> _getOrCreateSavingCategory() async {
+    final userId = _supabase.auth.currentUser!.id;
+    final checkRes = await _supabase
+        .from('categories')
+        .select('id')
+        .eq('is_expense', true)
+        .ilike('name', '%Tabung%')
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (checkRes != null) return checkRes['id'] as int;
+    final insertRes = await _supabase
+        .from('categories')
+        .insert({
+          'user_id': userId,
+          'name': 'Tabungan Target',
+          'is_expense': true,
+          'icon_name': 'bank',
+        })
+        .select('id')
+        .single();
+    return insertRes['id'] as int;
+  }
+
   String _getRecommendation(TargetModel target) {
     if (target.savedAmount >= target.targetAmount)
       return "Target tercapai! Mantap! 🎉";
@@ -63,7 +104,6 @@ class _TargetScreenState extends State<TargetScreen> {
       return "Set deadline agar dapat rekomendasi nabung.";
 
     final now = DateTime.now();
-    // Hitung sisa hari (deadline - hari ini)
     final difference = target.deadline!.difference(now).inDays;
     final remainingAmount = target.targetAmount - target.savedAmount;
 
@@ -75,21 +115,17 @@ class _TargetScreenState extends State<TargetScreen> {
       decimalDigits: 0,
     );
 
-    // Jika waktu < 60 hari, sarankan Harian
     if (difference < 60) {
       double dailySave = remainingAmount / difference;
       return "Nabung ${currency.format(dailySave)} / hari agar tercapai.";
-    }
-    // Jika waktu masih lama, sarankan Bulanan
-    else {
+    } else {
       double months = difference / 30;
       double monthlySave = remainingAmount / months;
       return "Nabung ${currency.format(monthlySave)} / bulan agar tercapai.";
     }
   }
 
-  // --- DIALOG TAMBAH TARGET ---
-  void _showAddDialog() {
+  void _showAddSheet() {
     final nameController = TextEditingController();
     final targetController = TextEditingController();
     final locationController = TextEditingController();
@@ -100,273 +136,354 @@ class _TargetScreenState extends State<TargetScreen> {
     );
     DateTime? selectedDate;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Target Baru",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.grey),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: MediaQuery.of(context).size.width,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Nama Target",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: nameController,
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                        decoration: InputDecoration(
-                          hintText: "Misal: Beli iPhone 15",
-                          hintStyle: GoogleFonts.poppins(
-                            color: Colors.grey.shade400,
-                            fontWeight: FontWeight.normal,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 15,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Target Baru",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 15),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
 
-                      Text(
-                        "Target Dana",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: targetController,
-                        keyboardType: TextInputType.number,
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-                        decoration: InputDecoration(
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Text(
-                              "Rp",
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Nama Target",
                               style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
                                 color: Colors.grey,
                               ),
                             ),
-                          ),
-                          hintText: "0",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 15,
-                          ),
-                        ),
-                        onChanged: (s) {
-                          s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                          if (s.isNotEmpty)
-                            targetController.value = TextEditingValue(
-                              text: currencyFormat.format(int.parse(s)),
-                              selection: TextSelection.collapsed(
-                                offset: currencyFormat
-                                    .format(int.parse(s))
-                                    .length,
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: nameController,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
                               ),
-                            );
-                        },
-                      ),
-                      const SizedBox(height: 15),
-
-                      Text(
-                        "Lokasi Penyimpanan",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: locationController,
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-                        decoration: InputDecoration(
-                          hintText: "Misal: Bank Jago / Celengan",
-                          prefixIcon: const Icon(
-                            PhosphorIconsFill.wallet,
-                            color: AppColors.primary,
-                          ),
-                          hintStyle: GoogleFonts.poppins(
-                            color: Colors.grey.shade400,
-                            fontWeight: FontWeight.normal,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 15,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-
-                      Text(
-                        "Tenggat Waktu (Opsional)",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2030),
-                            builder: (context, child) {
-                              return Theme(
-                                data: Theme.of(context).copyWith(
-                                  colorScheme: const ColorScheme.light(
-                                    primary: AppColors.primary,
-                                    onPrimary: Colors.white,
-                                    onSurface: Colors.black,
-                                    surface: Colors.white,
+                              decoration: InputDecoration(
+                                hintText: "Misal: Beli iPhone 15",
+                                hintStyle: GoogleFonts.poppins(
+                                  color: Colors.grey.shade400,
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                prefixIcon: const Icon(
+                                  PhosphorIconsFill.target,
+                                  color: Colors.grey,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
                                   ),
-                                  dialogBackgroundColor: Colors.white,
                                 ),
-                                child: child!,
-                              );
-                            },
-                          );
-                          if (picked != null)
-                            setDialogState(() => selectedDate = picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 15,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade500),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF009688),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+
+                            Text(
+                              "Target Dana",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: targetController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: const Color(0xFF009688),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "0",
+                                hintStyle: GoogleFonts.poppins(
+                                  color: Colors.grey.shade400,
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.all(15),
+                                  child: Text(
+                                    "Rp",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF009688),
+                                  ),
+                                ),
+                              ),
+                              onChanged: (s) {
+                                s = s.replaceAll(RegExp(r'[^0-9]'), '');
+                                if (s.isNotEmpty) {
+                                  targetController.value = TextEditingValue(
+                                    text: currencyFormat.format(int.parse(s)),
+                                    selection: TextSelection.collapsed(
+                                      offset: currencyFormat
+                                          .format(int.parse(s))
+                                          .length,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 15),
+
+                            Text(
+                              "Lokasi Penyimpanan Sementara",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: locationController,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Misal: Bank Jago / Celengan",
+                                hintStyle: GoogleFonts.poppins(
+                                  color: Colors.grey.shade400,
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                prefixIcon: const Icon(
+                                  PhosphorIconsFill.bank,
+                                  color: Colors.grey,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF009688),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+
+                            Text(
+                              "Tenggat Waktu (Opsional)",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime(2030),
+                                  builder: (context, child) => Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: Color(0xFF009688),
+                                        surface: Colors.white,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  ),
+                                );
+                                if (picked != null)
+                                  setSheetState(() => selectedDate = picked);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 15,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      selectedDate == null
+                                          ? "Pilih Tanggal"
+                                          : DateFormat(
+                                              'dd MMMM yyyy',
+                                              'id_ID',
+                                            ).format(selectedDate!),
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: selectedDate == null
+                                            ? FontWeight.normal
+                                            : FontWeight.bold,
+                                        color: selectedDate == null
+                                            ? Colors.grey.shade600
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                    const Icon(
+                                      PhosphorIconsRegular.calendarBlank,
+                                      color: Color(0xFF009688),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 25),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF009688),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                selectedDate == null
-                                    ? "Pilih Tanggal"
-                                    : DateFormat(
-                                        'dd MMMM yyyy',
-                                        'id_ID',
-                                      ).format(selectedDate!),
-                                style: GoogleFonts.poppins(
-                                  fontWeight: selectedDate == null
-                                      ? FontWeight.normal
-                                      : FontWeight.bold,
-                                  color: selectedDate == null
-                                      ? Colors.grey.shade600
-                                      : Colors.black,
+                        ),
+                        onPressed: () async {
+                          if (nameController.text.isEmpty ||
+                              targetController.text.isEmpty)
+                            return;
+                          try {
+                            await _supabase.from('targets').insert({
+                              'user_id': _supabase.auth.currentUser!.id,
+                              'name': nameController.text,
+                              'target_amount': double.parse(
+                                targetController.text.replaceAll(
+                                  RegExp(r'[^0-9]'),
+                                  '',
                                 ),
                               ),
-                              const Icon(
-                                PhosphorIconsFill.calendarBlank,
-                                color: AppColors.primary,
-                              ),
-                            ],
+                              'storage_location':
+                                  locationController.text.isNotEmpty
+                                  ? locationController.text
+                                  : null,
+                              'deadline': selectedDate?.toIso8601String(),
+                            });
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _fetchTargets();
+                              AppNotification.success(
+                                context,
+                                "Target berhasil dibuat!",
+                              );
+                            }
+                          } catch (e) {
+                            debugPrint(e.toString());
+                          }
+                        },
+                        child: Text(
+                          "Simpan Target",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              actions: [
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () async {
-                      if (nameController.text.isEmpty ||
-                          targetController.text.isEmpty)
-                        return;
-                      try {
-                        await _supabase.from('targets').insert({
-                          'user_id': _supabase.auth.currentUser!.id,
-                          'name': nameController.text,
-                          'target_amount': double.parse(
-                            targetController.text.replaceAll(
-                              RegExp(r'[^0-9]'),
-                              '',
-                            ),
-                          ),
-                          'storage_location': locationController.text.isNotEmpty
-                              ? locationController.text
-                              : null,
-                          'deadline': selectedDate?.toIso8601String(),
-                        });
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          _fetchTargets();
-                          AppNotification.success(
-                            context,
-                            "Target berhasil dibuat!",
-                          );
-                        }
-                      } catch (e) {
-                        debugPrint(e.toString());
-                      }
-                    },
-                    child: const Text(
-                      "Simpan Target",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             );
           },
         );
@@ -374,8 +491,7 @@ class _TargetScreenState extends State<TargetScreen> {
     );
   }
 
-  // --- DIALOG EDIT TARGET ---
-  void _showEditDialog(TargetModel target) {
+  void _showEditSheet(TargetModel target) {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: '',
@@ -393,337 +509,463 @@ class _TargetScreenState extends State<TargetScreen> {
     );
     DateTime? selectedDate = target.deadline;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Edit Target",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.grey),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: MediaQuery.of(context).size.width,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Nama Target",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: nameController,
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 15,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Edit Target",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 15),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Target Dana",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: Colors.grey,
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Nama Target",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: nameController,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                TextField(
-                                  controller: targetController,
-                                  keyboardType: TextInputType.number,
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
                                   ),
-                                  decoration: InputDecoration(
-                                    prefixIcon: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Text(
-                                        "Rp",
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF009688),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Target Dana",
                                         style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
                                           color: Colors.grey,
                                         ),
                                       ),
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 15,
-                                    ),
-                                  ),
-                                  onChanged: (s) {
-                                    s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                                    if (s.isNotEmpty)
-                                      targetController.value = TextEditingValue(
-                                        text: currencyFormat.format(
-                                          int.parse(s),
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: targetController,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
+                                        ],
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
                                         ),
-                                        selection: TextSelection.collapsed(
-                                          offset: currencyFormat
-                                              .format(int.parse(s))
-                                              .length,
+                                        decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: Colors.grey.shade50,
+                                          prefixIcon: Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Text(
+                                              "Rp",
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Colors.grey.shade200,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Colors.grey.shade200,
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: const BorderSide(
+                                              color: Color(0xFF009688),
+                                            ),
+                                          ),
                                         ),
-                                      );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Terkumpul",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: Colors.green,
+                                        onChanged: (s) {
+                                          s = s.replaceAll(
+                                            RegExp(r'[^0-9]'),
+                                            '',
+                                          );
+                                          if (s.isNotEmpty) {
+                                            targetController
+                                                .value = TextEditingValue(
+                                              text: currencyFormat.format(
+                                                int.parse(s),
+                                              ),
+                                              selection:
+                                                  TextSelection.collapsed(
+                                                    offset: currencyFormat
+                                                        .format(int.parse(s))
+                                                        .length,
+                                                  ),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                TextField(
-                                  controller: savedController,
-                                  keyboardType: TextInputType.number,
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
-                                  decoration: InputDecoration(
-                                    prefixIcon: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Text(
-                                        "Rp",
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Terkumpul",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.green,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: savedController,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
+                                        ],
                                         style: GoogleFonts.poppins(
                                           fontWeight: FontWeight.bold,
                                           color: Colors.green,
                                         ),
+                                        decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: Colors.green.shade50,
+                                          prefixIcon: Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Text(
+                                              "Rp",
+                                              style: GoogleFonts.poppins(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green,
+                                              ),
+                                            ),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Colors.green.shade100,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: Colors.green.shade100,
+                                            ),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: const BorderSide(
+                                              color: Color(0xFF009688),
+                                            ),
+                                          ),
+                                        ),
+                                        onChanged: (s) {
+                                          s = s.replaceAll(
+                                            RegExp(r'[^0-9]'),
+                                            '',
+                                          );
+                                          if (s.isNotEmpty) {
+                                            savedController
+                                                .value = TextEditingValue(
+                                              text: currencyFormat.format(
+                                                int.parse(s),
+                                              ),
+                                              selection:
+                                                  TextSelection.collapsed(
+                                                    offset: currencyFormat
+                                                        .format(int.parse(s))
+                                                        .length,
+                                                  ),
+                                            );
+                                          }
+                                        },
                                       ),
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 15,
-                                    ),
+                                    ],
                                   ),
-                                  onChanged: (s) {
-                                    s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                                    if (s.isNotEmpty)
-                                      savedController.value = TextEditingValue(
-                                        text: currencyFormat.format(
-                                          int.parse(s),
-                                        ),
-                                        selection: TextSelection.collapsed(
-                                          offset: currencyFormat
-                                              .format(int.parse(s))
-                                              .length,
-                                        ),
-                                      );
-                                  },
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
+                            const SizedBox(height: 15),
 
-                      Text(
-                        "Lokasi Penyimpanan",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: locationController,
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(
-                            PhosphorIconsFill.wallet,
-                            color: AppColors.primary,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 15,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-
-                      Text(
-                        "Tenggat Waktu",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate ?? DateTime.now(),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030),
-                            builder: (context, child) => Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: const ColorScheme.light(
-                                  primary: AppColors.primary,
-                                  onPrimary: Colors.white,
-                                  onSurface: Colors.black,
-                                  surface: Colors.white,
-                                ),
-                                dialogBackgroundColor: Colors.white,
+                            Text(
+                              "Lokasi Penyimpanan",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
                               ),
-                              child: child!,
                             ),
-                          );
-                          if (picked != null)
-                            setDialogState(() => selectedDate = picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 15,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade500),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                selectedDate == null
-                                    ? "Pilih Tanggal"
-                                    : DateFormat(
-                                        'dd MMMM yyyy',
-                                        'id_ID',
-                                      ).format(selectedDate!),
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: locationController,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Misal: Bank Jago",
+                                hintStyle: GoogleFonts.poppins(
+                                  color: Colors.grey.shade400,
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                prefixIcon: const Icon(
+                                  PhosphorIconsFill.wallet,
+                                  color: Color(0xFF009688),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF009688),
+                                  ),
                                 ),
                               ),
-                              const Icon(
-                                PhosphorIconsFill.calendarBlank,
-                                color: AppColors.primary,
+                            ),
+                            const SizedBox(height: 15),
+
+                            Text(
+                              "Tenggat Waktu",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey,
                               ),
-                            ],
+                            ),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate ?? DateTime.now(),
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime(2030),
+                                  builder: (context, child) => Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: Color(0xFF009688),
+                                        surface: Colors.white,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  ),
+                                );
+                                if (picked != null)
+                                  setSheetState(() => selectedDate = picked);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 15,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  border: Border.all(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      selectedDate == null
+                                          ? "Pilih Tanggal"
+                                          : DateFormat(
+                                              'dd MMMM yyyy',
+                                              'id_ID',
+                                            ).format(selectedDate!),
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: selectedDate == null
+                                            ? FontWeight.normal
+                                            : FontWeight.bold,
+                                        color: selectedDate == null
+                                            ? Colors.grey.shade600
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                    const Icon(
+                                      PhosphorIconsFill.calendarBlank,
+                                      color: Color(0xFF009688),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 25),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          if (nameController.text.isEmpty ||
+                              targetController.text.isEmpty)
+                            return;
+                          try {
+                            await _supabase
+                                .from('targets')
+                                .update({
+                                  'name': nameController.text,
+                                  'target_amount': double.parse(
+                                    targetController.text.replaceAll(
+                                      RegExp(r'[^0-9]'),
+                                      '',
+                                    ),
+                                  ),
+                                  'saved_amount': double.parse(
+                                    savedController.text.replaceAll(
+                                      RegExp(r'[^0-9]'),
+                                      '',
+                                    ),
+                                  ),
+                                  'storage_location':
+                                      locationController.text.isNotEmpty
+                                      ? locationController.text
+                                      : null,
+                                  'deadline': selectedDate?.toIso8601String(),
+                                })
+                                .eq('id', target.id);
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _fetchTargets();
+                              AppNotification.success(
+                                context,
+                                "Target berhasil diupdate!",
+                              );
+                            }
+                          } catch (e) {
+                            debugPrint(e.toString());
+                          }
+                        },
+                        child: Text(
+                          "Simpan Perubahan",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              actions: [
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () async {
-                      if (nameController.text.isEmpty ||
-                          targetController.text.isEmpty)
-                        return;
-                      try {
-                        await _supabase
-                            .from('targets')
-                            .update({
-                              'name': nameController.text,
-                              'target_amount': double.parse(
-                                targetController.text.replaceAll(
-                                  RegExp(r'[^0-9]'),
-                                  '',
-                                ),
-                              ),
-                              'saved_amount': double.parse(
-                                savedController.text.replaceAll(
-                                  RegExp(r'[^0-9]'),
-                                  '',
-                                ),
-                              ),
-                              'storage_location':
-                                  locationController.text.isNotEmpty
-                                  ? locationController.text
-                                  : null,
-                              'deadline': selectedDate?.toIso8601String(),
-                            })
-                            .eq('id', target.id);
-
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          _fetchTargets();
-                          AppNotification.success(
-                            context,
-                            "Target berhasil diupdate!",
-                          );
-                        }
-                      } catch (e) {
-                        debugPrint(e.toString());
-                      }
-                    },
-                    child: const Text(
-                      "Simpan Perubahan",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             );
           },
         );
@@ -731,182 +973,316 @@ class _TargetScreenState extends State<TargetScreen> {
     );
   }
 
-  // --- DIALOG NABUNG (DEPOSIT) ---
-  void _showDepositDialog(TargetModel target) {
+  void _showDepositSheet(TargetModel target) {
     final amountController = TextEditingController();
+    int? selectedWalletId = _wallets.isNotEmpty
+        ? _wallets.first['id'] as int
+        : null;
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: '',
       decimalDigits: 0,
     );
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  "Nabung: ${target.name}",
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.grey),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.blue.shade100),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        PhosphorIconsFill.info,
-                        color: Colors.blue,
-                        size: 20,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Nabung: ${target.name}",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.green.shade100),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            PhosphorIconsFill.info,
+                            color: Colors.green,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              target.storageLocation != null
+                                  ? "Disimpan di: ${target.storageLocation}"
+                                  : "Lokasi penyimpanan belum ditentukan.",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.green.shade800,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    Text(
+                      "Tarik Dana Dari Dompet Mana?",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: selectedWalletId,
+                          isExpanded: true,
+                          dropdownColor: Colors.white,
+                          hint: Text(
+                            _wallets.isEmpty
+                                ? "Belum ada dompet"
+                                : "Pilih Dompet",
+                            style: GoogleFonts.poppins(color: Colors.grey),
+                          ),
+                          icon: const Icon(
+                            PhosphorIconsRegular.caretDown,
+                            color: Colors.grey,
+                          ),
+                          items: _wallets.map((w) {
+                            return DropdownMenuItem<int>(
+                              value: w['id'] as int,
+                              child: Text(
+                                "${w['name']} (Sisa: ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(w['balance'])})",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) =>
+                              setSheetState(() => selectedWalletId = val),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    Text(
+                      "Mau nabung berapa hari ini?",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.green,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "0",
+                        hintStyle: GoogleFonts.poppins(
+                          color: Colors.grey.shade400,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: Text(
+                            "Rp",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.green),
+                        ),
+                      ),
+                      onChanged: (s) {
+                        s = s.replaceAll(RegExp(r'[^0-9]'), '');
+                        if (s.isNotEmpty) {
+                          amountController.value = TextEditingValue(
+                            text: currencyFormat.format(int.parse(s)),
+                            selection: TextSelection.collapsed(
+                              offset: currencyFormat
+                                  .format(int.parse(s))
+                                  .length,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 25),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          if (amountController.text.isEmpty ||
+                              selectedWalletId == null)
+                            return;
+
+                          try {
+                            final rawAmount = double.parse(
+                              amountController.text.replaceAll(
+                                RegExp(r'[^0-9]'),
+                                '',
+                              ),
+                            );
+
+                            final selectedWalletData = _wallets.firstWhere(
+                              (w) => w['id'] == selectedWalletId,
+                            );
+                            final currentWalletBal =
+                                (selectedWalletData['balance'] as num)
+                                    .toDouble();
+                            if (rawAmount > currentWalletBal) {
+                              AppNotification.error(
+                                context,
+                                "Saldo dompet ${selectedWalletData['name']} tidak cukup!",
+                              );
+                              return;
+                            }
+                            await _supabase
+                                .from('wallets')
+                                .update({
+                                  'balance': currentWalletBal - rawAmount,
+                                })
+                                .eq('id', selectedWalletId!);
+
+                            final catId = await _getOrCreateSavingCategory();
+                            final userId = _supabase.auth.currentUser!.id;
+                            await _supabase.from('transactions').insert({
+                              'user_id': userId,
+                              'category_id': catId,
+                              'wallet_id': selectedWalletId,
+                              'amount': rawAmount,
+                              'date': DateFormat(
+                                'yyyy-MM-dd',
+                              ).format(DateTime.now()),
+                              'note':
+                                  "Nabung Target: ${target.name} [SAVING_ID:T-${target.id}]",
+                            });
+
+                            final newTotal = target.savedAmount + rawAmount;
+                            await _supabase
+                                .from('targets')
+                                .update({'saved_amount': newTotal})
+                                .eq('id', target.id);
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _fetchWallets();
+                              _fetchTargets();
+                              AppNotification.success(
+                                context,
+                                "Berhasil nabung Rp ${amountController.text}!",
+                              );
+                            }
+                          } catch (e) {
+                            debugPrint(e.toString());
+                          }
+                        },
                         child: Text(
-                          target.storageLocation != null
-                              ? "Uang ini disimpan di: ${target.storageLocation}"
-                              : "Lokasi penyimpanan belum ditentukan.",
+                          "Setor Tabungan",
                           style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.blue.shade800,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  "Mau nabung berapa hari ini?",
-                  style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: Colors.green,
-                  ),
-                  decoration: InputDecoration(
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.all(15),
-                      child: Text(
-                        "Rp",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                          fontSize: 18,
-                        ),
-                      ),
                     ),
-                    hintText: "0",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 15),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.green,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  onChanged: (s) {
-                    s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                    if (s.isNotEmpty)
-                      amountController.value = TextEditingValue(
-                        text: currencyFormat.format(int.parse(s)),
-                        selection: TextSelection.collapsed(
-                          offset: currencyFormat.format(int.parse(s)).length,
-                        ),
-                      );
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () async {
-                  if (amountController.text.isEmpty) return;
-                  try {
-                    final addAmount = double.parse(
-                      amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-                    );
-                    final newTotal = target.savedAmount + addAmount;
-                    await _supabase
-                        .from('targets')
-                        .update({'saved_amount': newTotal})
-                        .eq('id', target.id);
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      _fetchTargets();
-                      AppNotification.success(
-                        context,
-                        "Berhasil nabung Rp ${amountController.text}!",
-                      );
-                    }
-                  } catch (e) {
-                    debugPrint(e.toString());
-                  }
-                },
-                child: const Text(
-                  "Setor Tabungan",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ],
                 ),
               ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
   }
 
-  // --- DIALOG KONFIRMASI HAPUS ---
   void _confirmDelete(int id, String name) {
     showDialog(
       context: context,
@@ -916,7 +1292,7 @@ class _TargetScreenState extends State<TargetScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Hapus Target?"),
         content: Text(
-          "Anda yakin ingin menghapus target '$name'? Data yang sudah disimpan akan hilang.",
+          "Anda yakin ingin menghapus target '$name'? Saldo di target ini akan hilang (Catatan: Saldo dompet Anda TIDAK akan dikembalikan otomatis karena ini dihapus paksa).",
         ),
         actions: [
           TextButton(
@@ -954,7 +1330,10 @@ class _TargetScreenState extends State<TargetScreen> {
       appBar: AppBar(
         title: Text(
           "Target Keuangan",
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
@@ -967,50 +1346,47 @@ class _TargetScreenState extends State<TargetScreen> {
       body: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 25),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(20),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                ),
-              ],
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    PhosphorIconsFill.piggyBank,
-                    color: Colors.green,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 15),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Total Tabungan",
-                      style: GoogleFonts.poppins(color: Colors.grey),
+                      "Total Semua Target",
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey,
+                        fontSize: 13,
+                      ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       currency.format(_totalSavings),
                       style: GoogleFonts.poppins(
+                        color: const Color(0xFF009688),
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: AppColors.textPrimary,
                       ),
                     ),
                   ],
+                ),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF009688).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    PhosphorIconsFill.target,
+                    color: Color(0xFF009688),
+                    size: 32,
+                  ),
                 ),
               ],
             ),
@@ -1024,10 +1400,10 @@ class _TargetScreenState extends State<TargetScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           PhosphorIconsFill.target,
                           size: 60,
-                          color: Colors.grey,
+                          color: Colors.grey.shade300,
                         ),
                         const SizedBox(height: 10),
                         Text(
@@ -1039,6 +1415,7 @@ class _TargetScreenState extends State<TargetScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(20),
+                    physics: const BouncingScrollPhysics(),
                     itemCount: _targets.length,
                     itemBuilder: (context, index) {
                       final item = _targets[index];
@@ -1058,8 +1435,8 @@ class _TargetScreenState extends State<TargetScreen> {
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.03),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
@@ -1109,43 +1486,70 @@ class _TargetScreenState extends State<TargetScreen> {
                                       if (item.deadline != null)
                                         Padding(
                                           padding: const EdgeInsets.only(
-                                            top: 2,
+                                            top: 4,
                                           ),
-                                          child: Text(
-                                            "Deadline: ${DateFormat('dd MMM yyyy').format(item.deadline!)}",
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              color: Colors.grey,
-                                            ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                PhosphorIconsRegular
+                                                    .calendarBlank,
+                                                size: 14,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                "Deadline: ${DateFormat('dd MMM yyyy').format(item.deadline!)}",
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 12,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                     ],
                                   ),
                                 ),
+                                // [UX UPGRADE] Tombol Edit dan Delete dibikin lebih rapat & premium
                                 Row(
                                   children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit_outlined,
-                                        color: AppColors.primary,
-                                        size: 22,
-                                      ),
-                                      onPressed: () => _showEditDialog(item),
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
+                                    GestureDetector(
+                                      onTap: () => _showEditSheet(item),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withOpacity(
+                                            0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.edit_outlined,
+                                          color: AppColors.primary,
+                                          size: 18,
+                                        ),
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: Colors.grey,
-                                        size: 22,
-                                      ),
-                                      onPressed: () =>
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () =>
                                           _confirmDelete(item.id, item.name),
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.red,
+                                          size: 18,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -1183,7 +1587,6 @@ class _TargetScreenState extends State<TargetScreen> {
                             ),
                             const SizedBox(height: 15),
 
-                            // --- REKOMENDASI BOX ---
                             if (remaining > 0 && item.deadline != null)
                               Container(
                                 margin: const EdgeInsets.only(bottom: 15),
@@ -1234,9 +1637,11 @@ class _TargetScreenState extends State<TargetScreen> {
                                 SizedBox(
                                   height: 35,
                                   child: ElevatedButton.icon(
-                                    onPressed: () => _showDepositDialog(item),
+                                    onPressed: remaining <= 0
+                                        ? null
+                                        : () => _showDepositSheet(item),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.primary,
+                                      backgroundColor: const Color(0xFF009688),
                                       foregroundColor: Colors.white,
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 16,
@@ -1265,10 +1670,18 @@ class _TargetScreenState extends State<TargetScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDialog,
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddSheet,
+        backgroundColor: const Color(0xFF009688),
+        elevation: 4,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          "Buat Target",
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }

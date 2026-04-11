@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/input_transaction_screen.dart';
 import 'package:catat_uang_app/screens/manage_category_screen.dart';
@@ -16,6 +17,7 @@ import 'package:catat_uang_app/screens/savings_screen.dart';
 import 'package:catat_uang_app/screens/recurring_screen.dart';
 import 'package:catat_uang_app/screens/ai_advisor_screen.dart';
 import 'package:catat_uang_app/screens/calendar_screen.dart';
+import 'package:catat_uang_app/screens/wallet_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,8 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   double _monthlyIncome = 0;
   double _monthlyExpense = 0;
-  double _monthlyBalance = 0;
   double _totalSavings = 0;
+
+  List<Map<String, dynamic>> _wallets = [];
+  double _totalWalletBalance = 0;
 
   bool _isLoading = true;
   int _refreshCounter = 0;
@@ -57,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final response = await _supabase
           .from('recurring_transactions')
-          .select()
+          .select('*, categories(is_expense)')
           .eq('user_id', userId)
           .eq('is_active', true)
           .lte('next_run_date', todayStr);
@@ -67,6 +71,10 @@ class _HomeScreenState extends State<HomeScreen> {
       for (var item in dueTransactions) {
         DateTime nextRun = DateTime.parse(item['next_run_date']);
         String freq = item['frequency'];
+        final walletId = item['wallet_id'];
+        final isExpense = item['categories']?['is_expense'] ?? true;
+        final amount = (item['amount'] as num).toDouble();
+        int executionCount = 0;
 
         while (nextRun.isBefore(today) ||
             nextRun.isAtSameMomentAs(
@@ -75,11 +83,12 @@ class _HomeScreenState extends State<HomeScreen> {
           await _supabase.from('transactions').insert({
             'user_id': item['user_id'],
             'category_id': item['category_id'],
-            'amount': item['amount'],
+            'wallet_id': walletId,
+            'amount': amount,
             'date': DateFormat('yyyy-MM-dd').format(nextRun),
             'note': '${item['note'] ?? ''} (Otomatis: $freq)'.trim(),
           });
-
+          executionCount++;
           if (freq == 'Harian') {
             nextRun = nextRun.add(const Duration(days: 1));
           } else if (freq == 'Mingguan') {
@@ -89,6 +98,23 @@ class _HomeScreenState extends State<HomeScreen> {
           } else if (freq == 'Tahunan') {
             nextRun = DateTime(nextRun.year + 1, nextRun.month, nextRun.day);
           }
+        }
+
+        if (executionCount > 0 && walletId != null) {
+          final walletRes = await _supabase
+              .from('wallets')
+              .select('balance')
+              .eq('id', walletId)
+              .single();
+          double currentBal = (walletRes['balance'] as num).toDouble();
+          double totalAmountToProcess = amount * executionCount;
+          double newBalance = isExpense
+              ? currentBal - totalAmountToProcess
+              : currentBal + totalAmountToProcess;
+          await _supabase
+              .from('wallets')
+              .update({'balance': newBalance})
+              .eq('id', walletId);
         }
 
         await _supabase
@@ -131,42 +157,44 @@ class _HomeScreenState extends State<HomeScreen> {
           .from('transactions')
           .select('amount, date, note, categories(name, is_expense)')
           .eq('user_id', userId);
-
       final savingsResponse = await _supabase
           .from('savings')
           .select('amount')
           .eq('user_id', userId);
+      final walletsResponse = await _supabase
+          .from('wallets')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at');
 
       double tempTotalSavings = 0;
       for (var row in savingsResponse as List) {
         tempTotalSavings += (row['amount'] as num).toDouble();
       }
 
+      double tempTotalWallet = 0;
+      for (var w in walletsResponse as List) {
+        tempTotalWallet += (w['balance'] as num).toDouble();
+      }
+
       double displayIncome = 0;
       double displayExpense = 0;
-      double calcIncome = 0;
-      double calcExpense = 0;
 
       for (var item in allTrxResponse) {
         final amount = (item['amount'] as num).toDouble();
         final date = DateTime.parse(item['date']);
         final isExpense = item['categories']['is_expense'] as bool;
-
         final note = item['note']?.toString() ?? '';
         final catName =
             item['categories']['name']?.toString().toLowerCase() ?? '';
-
-        final hasSavingMarker = note.contains('[SAVING_ID:');
-        final isSystemCat =
-            catName.contains('tabung') || catName.contains('cair');
-        final isPureMutation = hasSavingMarker && isSystemCat;
+        final isPureMutation =
+            note.contains('[SAVING_ID:') &&
+            (catName.contains('tabung') || catName.contains('cair'));
 
         if (date.year == now.year && date.month == now.month) {
           if (isExpense) {
-            calcExpense += amount;
             if (!isPureMutation) displayExpense += amount;
           } else {
-            calcIncome += amount;
             if (!isPureMutation) displayIncome += amount;
           }
         }
@@ -176,14 +204,20 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _monthlyIncome = displayIncome;
           _monthlyExpense = displayExpense;
-          _monthlyBalance = calcIncome - calcExpense;
           _totalSavings = tempTotalSavings;
+          _wallets = List<Map<String, dynamic>>.from(walletsResponse);
+          _totalWalletBalance = tempTotalWallet;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // Tombol Coming Soon
+  void _showComingSoon(BuildContext context, String feature) {
+    AppNotification.success(context, "Fitur $feature sedang dikembangkan! 👨‍💻");
   }
 
   Widget _buildCardStatItem({
@@ -231,37 +265,41 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 55,
-            height: 55,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: color, size: 28),
             ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -272,10 +310,6 @@ class _HomeScreenState extends State<HomeScreen> {
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-    final currentMonthLabel = DateFormat(
-      'MMMM yyyy',
-      'id_ID',
-    ).format(DateTime.now());
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -286,9 +320,13 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _refreshData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 20,
+            ), // [FIX] Margin X Global Sejajar
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // HEADER PROFIL
                 Row(
@@ -340,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 25),
 
-                // CARD SALDO UTAMA
+                // CARD SALDO
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
@@ -358,25 +396,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Sisa Saldo Kas Utama ($currentMonthLabel)",
-                        style: GoogleFonts.poppins(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Total Saldo Keseluruhan",
+                            style: GoogleFonts.poppins(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const Icon(
+                            PhosphorIconsFill.wallet,
+                            color: Colors.white54,
+                            size: 20,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        currencyFormat.format(_monthlyBalance),
+                        currencyFormat.format(_totalWalletBalance),
                         style: GoogleFonts.poppins(
                           color: Colors.white,
-                          fontSize: 26,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Garis pembatas
                       Container(
                         padding: const EdgeInsets.only(top: 15),
                         decoration: BoxDecoration(
@@ -392,14 +438,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             _buildCardStatItem(
                               icon: PhosphorIconsFill.arrowDown,
                               color: AppColors.income,
-                              title: "Pemasukan",
+                              title: "Masuk",
                               amount: _monthlyIncome,
                               currencyFormat: currencyFormat,
                             ),
                             _buildCardStatItem(
                               icon: PhosphorIconsFill.arrowUp,
                               color: AppColors.expense,
-                              title: "Pengeluaran",
+                              title: "Keluar",
                               amount: _monthlyExpense,
                               currencyFormat: currencyFormat,
                             ),
@@ -416,153 +462,310 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 30),
+
+                // SLIDER DOMPET
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Dompet Saya",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const WalletScreen(),
+                          ),
+                        );
+                        _refreshData();
+                      },
+                      child: Text(
+                        "Kelola",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                if (_wallets.isEmpty)
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WalletScreen(),
+                        ),
+                      );
+                      _refreshData();
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            PhosphorIconsRegular.plusCircle,
+                            color: AppColors.primary,
+                            size: 30,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Buat Dompet Pertama",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _wallets.length,
+                      itemBuilder: (context, index) {
+                        final wallet = _wallets[index];
+                        final colorHex = wallet['color'] ?? '#1E3A8A';
+                        final walletColor = Color(
+                          int.parse(colorHex.replaceFirst('#', '0xFF')),
+                        );
+                        return Container(
+                          width: 150,
+                          margin: const EdgeInsets.only(right: 15),
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color: walletColor,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: walletColor.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    PhosphorIconsFill.wallet,
+                                    color: Colors.white70,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      wallet['name'],
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                currencyFormat.format(wallet['balance']),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
                 const SizedBox(height: 35),
 
                 // ==========================================
-                // MENU FITUR GRID (4 ATAS, 4 BAWAH - SIMETRIS)
+                // GRID MENU (SIMETRIS)
                 // ==========================================
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: Column(
-                    children: [
-                      // BARIS PERTAMA
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _buildFeatureButton(
-                              icon: PhosphorIconsFill.calendarPlus,
-                              label: "Tagihan",
-                              color: Colors.redAccent,
-                              onTap: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const RecurringScreen(),
-                                  ),
-                                );
-                                _refreshData();
-                                setState(() => _refreshCounter++);
-                              },
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildFeatureButton(
-                              icon: PhosphorIconsFill.piggyBank,
-                              label: "Tabungan",
-                              color: const Color(0xFF009688),
-                              onTap: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const SavingsScreen(),
-                                  ),
-                                );
-                                _refreshData();
-                                setState(() => _refreshCounter++);
-                              },
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildFeatureButton(
-                              icon: PhosphorIconsFill.chartDonut,
-                              label: "Anggaran",
-                              color: Colors.purple,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const BudgetScreen(),
-                                ),
+                Column(
+                  children: [
+                    // ROW 1
+                    Row(
+                      children: [
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.calendarPlus,
+                          label: "Tagihan",
+                          color: Colors.redAccent,
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RecurringScreen(),
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildFeatureButton(
-                              icon: PhosphorIconsFill.target,
-                              label: "Target",
-                              color: Colors.green,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const TargetScreen(),
-                                ),
+                            );
+                            _refreshData();
+                            setState(() => _refreshCounter++);
+                          },
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.piggyBank,
+                          label: "Tabungan",
+                          color: const Color(0xFF009688),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SavingsScreen(),
                               ),
+                            );
+                            _refreshData();
+                            setState(() => _refreshCounter++);
+                          },
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.chartDonut,
+                          label: "Anggaran",
+                          color: Colors.purple,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const BudgetScreen(),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 25),
-                      // BARIS KEDUA
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _buildFeatureButton(
-                              icon: PhosphorIconsFill.squaresFour,
-                              label: "Kategori",
-                              color: Colors.orange,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ManageCategoryScreen(),
-                                ),
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.target,
+                          label: "Target",
+                          color: Colors.green,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TargetScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 25),
+                    // ROW 2
+                    Row(
+                      children: [
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.squaresFour,
+                          label: "Kategori",
+                          color: Colors.orange,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const ManageCategoryScreen(),
+                            ),
+                          ),
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.filePdf,
+                          label: "Export",
+                          color: Colors.blue,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ExportScreen(),
+                            ),
+                          ),
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.robot,
+                          label: "AI Advisor",
+                          color: Colors.indigo,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AiAdvisorScreen(),
+                            ),
+                          ),
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.calendar,
+                          label: "Kalender",
+                          color: Colors.pinkAccent,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CalendarScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 25),
+                    // ROW 3 (DOMPET & COMING SOON)
+                    Row(
+                      children: [
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.wallet,
+                          label: "Dompet",
+                          color: Colors.brown,
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const WalletScreen(),
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildFeatureButton(
-                              icon: PhosphorIconsFill.filePdf,
-                              label: "Export",
-                              color: Colors.blue,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ExportScreen(),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildFeatureButton(
-                              icon: PhosphorIconsFill.robot,
-                              label: "AI Advisor",
-                              color: Colors.indigo,
-                              onTap: () {
-                                // [NEW] Pindah ke layar AI Advisor
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const AiAdvisorScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          // [NEW] TOMBOL KALENDER KEUANGAN
-                          Expanded(
-                            child: _buildFeatureButton(
-                              icon: PhosphorIconsFill.calendar,
-                              label: "Kalender",
-                              color: Colors.pinkAccent,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const CalendarScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                            );
+                            _refreshData();
+                          },
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.handCoins,
+                          label: "Utang",
+                          color: Colors.teal,
+                          onTap: () =>
+                              _showComingSoon(context, "Utang-Piutang"),
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.chartLineUp,
+                          label: "Investasi",
+                          color: Colors.cyan,
+                          onTap: () => _showComingSoon(context, "Investasi"),
+                        ),
+                        _buildFeatureButton(
+                          icon: PhosphorIconsFill.handHeart,
+                          label: "Zakat",
+                          color: Colors.green.shade700,
+                          onTap: () =>
+                              _showComingSoon(context, "Zakat & Sedekah"),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -575,7 +778,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final activeColor = AppColors.primary;
     final inactiveColor = Colors.grey;
-
     final List<Widget> pages = [
       _buildHomeContent(),
       TransactionHistoryScreen(
@@ -594,8 +796,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: pages[_selectedIndex],
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          bool isPengeluaran = false;
-          if (_selectedIndex == 2) isPengeluaran = true;
+          bool isPengeluaran = _selectedIndex == 2;
           await Navigator.push(
             context,
             MaterialPageRoute(
@@ -622,7 +823,6 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               IconButton(
-                tooltip: "Home",
                 icon: Icon(
                   _selectedIndex == 0
                       ? PhosphorIcons.house(PhosphorIconsStyle.fill)
@@ -632,7 +832,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: () => setState(() => _selectedIndex = 0),
               ),
               IconButton(
-                tooltip: "Pemasukan",
                 icon: Icon(
                   _selectedIndex == 1
                       ? PhosphorIcons.wallet(PhosphorIconsStyle.fill)
@@ -643,7 +842,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 40),
               IconButton(
-                tooltip: "Pengeluaran",
                 icon: Icon(
                   _selectedIndex == 2
                       ? PhosphorIcons.receipt(PhosphorIconsStyle.fill)
@@ -655,7 +853,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: () => setState(() => _selectedIndex = 2),
               ),
               IconButton(
-                tooltip: "Laporan",
                 icon: Icon(
                   _selectedIndex == 3
                       ? PhosphorIcons.chartPieSlice(PhosphorIconsStyle.fill)

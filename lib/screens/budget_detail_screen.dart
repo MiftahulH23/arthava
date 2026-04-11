@@ -2,8 +2,10 @@ import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/budget_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class BudgetDetailScreen extends StatefulWidget {
@@ -23,11 +25,40 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
 
   late BudgetModel _currentBudget;
 
+  // [NEW] Persiapan Data Dompet
+  Map<int, String> _walletNames = {};
+  Map<int, Color> _walletColors = {};
+
   @override
   void initState() {
     super.initState();
     _currentBudget = widget.budget;
+    _fetchWallets(); // Panggil dompet dulu
     _fetchTransactions();
+  }
+
+  // [NEW] Fungsi buat ngambil nama & warna dompet
+  Future<void> _fetchWallets() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final res = await _supabase
+          .from('wallets')
+          .select()
+          .eq('user_id', userId);
+      if (mounted) {
+        setState(() {
+          for (var w in res as List) {
+            _walletNames[w['id']] = w['name'].toString();
+            final colorHex = w['color']?.toString() ?? '#1E3A8A';
+            _walletColors[w['id']] = Color(
+              int.parse(colorHex.replaceFirst('#', '0xFF')),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error wallets: $e");
+    }
   }
 
   Future<void> _fetchTransactions() async {
@@ -40,9 +71,10 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
         'yyyy-MM-01',
       ).format(DateTime(_currentBudget.year, _currentBudget.month + 1));
 
+      // [UPDATE] Tambahin wallet_id di select query
       final res = await _supabase
           .from('transactions')
-          .select('id, amount, note, date, category_id')
+          .select('id, amount, note, date, category_id, wallet_id')
           .eq('user_id', userId)
           .gte('date', startMonth)
           .lt('date', nextMonth)
@@ -53,6 +85,11 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
 
       for (var item in res) {
         final catId = item['category_id'] as int;
+        final noteStr = item['note']?.toString() ?? '';
+
+        // [FIX] Celah gaib ditutup! Mutasi tabungan gak boleh masuk hitungan anggaran
+        if (noteStr.contains('[SAVING_ID:')) continue;
+
         if (catId == _currentBudget.categoryId) {
           final amount = (item['amount'] as num).toDouble();
           spent += amount;
@@ -72,150 +109,202 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
     }
   }
 
-  // DIALOG EDIT 
-  Future<void> _editBudget() async {
-    final amountController = TextEditingController(
-      text: NumberFormat.currency(
-        locale: 'id_ID',
-        symbol: '',
-        decimalDigits: 0,
-      ).format(_currentBudget.amount),
-    );
+  // [UX UPGRADE] DIALOG EDIT BERUBAH JADI BOTTOM SHEET
+  void _showEditSheet() {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: '',
       decimalDigits: 0,
     );
+    final amountController = TextEditingController(
+      text: currencyFormat.format(_currentBudget.amount),
+    );
 
-    await showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-          ), // Lebar Full
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Edit Anggaran",
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width, // Lebar Full
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Ubah limit untuk ${_currentBudget.category?.name}",
-                  style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
                 ),
-                const SizedBox(height: 15),
-
-                // Input Nominal 
-                TextField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-                  decoration: InputDecoration(
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.all(15),
-                      child: Text(
-                        "Rp",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 15),
-                  ),
-                  onChanged: (string) {
-                    string = string.replaceAll(RegExp(r'[^0-9]'), '');
-                    if (string.isNotEmpty) {
-                      final formatted = currencyFormat.format(
-                        int.parse(string),
-                      );
-                      if (amountController.text != formatted) {
-                        amountController.value = TextEditingValue(
-                          text: formatted,
-                          selection: TextSelection.collapsed(
-                            offset: formatted.length,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Edit Anggaran",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      "Ubah limit untuk kategori ${_currentBudget.category?.name}",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: () async {
-                  if (amountController.text.isEmpty) return;
-                  final cleanAmount = double.parse(
-                    amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-                  );
+                    Text(
+                      "Batas Maksimal (Limit)",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.purple,
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.only(left: 15, right: 10),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Rp",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: const BorderSide(color: Colors.purple),
+                        ),
+                      ),
+                      onChanged: (s) {
+                        s = s.replaceAll(RegExp(r'[^0-9]'), '');
+                        if (s.isNotEmpty) {
+                          amountController.value = TextEditingValue(
+                            text: currencyFormat.format(int.parse(s)),
+                            selection: TextSelection.collapsed(
+                              offset: currencyFormat
+                                  .format(int.parse(s))
+                                  .length,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 25),
 
-                  try {
-                    await _supabase
-                        .from('budgets')
-                        .update({'amount': cleanAmount})
-                        .eq('id', _currentBudget.id);
-                    setState(() {
-                      _currentBudget = BudgetModel(
-                        id: _currentBudget.id,
-                        categoryId: _currentBudget.categoryId,
-                        amount: cleanAmount,
-                        month: _currentBudget.month,
-                        year: _currentBudget.year,
-                        category: _currentBudget.category,
-                      );
-                    });
-                    if (context.mounted) Navigator.pop(context);
-                    if (context.mounted)
-                      AppNotification.success(context, "Berhasil diupdate!");
-                  } catch (e) {
-                    if (context.mounted)
-                      AppNotification.error(context, "Gagal update: $e");
-                  }
-                },
-                child: const Text(
-                  "Simpan",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        onPressed: () async {
+                          if (amountController.text.isEmpty) return;
+                          final cleanAmount = double.parse(
+                            amountController.text.replaceAll(
+                              RegExp(r'[^0-9]'),
+                              '',
+                            ),
+                          );
+
+                          try {
+                            await _supabase
+                                .from('budgets')
+                                .update({'amount': cleanAmount})
+                                .eq('id', _currentBudget.id);
+                            setState(() {
+                              _currentBudget = BudgetModel(
+                                id: _currentBudget.id,
+                                categoryId: _currentBudget.categoryId,
+                                amount: cleanAmount,
+                                month: _currentBudget.month,
+                                year: _currentBudget.year,
+                                category: _currentBudget.category,
+                              );
+                            });
+                            if (context.mounted) Navigator.pop(context);
+                            if (context.mounted)
+                              AppNotification.success(
+                                context,
+                                "Limit berhasil diperbarui!",
+                              );
+                          } catch (e) {
+                            if (context.mounted)
+                              AppNotification.error(
+                                context,
+                                "Gagal update limit",
+                              );
+                          }
+                        },
+                        child: Text(
+                          "Simpan Perubahan",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -233,19 +322,22 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
         : _totalSpent / _currentBudget.amount;
     final isOver = progress > 1.0;
     final color = isOver
-        ? Colors.red
-        : (progress > 0.8 ? Colors.orange : AppColors.primary);
+        ? Colors.redAccent
+        : (progress > 0.8 ? Colors.orange : Colors.tealAccent);
     final sisa = _currentBudget.amount - _totalSpent;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          _currentBudget.category?.name ?? "Detail",
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          _currentBudget.category?.name ?? "Detail Anggaran",
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -253,8 +345,11 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit, color: AppColors.primary),
-            onPressed: _editBudget,
+            icon: const Icon(
+              PhosphorIconsRegular.pencilSimple,
+              color: Colors.purple,
+            ),
+            onPressed: _showEditSheet,
           ),
         ],
       ),
@@ -262,16 +357,26 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                // [UX UPGRADE] KARTU HEADER PREMIUM
                 Container(
-                  margin: const EdgeInsets.all(20),
-                  padding: const EdgeInsets.all(20),
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF5E35B1), Color(0xFF3949AB)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
+                        color: const Color(0xFF5E35B1).withOpacity(0.4),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
@@ -280,80 +385,103 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            "Limit",
-                            style: GoogleFonts.poppins(color: Colors.grey),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Terpakai",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                currency.format(_totalSpent),
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 22,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            currency.format(_currentBudget.amount),
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Container(
+                            width: 1,
+                            height: 40,
+                            color: Colors.white.withOpacity(0.2),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                "Limit Anggaran",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Text(
+                                currency.format(_currentBudget.amount),
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Terpakai",
-                            style: GoogleFonts.poppins(color: Colors.grey),
-                          ),
-                          Text(
-                            currency.format(_totalSpent),
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 30, color: Colors.grey),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            sisa >= 0 ? "Sisa Anggaran" : "Kelebihan",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            currency.format(sisa.abs()),
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: sisa >= 0 ? Colors.green : Colors.red,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: progress > 1 ? 1 : progress,
+                          color: color,
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          minHeight: 8,
+                        ),
                       ),
                       const SizedBox(height: 15),
-                      LinearProgressIndicator(
-                        value: progress > 1 ? 1 : progress,
-                        backgroundColor: Colors.grey.shade100,
-                        color: color,
-                        minHeight: 12,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      if (isOver)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            "Over Budget! Hati-hati.",
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            sisa >= 0 ? "Sisa Anggaran:" : "Over Budget:",
                             style: GoogleFonts.poppins(
-                              color: Colors.red,
+                              color: Colors.white,
                               fontSize: 12,
-                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              currency.format(sisa.abs()),
+                              style: GoogleFonts.poppins(
+                                color: sisa >= 0
+                                    ? Colors.tealAccent
+                                    : Colors.redAccent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
+
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.fromLTRB(25, 10, 20, 10),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -361,79 +489,142 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        color: Colors.black87,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+
                 Expanded(
                   child: _transactions.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
-                                Icons.receipt_long,
-                                size: 50,
-                                color: Colors.grey,
+                              Icon(
+                                PhosphorIconsRegular.receipt,
+                                size: 60,
+                                color: Colors.grey.shade300,
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                "Belum ada transaksi",
+                                "Belum ada transaksi di kategori ini",
                                 style: GoogleFonts.poppins(color: Colors.grey),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          physics: const BouncingScrollPhysics(),
                           itemCount: _transactions.length,
                           itemBuilder: (context, index) {
                             final trx = _transactions[index];
-                            final trxNote = trx['note'] ?? "Pengeluaran";
+                            final rawNote = trx['note']?.toString() ?? '';
+                            final cleanNote = rawNote.isNotEmpty
+                                ? rawNote
+                                : "Tanpa catatan";
+
+                            // [NEW] Persiapan Wallet Badge
+                            final wId = trx['wallet_id'];
+                            final wName = _walletNames[wId] ?? 'Kas Utama';
+                            final wColor = _walletColors[wId] ?? Colors.grey;
+
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(15),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(15),
+                                borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.03),
-                                    blurRadius: 5,
-                                    offset: const Offset(0, 2),
+                                    color: Colors.black.withOpacity(0.02),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
                               child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        trxNote,
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      Text(
-                                        DateFormat(
-                                          'dd MMM yyyy',
-                                        ).format(DateTime.parse(trx['date'])),
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ],
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      PhosphorIconsFill.receipt,
+                                      color: Colors.purple,
+                                      size: 20,
+                                    ),
                                   ),
+                                  const SizedBox(width: 15),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          cleanNote,
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: Colors.black87,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              DateFormat('dd MMM yyyy').format(
+                                                DateTime.parse(trx['date']),
+                                              ),
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 11,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            // Badge Dompet
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: wColor.withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                wName,
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: wColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
                                   Text(
-                                    currency.format(trx['amount']),
+                                    currency.format(
+                                      (trx['amount'] as num).toDouble(),
+                                    ),
                                     style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 14,
                                       color: Colors.red,
                                     ),
                                   ),

@@ -63,7 +63,8 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
     }
   }
 
-  // [UPDATE BIKIN GEMI MAKIN PINTER] Rincian Tabungan Dibongkar Habis!
+  
+ // [UPDATE BIKIN GEMI MAKIN PINTER] Rincian Tabungan & Dompet Dibongkar Habis!
   Future<void> _fetchFinancialContext() async {
     try {
       final userId = _supabase.auth.currentUser!.id;
@@ -74,22 +75,36 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
           .eq('user_id', userId)
           .order('date', ascending: false);
 
-      // [NEW] Sekarang kita ambil Nama Tabungannya juga biar AI tau tujuannya
       final savingsRes = await _supabase
           .from('savings')
           .select('name, amount')
           .eq('user_id', userId);
 
-      double totalSavings = 0; 
-      Map<String, double> savingsBreakdown = {}; // Keranjang buat misahin tabungan
+      // [NEW] Ambil Data Dompet Asli User
+      final walletsRes = await _supabase
+          .from('wallets')
+          .select('name, balance')
+          .eq('user_id', userId);
 
-      // Hitung rincian tabungan
+      double totalSavings = 0; 
+      Map<String, double> savingsBreakdown = {};
+
       for (var row in savingsRes as List) {
         final amount = (row['amount'] as num).toDouble();
         final name = row['name']?.toString() ?? 'Tabungan Umum';
         
         totalSavings += amount;
         savingsBreakdown[name] = (savingsBreakdown[name] ?? 0) + amount;
+      }
+
+      // [NEW] Hitung Rincian Dompet
+      double totalWalletBalance = 0;
+      Map<String, double> walletBreakdown = {};
+      for (var row in walletsRes as List) {
+        final amount = (row['balance'] as num).toDouble();
+        final name = row['name']?.toString() ?? 'Dompet Tak Bernama';
+        totalWalletBalance += amount;
+        walletBreakdown[name] = amount;
       }
 
       Map<String, Map<String, dynamic>> monthlyStats = {};
@@ -138,12 +153,20 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
       }
 
       final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
-      final sisaKasSekarang = totalRawIncomeAllTime - totalRawExpenseAllTime;
       
-      String contextStr = "=== INFORMASI SALDO SAAT INI ===\n";
-      contextStr += "- Sisa Uang Kas Saat Ini: ${currency.format(sisaKasSekarang)}\n\n";
+      String contextStr = "=== INFORMASI KEKAYAAN SAAT INI ===\n";
+      // [NEW] Kasih tau Gemi saldo berdasarkan Dompet Fisik/Digital
+      contextStr += "- Total Kekayaan (Semua Dompet): ${currency.format(totalWalletBalance)}\n";
+      if (walletBreakdown.isNotEmpty) {
+        contextStr += "- Rincian Posisi Uang (Dompet):\n";
+        for (var wallet in walletBreakdown.entries) {
+          contextStr += "  * ${wallet.key}: ${currency.format(wallet.value)}\n";
+        }
+      } else {
+        contextStr += "  (Belum ada dompet yang dibuat)\n";
+      }
+      contextStr += "\n";
       
-      // [NEW] Bongkar Rincian Tabungan ke Gemi
       contextStr += "=== RINCIAN TABUNGAN (TUJUAN KEUANGAN) ===\n";
       contextStr += "- Total Keseluruhan Tabungan: ${currency.format(totalSavings)}\n";
       
@@ -153,7 +176,7 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
       } else {
         contextStr += "- Daftar Tujuan Tabungan:\n";
         for (var saving in sortedSavings) {
-          if (saving.value > 0) { // Cuma laporin tabungan yang saldonya gak nol
+          if (saving.value > 0) { 
             contextStr += "  * ${saving.key}: ${currency.format(saving.value)}\n";
           }
         }
@@ -193,7 +216,7 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
       }
 
       _financialContext = contextStr;
-      debugPrint("Kertas Contekan Multi-Bulan & Tabungan:\n$_financialContext");
+      debugPrint("Kertas Contekan Multi-Bulan, Tabungan, & Dompet:\n$_financialContext");
     } catch (e) {
       _financialContext = "Data keuangan belum tersedia atau gagal dimuat.";
     }

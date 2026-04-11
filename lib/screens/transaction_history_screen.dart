@@ -27,6 +27,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   DateTime _selectedDate = DateTime.now();
   DateTimeRange? _selectedDateRange;
 
+  // [NEW] Simpen data dompet biar bisa dipanggil warnanya
+  Map<int, String> _walletNames = {};
+  Map<int, Color> _walletColors = {};
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +39,27 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       end: DateTime.now(),
     );
     _fetchCategories();
+    _fetchWallets(); // [NEW] Panggil data dompet
     _fetchTransactions();
+  }
+
+  // [NEW] Fungsi buat ngambil nama & warna dompet
+  Future<void> _fetchWallets() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final res = await _supabase.from('wallets').select().eq('user_id', userId);
+      if (mounted) {
+        setState(() {
+          for (var w in res as List) {
+            _walletNames[w['id']] = w['name'].toString();
+            final colorHex = w['color']?.toString() ?? '#1E3A8A';
+            _walletColors[w['id']] = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error wallets: $e");
+    }
   }
 
   Future<void> _fetchCategories() async {
@@ -289,7 +313,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                // [UX UPDATE 1] TABS FILTER TIPE: Rata, Kelihatan Semua, Tanpa Scroll!
+                // TABS FILTER TIPE
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
@@ -319,7 +343,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                             child: Text(
                               type,
                               style: GoogleFonts.poppins(
-                                fontSize: 11, // Dikecilin dikit biar muat di HP kecil
+                                fontSize: 11,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                                 color: isSelected ? Colors.white : Colors.grey.shade600,
                               ),
@@ -334,7 +358,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                // [UX UPDATE 2] ROW TANGGAL & KATEGORI (No Wrap, No Ribet)
+                // ROW TANGGAL & KATEGORI
                 Row(
                   children: [
                     // Tombol Tanggal
@@ -381,7 +405,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<int?>(
                             value: _selectedCategoryId,
-                            isExpanded: true, // INI KUNCI BIAR GAK WRAP
+                            isExpanded: true,
                             dropdownColor: Colors.white,
                             icon: const Icon(Icons.arrow_drop_down, size: 16, color: Colors.grey),
                             items: [
@@ -484,6 +508,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       final isSystemCat = catStr.contains('tabung') || catStr.contains('cair');
                       final isPureMutation = noteStr.contains('[SAVING_ID:') && isSystemCat;
 
+                      // [NEW] Persiapan Wallet Badge
+                      final walletId = trx.walletId;
+                      final walletName = _walletNames[walletId];
+                      final walletColor = _walletColors[walletId] ?? Colors.grey;
+
                       Widget transactionCard = GestureDetector(
                         onTap: () async {
                           final result = await Navigator.push(
@@ -495,7 +524,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                               ),
                             ),
                           );
-                          if (result == true) _fetchTransactions();
+                          if (result == true) {
+                            _fetchWallets(); // Refresh warna wallet
+                            _fetchTransactions();
+                          }
                         },
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -526,10 +558,35 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      trx.category?.name ?? "Umum",
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15, color: isPureMutation ? Colors.grey.shade600 : Colors.black),
-                                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    // [UPDATE] Tambah Label Dompet Di Sebelah Kategori
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            trx.category?.name ?? "Umum",
+                                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15, color: isPureMutation ? Colors.grey.shade600 : Colors.black),
+                                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (walletName != null && !isPureMutation)
+                                          Container(
+                                            margin: const EdgeInsets.only(left: 8),
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: walletColor.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: walletColor.withOpacity(0.3)),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(PhosphorIconsFill.wallet, size: 10, color: walletColor),
+                                                const SizedBox(width: 4),
+                                                Text(walletName, style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.bold, color: walletColor)),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                     if (trx.note != null && trx.note!.isNotEmpty)
                                       Padding(

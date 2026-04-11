@@ -24,13 +24,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<TransactionModel> _selectedTransactions = [];
   bool _isLoading = true;
 
-  // [NEW] Tempat nyimpen "Kamus" penerjemah ID Tabungan ke Nama Tabungan
   Map<String, String> _savingNames = {};
+
+  // [NEW] Simpen data dompet biar bisa dipanggil warnanya
+  Map<int, String> _walletNames = {};
+  Map<int, Color> _walletColors = {};
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    _fetchWallets(); // [NEW] Panggil data dompet
     _fetchTransactions();
   }
 
@@ -38,11 +42,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return DateTime(date.year, date.month, date.day);
   }
 
+  // [NEW] Ambil nama & warna dompet buat badge
+  Future<void> _fetchWallets() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final res = await _supabase
+          .from('wallets')
+          .select()
+          .eq('user_id', userId);
+      if (mounted) {
+        setState(() {
+          for (var w in res as List) {
+            _walletNames[w['id']] = w['name'].toString();
+            final colorHex = w['color']?.toString() ?? '#1E3A8A';
+            _walletColors[w['id']] = Color(
+              int.parse(colorHex.replaceFirst('#', '0xFF')),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error wallets: $e");
+    }
+  }
+
   Future<void> _fetchTransactions() async {
     try {
       final userId = _supabase.auth.currentUser!.id;
 
-      // [NEW] 1. Ambil semua nama tabungan biar kita punya "kamus"-nya
+      // 1. Ambil nama tabungan buat kamus
       final savingsRes = await _supabase
           .from('savings')
           .select('id, name')
@@ -81,7 +109,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       if (mounted) {
         setState(() {
-          _savingNames = tempSavings; // Simpan kamus tabungannya
+          _savingNames = tempSavings;
           _groupedTransactions = tempGroups;
           _selectedTransactions = _getEventsForDay(_selectedDay!);
           _isLoading = false;
@@ -153,19 +181,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // KALENDER
+                // KALENDER MODERN
                 Container(
-                  color: Colors.white,
+                  padding: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
                   child: TableCalendar<TransactionModel>(
                     firstDay: DateTime.utc(2020, 1, 1),
                     lastDay: DateTime.utc(2030, 12, 31),
                     focusedDay: _focusedDay,
-                    daysOfWeekHeight: 24,
+                    daysOfWeekHeight: 30,
                     selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                     startingDayOfWeek: StartingDayOfWeek.monday,
                     calendarStyle: CalendarStyle(
                       todayDecoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.3),
+                        color: AppColors.primary.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       selectedDecoration: const BoxDecoration(
@@ -173,6 +211,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         shape: BoxShape.circle,
                       ),
                       markerSize: 6,
+                      markerDecoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      weekendTextStyle: const TextStyle(color: Colors.red),
                     ),
                     headerStyle: HeaderStyle(
                       titleCentered: true,
@@ -180,6 +223,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       titleTextStyle: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                      ),
+                      leftChevronIcon: const Icon(
+                        Icons.chevron_left,
+                        color: AppColors.primary,
+                      ),
+                      rightChevronIcon: const Icon(
+                        Icons.chevron_right,
+                        color: AppColors.primary,
                       ),
                     ),
                     eventLoader: _getEventsForDay,
@@ -195,16 +246,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     calendarBuilders: CalendarBuilders(
                       markerBuilder: (context, date, events) {
                         if (events.isEmpty) return const SizedBox();
-                        bool hasIncome = false;
-                        bool hasExpense = false;
-
-                        for (var ev in events) {
-                          if (ev.category?.isExpense ?? true) {
-                            hasExpense = true;
-                          } else {
-                            hasIncome = true;
-                          }
-                        }
+                        bool hasIncome = events.any(
+                          (ev) => !(ev.category?.isExpense ?? true),
+                        );
+                        bool hasExpense = events.any(
+                          (ev) => (ev.category?.isExpense ?? true),
+                        );
 
                         return Positioned(
                           bottom: 6,
@@ -214,10 +261,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               if (hasIncome)
                                 Container(
                                   margin: const EdgeInsets.symmetric(
-                                    horizontal: 1.5,
+                                    horizontal: 1,
                                   ),
-                                  width: 6,
-                                  height: 6,
+                                  width: 5,
+                                  height: 5,
                                   decoration: const BoxDecoration(
                                     color: AppColors.income,
                                     shape: BoxShape.circle,
@@ -226,10 +273,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               if (hasExpense)
                                 Container(
                                   margin: const EdgeInsets.symmetric(
-                                    horizontal: 1.5,
+                                    horizontal: 1,
                                   ),
-                                  width: 6,
-                                  height: 6,
+                                  width: 5,
+                                  height: 5,
                                   decoration: const BoxDecoration(
                                     color: AppColors.expense,
                                     shape: BoxShape.circle,
@@ -245,7 +292,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                 const SizedBox(height: 10),
 
-                // REKAP HARIAN
+                // RINGKASAN HARIAN
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -261,7 +308,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ).format(_selectedDay!),
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 14,
                           color: Colors.black87,
                         ),
                       ),
@@ -284,10 +331,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Pemasukan",
+                                "Masuk",
                                 style: GoogleFonts.poppins(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   color: AppColors.income,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Text(
@@ -314,10 +362,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Pengeluaran",
+                                "Keluar",
                                 style: GoogleFonts.poppins(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   color: AppColors.expense,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Text(
@@ -338,7 +387,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                 const SizedBox(height: 15),
 
-                // DAFTAR TRANSAKSI
+                // LIST TRANSAKSI HARIAN DENGAN BADGE DOMPET
                 Expanded(
                   child: _selectedTransactions.isEmpty
                       ? Center(
@@ -352,7 +401,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                "Wah, hari ini kamu berhasil puasa jajan! 🎉",
+                                "Tidak ada transaksi hari ini",
                                 style: GoogleFonts.poppins(
                                   color: Colors.grey,
                                   fontSize: 13,
@@ -364,34 +413,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
-                            vertical: 10,
+                            vertical: 5,
                           ),
+                          physics: const BouncingScrollPhysics(),
                           itemCount: _selectedTransactions.length,
                           itemBuilder: (context, index) {
                             final trx = _selectedTransactions[index];
                             final isExpense = trx.category?.isExpense ?? true;
 
-                            // ==========================================
-                            // [UPDATE] LOGIKA PENERJEMAH SAVING ID
-                            // ==========================================
+                            // Logika Bersihin Saving ID
                             String displayNote = trx.note ?? '';
                             final match = RegExp(
                               r'\[SAVING_ID:(\d+)\]',
                             ).firstMatch(displayNote);
                             if (match != null) {
-                              String savingId = match.group(1)!;
-                              // Cari namanya di kamus. Kalau udah dihapus dari database, sebut aja 'Tabungan'
-                              String savingName =
-                                  _savingNames[savingId] ?? 'Tabungan';
-
-                              // Ubah teks kasarnya jadi teks halus
+                              String sId = match.group(1)!;
+                              String sName = _savingNames[sId] ?? 'Tabungan';
                               displayNote = displayNote
                                   .replaceAll(
                                     match.group(0)!,
-                                    '(Sumber: $savingName)',
+                                    '(Sumber: $sName)',
                                   )
                                   .trim();
                             }
+                            if (displayNote.isEmpty)
+                              displayNote = "Tanpa catatan";
+
+                            // [NEW] Persiapan Wallet Badge
+                            final wId = trx.walletId;
+                            final wName = _walletNames[wId] ?? 'Kas Utama';
+                            final wColor = _walletColors[wId] ?? Colors.grey;
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -403,6 +454,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.02),
                                     blurRadius: 5,
+                                    offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
@@ -411,9 +463,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: isExpense
-                                          ? AppColors.expense.withOpacity(0.1)
-                                          : AppColors.income.withOpacity(0.1),
+                                      color:
+                                          (isExpense
+                                                  ? AppColors.expense
+                                                  : AppColors.income)
+                                              .withOpacity(0.1),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
@@ -439,15 +493,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                             fontSize: 14,
                                           ),
                                         ),
-                                        if (displayNote
-                                            .isNotEmpty) // Tampilkan note yang udah diterjemahkan
-                                          Text(
-                                            displayNote,
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.grey,
-                                              fontSize: 12,
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          displayNote,
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.grey,
+                                            fontSize: 11,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        // [NEW] Badge Dompet
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: wColor.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
                                             ),
                                           ),
+                                          child: Text(
+                                            wName,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: wColor,
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -459,6 +536,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       color: isExpense
                                           ? AppColors.expense
                                           : AppColors.income,
+                                      fontSize: 13,
                                     ),
                                   ),
                                 ],

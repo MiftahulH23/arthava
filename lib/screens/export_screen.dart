@@ -234,13 +234,22 @@ class _ExportScreenState extends State<ExportScreen> {
       final userResponse = await _supabase.from('profiles').select('name').eq('id', userId).maybeSingle();
       final userName = userResponse != null ? userResponse['name'] : "User";
 
+      // Tarik data tabungan
       final savingsRes = await _supabase.from('savings').select('id, name, amount').eq('user_id', userId);
       Map<String, String> savingNames = {};
       double totalSavings = 0;
-      
       for (var row in savingsRes as List) {
         savingNames[row['id'].toString()] = row['name'].toString();
         totalSavings += (row['amount'] as num).toDouble();
+      }
+
+      // [NEW] Tarik data Dompet buat dimasukin ke PDF
+      final walletsRes = await _supabase.from('wallets').select('id, name, balance').eq('user_id', userId);
+      Map<String, String> walletNames = {};
+      double totalWalletBalance = 0;
+      for (var w in walletsRes as List) {
+        walletNames[w['id'].toString()] = w['name'].toString();
+        totalWalletBalance += (w['balance'] as num).toDouble();
       }
 
       final response = await _supabase
@@ -254,22 +263,9 @@ class _ExportScreenState extends State<ExportScreen> {
       final List<TransactionModel> validTransactions = [];
       double income = 0;
       double expense = 0;
-      
-      // [NEW] Variabel buat ngitung Sisa Kas Utama yang beneran akurat!
-      double rawIncome = 0;
-      double rawExpense = 0;
 
       for (var item in response as List) {
         Map<String, dynamic> itemData = Map<String, dynamic>.from(item);
-        
-        // Hitung semua uang keluar-masuk buat Kas Utama
-        final isExpenseRaw = itemData['categories']?['is_expense'] == true;
-        final amountRaw = (itemData['amount'] as num).toDouble();
-        if (isExpenseRaw) {
-          rawExpense += amountRaw;
-        } else {
-          rawIncome += amountRaw;
-        }
 
         String noteStr = itemData['note']?.toString() ?? '';
         final catStr = itemData['categories']?['name']?.toString().toLowerCase() ?? '';
@@ -282,8 +278,15 @@ class _ExportScreenState extends State<ExportScreen> {
             String savingId = match.group(1)!;
             String savingName = savingNames[savingId] ?? 'Tabungan'; 
             noteStr = noteStr.replaceAll(match.group(0)!, '(Sumber: $savingName)').trim();
-            itemData['note'] = noteStr; 
           }
+
+          // [NEW] Sisipin info Dompet ke dalam Catatan biar muncul di tabel PDF!
+          String wId = itemData['wallet_id']?.toString() ?? '';
+          if (wId.isNotEmpty && walletNames.containsKey(wId)) {
+             String wName = walletNames[wId]!;
+             noteStr = noteStr.isEmpty ? "[Dompet: $wName]" : "$noteStr\n[Dompet: $wName]";
+          }
+          itemData['note'] = noteStr;
 
           final trx = TransactionModel.fromJson(itemData);
           validTransactions.add(trx);
@@ -302,9 +305,6 @@ class _ExportScreenState extends State<ExportScreen> {
         return;
       }
 
-      // [NEW] Hitung Sisa Kas Utama
-      double mainCashBalance = rawIncome - rawExpense;
-
       final pdfBytes = await PdfService().generateReport(
         month: _isCustomRange ? startDate : _selectedMonth, 
         transactions: validTransactions,
@@ -312,7 +312,7 @@ class _ExportScreenState extends State<ExportScreen> {
         totalIncome: income,
         totalExpense: expense,
         totalSavings: totalSavings, 
-        mainCashBalance: mainCashBalance, // <--- KIRIM DATA KAS UTAMA KE PDF
+        mainCashBalance: totalWalletBalance, // [UPDATE] Kirim total kekayaan dompet ke PDF
         isCustomRange: _isCustomRange,
         endDate: endDate,
       );

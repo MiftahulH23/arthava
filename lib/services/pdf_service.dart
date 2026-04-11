@@ -76,8 +76,7 @@ class PdfService {
                 _buildSummaryBox('Pengeluaran', currencyFormatter.format(totalExpense), '#FFEBEE', '#C62828'),
                 pw.SizedBox(width: 10),
                 // [UPDATE] Ubah jadi Sisa Kas Utama
-                _buildSummaryBox('Sisa Kas Utama', currencyFormatter.format(mainCashBalance), isNetPositive ? '#E3F2FD' : '#FFF3E0', isNetPositive ? '#1565C0' : '#EF6C00'),
-                pw.SizedBox(width: 10),
+               _buildSummaryBox('Total Saldo Dompet', currencyFormatter.format(mainCashBalance), isNetPositive ? '#E3F2FD' : '#FFF3E0', isNetPositive ? '#1565C0' : '#EF6C00'),
                 _buildSummaryBox('Total Tabungan', currencyFormatter.format(totalSavings), '#E0F2F1', '#00796B'),
               ],
             ),

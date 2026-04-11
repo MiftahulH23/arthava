@@ -9,6 +9,7 @@ class RecurringTransactionModel {
   final DateTime nextRunDate;
   final bool isActive;
   final Map<String, dynamic>? category;
+  final int? walletId;
 
   RecurringTransactionModel({
     required this.id,
@@ -21,6 +22,7 @@ class RecurringTransactionModel {
     required this.nextRunDate,
     required this.isActive,
     this.category,
+    this.walletId,
   });
 
   factory RecurringTransactionModel.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class RecurringTransactionModel {
       nextRunDate: DateTime.parse(json['next_run_date']),
       isActive: json['is_active'],
       category: json['categories'], // Akan berisi relasi ke tabel categories
+      walletId: json['wallet_id'],
     );
   }
 }
