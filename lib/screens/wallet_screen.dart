@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
 
@@ -433,7 +434,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 120), // Added bottom padding to clear FABs
                   itemCount: _wallets.length,
                   itemBuilder: (context, index) {
                     final wallet = _wallets[index];
@@ -442,106 +443,224 @@ class _WalletScreenState extends State<WalletScreen> {
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 20),
-                      height: 160,
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: LinearGradient(colors: [walletColor, walletColor.withOpacity(0.7)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                        boxShadow: [BoxShadow(color: walletColor.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 8))],
+                        borderRadius: BorderRadius.circular(24),
+                        gradient: LinearGradient(
+                          colors: [walletColor, walletColor.withOpacity(0.8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: walletColor.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          )
+                        ],
                       ),
-                      child: Stack(
-                        children: [
-                          Positioned(right: -20, top: -20, child: CircleAvatar(radius: 60, backgroundColor: Colors.white.withOpacity(0.1))),
-                          Positioned(right: 50, bottom: -40, child: CircleAvatar(radius: 50, backgroundColor: Colors.white.withOpacity(0.1))),
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)), child: const Icon(PhosphorIconsFill.wallet, color: Colors.white, size: 20)),
-                                        const SizedBox(width: 12),
-                                        Text(wallet.name, style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                    Theme(
-                                      data: Theme.of(context).copyWith(iconTheme: const IconThemeData(color: Colors.white)),
-                                      child: PopupMenuButton<String>(
-                                        onSelected: (value) {
-                                          if (value == 'edit') {
-                                            _showAddEditWalletSheet(wallet: wallet);
-                                          } else if (value == 'delete') {
-                                            showDialog(
-                                              context: context,
-                                              builder: (ctx) => AlertDialog(
-                                                backgroundColor: Colors.white,
-                                                title: Text("Hapus Dompet?", style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-                                                content: Text("Yakin ingin menghapus ${wallet.name}?", style: GoogleFonts.poppins()),
-                                                actions: [
-                                                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal", style: TextStyle(color: Colors.grey))),
-                                                  TextButton(onPressed: () { Navigator.pop(ctx); _deleteWallet(wallet.id); }, child: const Text("Hapus", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
-                                                ],
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        itemBuilder: (BuildContext context) => [
-                                          PopupMenuItem(value: 'edit', child: Row(children: [const Icon(PhosphorIconsRegular.pencilSimple, color: Colors.blue, size: 20), const SizedBox(width: 10), Text("Edit", style: GoogleFonts.poppins())])),
-                                          PopupMenuItem(value: 'delete', child: Row(children: [const Icon(PhosphorIconsRegular.trash, color: Colors.red, size: 20), const SizedBox(width: 10), Text("Hapus", style: GoogleFonts.poppins(color: Colors.red))])),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Stack(
+                          children: [
+                            // Background Decorative Ornaments
+                            Positioned(
+                              right: -20,
+                              top: -20,
+                              child: Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.1),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              left: -15,
+                              bottom: -15,
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.05),
+                                ),
+                              ),
+                            ),
+                            
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(PhosphorIconsFill.wallet, color: Colors.white, size: 16),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            wallet.name.toUpperCase(),
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 1,
+                                            ),
+                                          ),
                                         ],
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text("Total Saldo", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
-                                    Text(currencyFormat.format(wallet.balance), style: GoogleFonts.poppins(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ],
+                                      Theme(
+                                        data: Theme.of(context).copyWith(
+                                          iconTheme: const IconThemeData(color: Colors.white, size: 20),
+                                        ),
+                                        child: PopupMenuButton<String>(
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 120),
+                                          offset: const Offset(0, 30),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          onSelected: (value) {
+                                            if (value == 'edit') {
+                                              _showAddEditWalletSheet(wallet: wallet);
+                                            } else if (value == 'delete') {
+                                              showDialog(
+                                                context: context,
+                                                builder: (ctx) => AlertDialog(
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                  backgroundColor: Colors.white,
+                                                  title: Text("Hapus Dompet?", style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                                                  content: Text("Yakin ingin menghapus ${wallet.name}?", style: GoogleFonts.poppins()),
+                                                  actions: [
+                                                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal", style: TextStyle(color: Colors.grey))),
+                                                    TextButton(onPressed: () { Navigator.pop(ctx); _deleteWallet(wallet.id); }, child: const Text("Hapus", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+                                                  ],
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          itemBuilder: (BuildContext context) => [
+                                            PopupMenuItem(value: 'edit', child: Row(children: [const Icon(PhosphorIconsRegular.pencilSimple, color: Colors.blue, size: 18), const SizedBox(width: 8), Text("Edit", style: GoogleFonts.poppins(fontSize: 13))])),
+                                            PopupMenuItem(value: 'delete', child: Row(children: [const Icon(PhosphorIconsRegular.trash, color: Colors.red, size: 18), const SizedBox(width: 8), Text("Hapus", style: GoogleFonts.poppins(color: Colors.red, fontSize: 13))])),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  
+                                  const SizedBox(height: 12),
+
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "TOTAL SALDO",
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white.withOpacity(0.6),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                      Text(
+                                        currencyFormat.format(wallet.balance),
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
                 ),
       
-      // [UPDATE] Floating Action Button Ganda (Transfer & Tambah)
-      floatingActionButton: _wallets.length < 2
+      // [UPDATE] Improved FAB Design to be more compact and modern
+      floatingActionButton: _wallets.isEmpty
           ? FloatingActionButton(
               onPressed: () => _showAddEditWalletSheet(),
               backgroundColor: AppColors.primary,
-              shape: const CircleBorder(),
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: const Icon(Icons.add, color: Colors.white, size: 28),
             )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FloatingActionButton.extended(
-                  heroTag: 'btn_transfer',
-                  onPressed: () => _showTransferSheet(),
-                  backgroundColor: Colors.orange,
-                  icon: const Icon(PhosphorIconsBold.arrowsLeftRight, color: Colors.white),
-                  label: Text("Transfer", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-                const SizedBox(width: 15),
-                FloatingActionButton.extended(
-                  heroTag: 'btn_add',
-                  onPressed: () => _showAddEditWalletSheet(),
-                  backgroundColor: AppColors.primary,
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: Text("Tambah", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-              ],
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  )
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_wallets.length >= 2) ...[
+                    GestureDetector(
+                      onTap: () => _showTransferSheet(),
+                      child: Row(
+                        children: [
+                          const Icon(PhosphorIconsBold.arrowsLeftRight, color: Colors.orange, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Transfer",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 24,
+                      width: 1,
+                      color: Colors.grey.shade300,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                  ],
+                  GestureDetector(
+                    onTap: () => _showAddEditWalletSheet(),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Tambah",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

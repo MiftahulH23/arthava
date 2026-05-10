@@ -115,22 +115,22 @@ class _RecurringScreenState extends State<RecurringScreen> {
   }
 
   // [UX UPGRADE] Ubah Dialog jadi Bottom Sheet Modern
-  void _showAddSheet() {
-    bool isExpense = true;
-    int? selectedCatId;
-    int? selectedWalletId = _wallets.isNotEmpty
-        ? _wallets.first['id'] as int
-        : null;
-    String selectedFreq = 'Bulanan';
-    DateTime selectedDate = DateTime.now();
-
-    final amountController = TextEditingController();
-    final noteController = TextEditingController();
+  void _showAddEditSheet({RecurringTransactionModel? item}) {
+    final isEdit = item != null;
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: '',
       decimalDigits: 0,
     );
+
+    bool isExpense = isEdit ? (item.category?['is_expense'] ?? true) : true;
+    int? selectedCatId = isEdit ? item.categoryId : null;
+    int? selectedWalletId = isEdit ? item.walletId : (_wallets.isNotEmpty ? _wallets.first['id'] as int : null);
+    String selectedFreq = isEdit ? item.frequency : 'Bulanan';
+    DateTime selectedDate = isEdit ? item.startDate : DateTime.now();
+
+    final amountController = TextEditingController(text: isEdit ? currencyFormat.format(item.amount) : '');
+    final noteController = TextEditingController(text: isEdit ? item.note ?? '' : '');
     final frequencies = ['Harian', 'Mingguan', 'Bulanan', 'Tahunan'];
 
     showModalBottomSheet(
@@ -173,7 +173,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Buat Jadwal Tagihan",
+                          isEdit ? "Edit Jadwal Tagihan" : "Buat Jadwal Tagihan",
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -671,28 +671,35 @@ class _RecurringScreenState extends State<RecurringScreen> {
                           final dateStr = DateFormat(
                             'yyyy-MM-dd',
                           ).format(selectedDate);
-
                           try {
-                            await _supabase
-                                .from('recurring_transactions')
-                                .insert({
-                                  'user_id': userId,
-                                  'category_id': selectedCatId,
-                                  'wallet_id':
-                                      selectedWalletId, // [NEW] Simpan Dompetnya
-                                  'amount': amount,
-                                  'note': noteController.text.trim(),
-                                  'frequency': selectedFreq,
-                                  'start_date': dateStr,
-                                  'next_run_date': dateStr,
-                                });
+                            final data = {
+                              'user_id': userId,
+                              'category_id': selectedCatId,
+                              'wallet_id': selectedWalletId,
+                              'amount': amount,
+                              'note': noteController.text.trim(),
+                              'frequency': selectedFreq,
+                              'start_date': dateStr,
+                              'next_run_date': isEdit ? item.nextRunDate.toIso8601String() : dateStr,
+                            };
+
+                            if (isEdit) {
+                              await _supabase
+                                  .from('recurring_transactions')
+                                  .update(data)
+                                  .eq('id', item.id);
+                            } else {
+                              await _supabase
+                                  .from('recurring_transactions')
+                                  .insert(data);
+                            }
 
                             if (context.mounted) {
                               Navigator.pop(context);
                               _fetchData();
                               AppNotification.success(
                                 context,
-                                "Jadwal berhasil dibuat!",
+                                isEdit ? "Jadwal diperbarui!" : "Jadwal berhasil dibuat!",
                               );
                             }
                           } catch (e) {
@@ -704,7 +711,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                           }
                         },
                         child: Text(
-                          "Simpan Jadwal",
+                          isEdit ? "Perbarui Jadwal" : "Simpan Jadwal",
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -827,23 +834,17 @@ class _RecurringScreenState extends State<RecurringScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        catName,
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: item.isActive
-                                              ? Colors.black
-                                              : Colors.grey,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  catName,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: item.isActive
+                                        ? Colors.black
+                                        : Colors.grey,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 if (item.note != null && item.note!.isNotEmpty)
                                   Padding(
@@ -859,7 +860,9 @@ class _RecurringScreenState extends State<RecurringScreen> {
                                     ),
                                   ),
                                 const SizedBox(height: 6),
-                                Row(
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(
@@ -879,7 +882,6 @@ class _RecurringScreenState extends State<RecurringScreen> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
                                     // [NEW] Badge Dompet
                                     Container(
                                       padding: const EdgeInsets.symmetric(
@@ -891,6 +893,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Row(
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             PhosphorIconsFill.wallet,
@@ -898,12 +901,16 @@ class _RecurringScreenState extends State<RecurringScreen> {
                                             color: Colors.grey.shade600,
                                           ),
                                           const SizedBox(width: 4),
-                                          Text(
-                                            walletName,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 10,
-                                              color: Colors.grey.shade700,
-                                              fontWeight: FontWeight.w600,
+                                          Flexible(
+                                            child: Text(
+                                              walletName,
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 10,
+                                                color: Colors.grey.shade700,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
                                         ],
@@ -945,92 +952,125 @@ class _RecurringScreenState extends State<RecurringScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                PhosphorIconsRegular.clock,
-                                size: 14,
-                                color: Colors.grey.shade500,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                "Eksekusi Berikutnya: ",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  PhosphorIconsRegular.clock,
+                                  size: 14,
                                   color: Colors.grey.shade500,
                                 ),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: "Lanjut: ",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: DateFormat(
+                                            'dd MMM yyyy',
+                                            'id_ID',
+                                          ).format(item.nextRunDate),
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: item.isActive
+                                                ? Colors.black87
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => _showAddEditSheet(item: item),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    PhosphorIconsRegular.pencilSimple,
+                                    color: Colors.blue,
+                                    size: 16,
+                                  ),
+                                ),
                               ),
-                              Text(
-                                DateFormat(
-                                  'dd MMM yyyy',
-                                  'id_ID',
-                                ).format(item.nextRunDate),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: item.isActive
-                                      ? Colors.black87
-                                      : Colors.grey,
+                              const SizedBox(width: 10),
+                              GestureDetector(
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      backgroundColor: Colors.white,
+                                      title: Text(
+                                        "Hapus Jadwal?",
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      content: Text(
+                                        "Jadwal otomatis ini akan dihentikan dan dihapus dari daftar.",
+                                        style: GoogleFonts.poppins(),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: Text(
+                                            "Batal",
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.grey,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pop(ctx);
+                                            _deleteItem(item.id);
+                                          },
+                                          child: Text(
+                                            "Hapus",
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
                             ],
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  backgroundColor: Colors.white,
-                                  title: Text(
-                                    "Hapus Jadwal?",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  content: Text(
-                                    "Jadwal otomatis ini akan dihentikan dan dihapus dari daftar.",
-                                    style: GoogleFonts.poppins(),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx),
-                                      child: Text(
-                                        "Batal",
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.grey,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(ctx);
-                                        _deleteItem(item.id);
-                                      },
-                                      child: Text(
-                                        "Hapus",
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.red,
-                                size: 16,
-                              ),
-                            ),
                           ),
                         ],
                       ),
@@ -1040,7 +1080,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
               },
             ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddSheet,
+        onPressed: () => _showAddEditSheet(),
         backgroundColor: AppColors.primary,
         elevation: 4,
         icon: const Icon(Icons.add, color: Colors.white),
