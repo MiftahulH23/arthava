@@ -45,9 +45,22 @@ class _TargetScreenState extends State<TargetScreen> {
     }
   }
 
+  List<String> _savingNames = [];
+
   Future<void> _fetchTargets() async {
     try {
       final userId = _supabase.auth.currentUser!.id;
+
+      // 1. Fetch Tabungan (Savings) to sync balances automatically
+      final savingRes = await _supabase.from('savings').select('name, amount').eq('user_id', userId);
+      Map<String, double> savingBalances = {};
+      for (var item in savingRes) {
+        String name = item['name'].toString().trim();
+        double amt = (item['amount'] as num).toDouble();
+        savingBalances[name] = (savingBalances[name] ?? 0) + amt;
+      }
+
+      // 2. Fetch Targets
       final res = await _supabase
           .from('targets')
           .select()
@@ -59,10 +72,17 @@ class _TargetScreenState extends State<TargetScreen> {
           .toList();
 
       double total = 0;
-      for (var t in data) total += t.savedAmount;
+      for (var t in data) {
+        if (t.storageLocation != null && savingBalances.containsKey(t.storageLocation!.trim())) {
+           // Overwrite manual savedAmount with synced Tabungan balance
+           t.savedAmount = savingBalances[t.storageLocation!.trim()]!;
+        }
+        total += t.savedAmount;
+      }
 
       if (mounted) {
         setState(() {
+          _savingNames = savingBalances.keys.toList();
           _targets = data;
           _totalSavings = total;
           _isLoading = false;
@@ -317,41 +337,60 @@ class _TargetScreenState extends State<TargetScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            TextField(
-                              controller: locationController,
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: "Misal: Bank Jago / Celengan",
-                                hintStyle: GoogleFonts.poppins(
-                                  color: Colors.grey.shade400,
-                                ),
-                                filled: true,
-                                fillColor: Colors.grey.shade50,
-                                prefixIcon: const Icon(
-                                  PhosphorIconsFill.bank,
-                                  color: Colors.grey,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade200,
+                            Autocomplete<String>(
+                              optionsBuilder: (TextEditingValue textEditingValue) {
+                                if (textEditingValue.text.isEmpty) {
+                                  return _savingNames;
+                                }
+                                return _savingNames.where((String option) {
+                                  return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                                });
+                              },
+                              onSelected: (String selection) {
+                                locationController.text = selection;
+                              },
+                              fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                                textEditingController.addListener(() {
+                                  locationController.text = textEditingController.text;
+                                });
+                                return TextField(
+                                  controller: textEditingController,
+                                  focusNode: focusNode,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade200,
+                                  decoration: InputDecoration(
+                                    hintText: "Pilih / Ketik Nama Tabungan",
+                                    hintStyle: GoogleFonts.poppins(
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    prefixIcon: const Icon(
+                                      PhosphorIconsFill.link,
+                                      color: Colors.grey,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade200,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade200,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF009688),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFF009688),
-                                  ),
-                                ),
-                              ),
+                                );
+                              },
                             ),
                             const SizedBox(height: 15),
 
@@ -790,41 +829,61 @@ class _TargetScreenState extends State<TargetScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            TextField(
-                              controller: locationController,
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: "Misal: Bank Jago",
-                                hintStyle: GoogleFonts.poppins(
-                                  color: Colors.grey.shade400,
-                                ),
-                                filled: true,
-                                fillColor: Colors.grey.shade50,
-                                prefixIcon: const Icon(
-                                  PhosphorIconsFill.wallet,
-                                  color: Color(0xFF009688),
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade200,
+                            Autocomplete<String>(
+                              initialValue: TextEditingValue(text: locationController.text),
+                              optionsBuilder: (TextEditingValue textEditingValue) {
+                                if (textEditingValue.text.isEmpty) {
+                                  return _savingNames;
+                                }
+                                return _savingNames.where((String option) {
+                                  return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                                });
+                              },
+                              onSelected: (String selection) {
+                                locationController.text = selection;
+                              },
+                              fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                                textEditingController.addListener(() {
+                                  locationController.text = textEditingController.text;
+                                });
+                                return TextField(
+                                  controller: textEditingController,
+                                  focusNode: focusNode,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade200,
+                                  decoration: InputDecoration(
+                                    hintText: "Pilih / Ketik Nama Tabungan",
+                                    hintStyle: GoogleFonts.poppins(
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    prefixIcon: const Icon(
+                                      PhosphorIconsFill.link,
+                                      color: Color(0xFF009688),
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade200,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade200,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF009688),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFF009688),
-                                  ),
-                                ),
-                              ),
+                                );
+                              },
                             ),
                             const SizedBox(height: 15),
 
@@ -1245,11 +1304,23 @@ class _TargetScreenState extends State<TargetScreen> {
                                   "Nabung Target: ${target.name} [SAVING_ID:T-${target.id}]",
                             });
 
-                            final newTotal = target.savedAmount + rawAmount;
-                            await _supabase
-                                .from('targets')
-                                .update({'saved_amount': newTotal})
-                                .eq('id', target.id);
+                            bool isLinked = target.storageLocation != null && _savingNames.contains(target.storageLocation!.trim());
+                            
+                            if (isLinked) {
+                              await _supabase.from('savings').insert({
+                                'user_id': userId,
+                                'name': target.storageLocation!.trim(),
+                                'amount': rawAmount,
+                                'location': null,
+                                'notes': 'Dari Target: ${target.name}',
+                              });
+                            } else {
+                              final newTotal = target.savedAmount + rawAmount;
+                              await _supabase
+                                  .from('targets')
+                                  .update({'saved_amount': newTotal})
+                                  .eq('id', target.id);
+                            }
 
                             if (context.mounted) {
                               Navigator.pop(context);

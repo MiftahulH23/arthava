@@ -24,6 +24,9 @@ class _StatsScreenState extends State<StatsScreen> {
 
   double _totalAmount = 0;
   List<Map<String, dynamic>> _categoryData = [];
+  List<Map<String, dynamic>> _categories = [];
+  List<int> _selectedCategoryIds = [];
+  List<int> _selectedWalletIds = [];
 
   Map<int, String> _walletNames = {};
   Map<int, Color> _walletColors = {};
@@ -47,6 +50,7 @@ class _StatsScreenState extends State<StatsScreen> {
       end: DateTime.now(),
     );
     _fetchWallets();
+    _fetchCategories();
     _fetchStats();
   }
 
@@ -70,6 +74,25 @@ class _StatsScreenState extends State<StatsScreen> {
       }
     } catch (e) {
       debugPrint("Error wallets: $e");
+    }
+  }
+
+  Future<void> _fetchCategories() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final response = await _supabase
+          .from('categories')
+          .select()
+          .eq('is_expense', _isExpense)
+          .or('user_id.is.null,user_id.eq.$userId');
+
+      if (mounted) {
+        setState(() {
+          _categories = List<Map<String, dynamic>>.from(response);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error categories: $e");
     }
   }
 
@@ -120,13 +143,22 @@ class _StatsScreenState extends State<StatsScreen> {
         );
       }
 
-      final response = await _supabase
+      var query = _supabase
           .from('transactions')
           .select('*, categories(*)')
           .eq('user_id', userId)
           .eq('categories.is_expense', _isExpense)
           .gte('date', DateFormat('yyyy-MM-dd').format(startDate))
           .lte('date', DateFormat('yyyy-MM-dd').format(endDate));
+
+      if (_selectedCategoryIds.isNotEmpty) {
+        query = query.inFilter('category_id', _selectedCategoryIds);
+      }
+      if (_selectedWalletIds.isNotEmpty) {
+        query = query.inFilter('wallet_id', _selectedWalletIds);
+      }
+
+      final response = await query;
 
       double total = 0;
       Map<String, Map<String, dynamic>> grouped = {};
@@ -385,6 +417,193 @@ class _StatsScreenState extends State<StatsScreen> {
     }
   }
 
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Filter Transaksi",
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setSheetState(() {
+                            _selectedCategoryIds.clear();
+                            _selectedWalletIds.clear();
+                          });
+                          setState(() {});
+                        },
+                        child: Text(
+                          "Reset",
+                          style: GoogleFonts.poppins(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    "Kategori",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _categories.map((c) {
+                      final id = c['id'] as int;
+                      final isSelected = _selectedCategoryIds.contains(id);
+                      final color = _isExpense ? AppColors.expense : AppColors.income;
+                      return FilterChip(
+                        label: Text(c['name']),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setSheetState(() {
+                            if (val) {
+                              _selectedCategoryIds.add(id);
+                            } else {
+                              _selectedCategoryIds.remove(id);
+                            }
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: color.withOpacity(0.2),
+                        checkmarkColor: color,
+                        labelStyle: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: isSelected ? color : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        backgroundColor: Colors.grey.shade50,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isSelected ? color : Colors.grey.shade200,
+                          ),
+                        ),
+                        showCheckmark: false,
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Dompet",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _walletNames.entries.map((e) {
+                      final id = e.key;
+                      final isSelected = _selectedWalletIds.contains(id);
+                      final color = _isExpense ? AppColors.expense : AppColors.income;
+                      return FilterChip(
+                        label: Text(e.value),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setSheetState(() {
+                            if (val) {
+                              _selectedWalletIds.add(id);
+                            } else {
+                              _selectedWalletIds.remove(id);
+                            }
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: color.withOpacity(0.2),
+                        checkmarkColor: color,
+                        labelStyle: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: isSelected ? color : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        backgroundColor: Colors.grey.shade50,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isSelected ? color : Colors.grey.shade200,
+                          ),
+                        ),
+                        showCheckmark: false,
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isExpense ? AppColors.expense : AppColors.income,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _fetchStats();
+                      },
+                      child: Text(
+                        "Terapkan Filter",
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(
@@ -435,7 +654,11 @@ class _StatsScreenState extends State<StatsScreen> {
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
-                            setState(() => _isExpense = false);
+                            setState(() {
+                              _isExpense = false;
+                              _selectedCategoryIds.clear();
+                            });
+                            _fetchCategories();
                             _fetchStats();
                           },
                           child: Container(
@@ -470,7 +693,11 @@ class _StatsScreenState extends State<StatsScreen> {
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
-                            setState(() => _isExpense = true);
+                            setState(() {
+                              _isExpense = true;
+                              _selectedCategoryIds.clear();
+                            });
+                            _fetchCategories();
                             _fetchStats();
                           },
                           child: Container(
@@ -567,44 +794,102 @@ class _StatsScreenState extends State<StatsScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                GestureDetector(
-                  onTap: _pickDate,
-                  child: Container(
-                    height: 45,
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      border: Border.all(color: Colors.grey.shade200),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          PhosphorIconsRegular.calendarBlank,
-                          size: 18,
-                          color: activeColor,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            dateLabel,
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _pickDate,
+                        child: Container(
+                          height: 45,
+                          padding: const EdgeInsets.symmetric(horizontal: 15),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                PhosphorIconsRegular.calendarBlank,
+                                size: 18,
+                                color: activeColor,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  dateLabel,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.arrow_drop_down,
+                                size: 18,
+                                color: Colors.grey,
+                              ),
+                            ],
                           ),
                         ),
-                        const Icon(
-                          Icons.arrow_drop_down,
-                          size: 18,
-                          color: Colors.grey,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _showFilterSheet,
+                        child: Container(
+                          height: 45,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                PhosphorIconsRegular.funnel,
+                                size: 16,
+                                color: (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty) ? activeColor : Colors.grey,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                "Filter",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty) ? activeColor : Colors.black87,
+                                ),
+                              ),
+                              if (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: activeColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '${_selectedCategoryIds.length + _selectedWalletIds.length}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

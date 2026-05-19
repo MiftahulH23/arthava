@@ -247,9 +247,15 @@ class _ExportScreenState extends State<ExportScreen> {
       final walletsRes = await _supabase.from('wallets').select('id, name, balance').eq('user_id', userId);
       Map<String, String> walletNames = {};
       double totalWalletBalance = 0;
+      List<Map<String, dynamic>> walletsInfo = [];
       for (var w in walletsRes as List) {
         walletNames[w['id'].toString()] = w['name'].toString();
-        totalWalletBalance += (w['balance'] as num).toDouble();
+        double bal = (w['balance'] as num).toDouble();
+        totalWalletBalance += bal;
+        walletsInfo.add({
+          'name': w['name'].toString(),
+          'balance': bal,
+        });
       }
 
       final response = await _supabase
@@ -263,6 +269,11 @@ class _ExportScreenState extends State<ExportScreen> {
       final List<TransactionModel> validTransactions = [];
       double income = 0;
       double expense = 0;
+      
+      Map<String, double> expensesByCategory = {};
+      Map<String, double> incomeByCategory = {};
+      TransactionModel? largestExpense;
+      TransactionModel? largestIncome;
 
       for (var item in response as List) {
         Map<String, dynamic> itemData = Map<String, dynamic>.from(item);
@@ -291,10 +302,20 @@ class _ExportScreenState extends State<ExportScreen> {
           final trx = TransactionModel.fromJson(itemData);
           validTransactions.add(trx);
           
+          final catName = trx.category?.name ?? 'Umum';
+          
           if (trx.category?.isExpense == true) {
             expense += trx.amount;
+            expensesByCategory[catName] = (expensesByCategory[catName] ?? 0) + trx.amount;
+            if (largestExpense == null || trx.amount > largestExpense!.amount) {
+              largestExpense = trx;
+            }
           } else {
             income += trx.amount;
+            incomeByCategory[catName] = (incomeByCategory[catName] ?? 0) + trx.amount;
+            if (largestIncome == null || trx.amount > largestIncome!.amount) {
+              largestIncome = trx;
+            }
           }
         }
       }
@@ -305,6 +326,12 @@ class _ExportScreenState extends State<ExportScreen> {
         return;
       }
 
+      var sortedExpensesList = expensesByCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      Map<String, double> sortedExpensesByCategory = Map.fromEntries(sortedExpensesList);
+      
+      var sortedIncomesList = incomeByCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      Map<String, double> sortedIncomeByCategory = Map.fromEntries(sortedIncomesList);
+
       final pdfBytes = await PdfService().generateReport(
         month: _isCustomRange ? startDate : _selectedMonth, 
         transactions: validTransactions,
@@ -312,9 +339,14 @@ class _ExportScreenState extends State<ExportScreen> {
         totalIncome: income,
         totalExpense: expense,
         totalSavings: totalSavings, 
-        mainCashBalance: totalWalletBalance, // [UPDATE] Kirim total kekayaan dompet ke PDF
+        mainCashBalance: totalWalletBalance, 
         isCustomRange: _isCustomRange,
         endDate: endDate,
+        walletsInfo: walletsInfo,
+        expensesByCategory: sortedExpensesByCategory,
+        incomeByCategory: sortedIncomeByCategory,
+        largestExpense: largestExpense,
+        largestIncome: largestIncome,
       );
 
       await Printing.layoutPdf(

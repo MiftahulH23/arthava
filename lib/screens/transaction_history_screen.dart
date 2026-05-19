@@ -23,7 +23,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   List<TransactionModel> _transactions = [];
   double _totalAmount = 0;
   List<Map<String, dynamic>> _categories = [];
-  int? _selectedCategoryId;
+  List<int> _selectedCategoryIds = [];
+  List<int> _selectedWalletIds = [];
 
   String _filterType = 'Bulanan';
   DateTime _selectedDate = DateTime.now();
@@ -141,8 +142,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           .gte('date', DateFormat('yyyy-MM-dd').format(startDate))
           .lte('date', DateFormat('yyyy-MM-dd').format(endDate));
 
-      if (_selectedCategoryId != null) {
-        query = query.eq('category_id', _selectedCategoryId!);
+      if (_selectedCategoryIds.isNotEmpty) {
+        query = query.inFilter('category_id', _selectedCategoryIds);
+      }
+
+      if (_selectedWalletIds.isNotEmpty) {
+        query = query.inFilter('wallet_id', _selectedWalletIds);
       }
 
       final response = await query
@@ -429,6 +434,193 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     }
   }
 
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Filter Transaksi",
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setSheetState(() {
+                            _selectedCategoryIds.clear();
+                            _selectedWalletIds.clear();
+                          });
+                          setState(() {});
+                        },
+                        child: Text(
+                          "Reset",
+                          style: GoogleFonts.poppins(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    "Kategori",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _categories.map((c) {
+                      final id = c['id'] as int;
+                      final isSelected = _selectedCategoryIds.contains(id);
+                      final color = widget.isExpense ? AppColors.expense : AppColors.income;
+                      return FilterChip(
+                        label: Text(c['name']),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setSheetState(() {
+                            if (val) {
+                              _selectedCategoryIds.add(id);
+                            } else {
+                              _selectedCategoryIds.remove(id);
+                            }
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: color.withOpacity(0.2),
+                        checkmarkColor: color,
+                        labelStyle: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: isSelected ? color : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        backgroundColor: Colors.grey.shade50,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isSelected ? color : Colors.grey.shade200,
+                          ),
+                        ),
+                        showCheckmark: false,
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Dompet",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _walletNames.entries.map((e) {
+                      final id = e.key;
+                      final isSelected = _selectedWalletIds.contains(id);
+                      final color = widget.isExpense ? AppColors.expense : AppColors.income;
+                      return FilterChip(
+                        label: Text(e.value),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setSheetState(() {
+                            if (val) {
+                              _selectedWalletIds.add(id);
+                            } else {
+                              _selectedWalletIds.remove(id);
+                            }
+                          });
+                          setState(() {});
+                        },
+                        selectedColor: color.withOpacity(0.2),
+                        checkmarkColor: color,
+                        labelStyle: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: isSelected ? color : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        backgroundColor: Colors.grey.shade50,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isSelected ? color : Colors.grey.shade200,
+                          ),
+                        ),
+                        showCheckmark: false,
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.isExpense ? AppColors.expense : AppColors.income,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _fetchTransactions();
+                      },
+                      child: Text(
+                        "Terapkan Filter",
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(
@@ -578,81 +770,54 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    // Dropdown Kategori
+                    // Tombol Filter
                     Expanded(
-                      child: Container(
-                        height: 45,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          border: Border.all(color: Colors.grey.shade200),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int?>(
-                            value: _selectedCategoryId,
-                            isExpanded: true,
-                            dropdownColor: Colors.white,
-                            icon: const Icon(
-                              Icons.arrow_drop_down,
-                              size: 16,
-                              color: Colors.grey,
-                            ),
-                            items: [
-                              DropdownMenuItem<int?>(
-                                value: null,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      PhosphorIconsRegular.tag,
-                                      size: 14,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        "Semua Kategori",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
+                      child: GestureDetector(
+                        onTap: _showFilterSheet,
+                        child: Container(
+                          height: 45,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                PhosphorIconsRegular.funnel,
+                                size: 16,
+                                color: (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty) ? color : Colors.grey,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                "Filter",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty) ? color : Colors.black87,
                                 ),
                               ),
-                              ..._categories.map(
-                                (e) => DropdownMenuItem<int?>(
-                                  value: e['id'] as int,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        PhosphorIconsRegular.tag,
-                                        size: 14,
-                                        color: color,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          e['name'],
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
+                              if (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '${_selectedCategoryIds.length + _selectedWalletIds.length}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      height: 1,
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
-                            onChanged: (val) {
-                              setState(() => _selectedCategoryId = val);
-                              _fetchTransactions();
-                            },
                           ),
                         ),
                       ),

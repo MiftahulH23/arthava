@@ -2,7 +2,7 @@ class TargetModel {
   final int id;
   final String name;
   final double targetAmount;
-  final double savedAmount;
+  double savedAmount;
   final DateTime? deadline;
   final String? storageLocation; 
 
