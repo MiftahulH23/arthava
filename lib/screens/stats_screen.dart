@@ -23,6 +23,8 @@ class _StatsScreenState extends State<StatsScreen> {
   DateTimeRange? _selectedDateRange;
 
   double _totalAmount = 0;
+  double _dailyAverage = 0;
+  Map<String, dynamic>? _highestTransaction;
   List<Map<String, dynamic>> _categoryData = [];
   List<Map<String, dynamic>> _categories = [];
   List<int> _selectedCategoryIds = [];
@@ -41,6 +43,8 @@ class _StatsScreenState extends State<StatsScreen> {
     Colors.pink,
     Colors.amber,
   ];
+  
+  int _touchedIndex = -1;
 
   @override
   void initState() {
@@ -162,6 +166,8 @@ class _StatsScreenState extends State<StatsScreen> {
 
       double total = 0;
       Map<String, Map<String, dynamic>> grouped = {};
+      double maxAmount = 0;
+      Map<String, dynamic>? maxTransaction;
 
       for (var item in response as List) {
         if (item['categories'] == null) continue;
@@ -180,6 +186,16 @@ class _StatsScreenState extends State<StatsScreen> {
         final cName = item['categories']['name'];
 
         total += amount;
+        
+        if (amount > maxAmount) {
+           maxAmount = amount;
+           maxTransaction = {
+              'amount': amount,
+              'name': cName,
+              'note': note.isNotEmpty ? note : cName,
+              'date': item['date'],
+           };
+        }
 
         if (grouped.containsKey(catId)) {
           grouped[catId]!['amount'] += amount;
@@ -200,9 +216,21 @@ class _StatsScreenState extends State<StatsScreen> {
           (a, b) => (b['amount'] as double).compareTo(a['amount'] as double),
         );
 
+      DateTime calculationEndDate = endDate;
+      final now = DateTime.now();
+      if (calculationEndDate.isAfter(now)) {
+        calculationEndDate = now;
+      }
+      
+      int days = calculationEndDate.difference(startDate).inDays + 1;
+      if (days < 1) days = 1;
+      final avg = total / days;
+
       if (mounted) {
         setState(() {
           _totalAmount = total;
+          _dailyAverage = avg;
+          _highestTransaction = maxTransaction;
           _categoryData = sortedList;
           _isLoading = false;
         });
@@ -910,35 +938,74 @@ class _StatsScreenState extends State<StatsScreen> {
                     child: Column(
                       children: [
                         SizedBox(
-                          height: 200,
+                          height: 250,
                           child: Stack(
                             children: [
                               PieChart(
                                 PieChartData(
-                                  sectionsSpace: 2,
-                                  centerSpaceRadius: 60,
-                                  sections: List.generate(
-                                    _categoryData.length,
-                                    (index) {
-                                      final item = _categoryData[index];
-                                      final percentage =
-                                          (item['amount'] / _totalAmount) * 100;
-                                      return PieChartSectionData(
-                                        color:
-                                            _chartColors[index %
-                                                _chartColors.length],
-                                        value: item['amount'],
-                                        title:
-                                            '${percentage.toStringAsFixed(0)}%',
-                                        radius: 40,
-                                        titleStyle: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      );
+                                  pieTouchData: PieTouchData(
+                                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                                      setState(() {
+                                        if (!event.isInterestedForInteractions ||
+                                            pieTouchResponse == null ||
+                                            pieTouchResponse.touchedSection == null) {
+                                          _touchedIndex = -1;
+                                          return;
+                                        }
+                                        _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                                      });
                                     },
                                   ),
+                                  sectionsSpace: 2,
+                                  centerSpaceRadius: 60,
+                                  sections: () {
+                                    List<PieChartSectionData> sections = [];
+                                    double otherAmount = 0;
+                                    int currentIndex = 0;
+                                    for (int i = 0; i < _categoryData.length; i++) {
+                                      final item = _categoryData[i];
+                                      final percentage = (item['amount'] / _totalAmount) * 100;
+                                      
+                                      if (i < 5 && percentage >= 2) {
+                                        final isTouched = currentIndex == _touchedIndex;
+                                        sections.add(PieChartSectionData(
+                                          color: _chartColors[i % _chartColors.length],
+                                          value: item['amount'],
+                                          title: isTouched ? '${item['name']}\n${percentage.toStringAsFixed(1)}%' : '${percentage.toStringAsFixed(0)}%',
+                                          radius: isTouched ? 65 : 50,
+                                          titleStyle: GoogleFonts.poppins(
+                                            fontSize: isTouched ? 12 : 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                            shadows: isTouched ? [const Shadow(color: Colors.black45, blurRadius: 2)] : null,
+                                          ),
+                                        ));
+                                        currentIndex++;
+                                      } else {
+                                        otherAmount += (item['amount'] as num).toDouble();
+                                      }
+                                    }
+                                    
+                                    if (otherAmount > 0) {
+                                      final otherPercentage = (otherAmount / _totalAmount) * 100;
+                                      final isTouched = currentIndex == _touchedIndex;
+                                      final remainingCount = _categoryData.length - currentIndex;
+                                      final labelText = "Gabungan\n($remainingCount)";
+                                      sections.add(PieChartSectionData(
+                                        color: Colors.grey.shade400,
+                                        value: otherAmount,
+                                        title: isTouched ? '$labelText\n${otherPercentage.toStringAsFixed(1)}%' : '${otherPercentage.toStringAsFixed(0)}%\n$labelText',
+                                        radius: isTouched ? 65 : 50,
+                                        titleStyle: GoogleFonts.poppins(
+                                          fontSize: isTouched ? 11 : 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          shadows: isTouched ? [const Shadow(color: Colors.black45, blurRadius: 2)] : null,
+                                        ),
+                                      ));
+                                    }
+                                    return sections;
+                                  }(),
                                 ),
                               ),
                               Center(
@@ -980,38 +1047,86 @@ class _StatsScreenState extends State<StatsScreen> {
                                   : AppColors.income.withOpacity(0.2),
                             ),
                           ),
-                          child: Row(
+                          child: Column(
                             children: [
-                              Icon(
-                                _isExpense
-                                    ? PhosphorIconsBold.trendDown
-                                    : PhosphorIconsBold.trendUp,
-                                color: _isExpense
-                                    ? AppColors.expense
-                                    : AppColors.income,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  "Total ${_isExpense ? 'Pengeluaran' : 'Pemasukan'}",
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.grey.shade700,
+                              Row(
+                                children: [
+                                  Icon(
+                                    _isExpense
+                                        ? PhosphorIconsBold.trendDown
+                                        : PhosphorIconsBold.trendUp,
+                                    color: _isExpense
+                                        ? AppColors.expense
+                                        : AppColors.income,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      "Total ${_isExpense ? 'Pengeluaran' : 'Pemasukan'}",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    currencyFormat.format(_totalAmount),
+                                    style: GoogleFonts.poppins(
+                                      color: _isExpense
+                                          ? AppColors.expense
+                                          : AppColors.income,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 10),
-                              Text(
-                                currencyFormat.format(_totalAmount),
-                                style: GoogleFonts.poppins(
-                                  color: _isExpense
-                                      ? AppColors.expense
-                                      : AppColors.income,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              if (_totalAmount > 0) ...[
+                                const SizedBox(height: 15),
+                                Divider(color: Colors.grey.shade300, height: 1),
+                                const SizedBox(height: 15),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Rata-rata harian",
+                                      style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
+                                    ),
+                                    Text(
+                                      currencyFormat.format(_dailyAverage),
+                                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
                                 ),
-                              ),
+                                if (_highestTransaction != null) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          "Terbesar (${_highestTransaction!['note']})",
+                                          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        currencyFormat.format(_highestTransaction!['amount']),
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12, 
+                                          fontWeight: FontWeight.bold, 
+                                          color: _isExpense ? AppColors.expense : AppColors.income
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
                             ],
                           ),
                         ),
@@ -1117,23 +1232,38 @@ class _StatsScreenState extends State<StatsScreen> {
                                 ),
                                 subtitle: Padding(
                                   padding: const EdgeInsets.only(top: 4),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        "${item['count']} Transaksi",
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.grey,
-                                          fontSize: 12,
-                                        ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            "${item['count']} Transaksi",
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          Text(
+                                            "${percentage.toStringAsFixed(1)}%",
+                                            style: GoogleFonts.poppins(
+                                              color: color,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      Text(
-                                        "${percentage.toStringAsFixed(1)}%",
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.grey,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
+                                      const SizedBox(height: 8),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: LinearProgressIndicator(
+                                          value: (percentage / 100).clamp(0.0, 1.0),
+                                          backgroundColor: color.withOpacity(0.15),
+                                          valueColor: AlwaysStoppedAnimation<Color>(color),
+                                          minHeight: 6,
                                         ),
                                       ),
                                     ],
