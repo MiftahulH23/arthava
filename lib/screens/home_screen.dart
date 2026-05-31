@@ -18,6 +18,7 @@ import 'package:catat_uang_app/screens/recurring_screen.dart';
 import 'package:catat_uang_app/screens/ai_advisor_screen.dart';
 import 'package:catat_uang_app/screens/calendar_screen.dart';
 import 'package:catat_uang_app/screens/wallet_screen.dart';
+import 'package:catat_uang_app/screens/debt_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -745,8 +746,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: PhosphorIconsFill.handCoins,
                           label: "Utang",
                           color: Colors.teal,
-                          onTap: () =>
-                              _showComingSoon(context, "Utang-Piutang"),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DebtScreen(),
+                            ),
+                          ),
                         ),
                         _buildFeatureButton(
                           icon: PhosphorIconsFill.chartLineUp,
