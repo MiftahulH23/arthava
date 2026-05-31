@@ -276,12 +276,14 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
               child: const Icon(PhosphorIconsFill.robot, color: Colors.indigo, size: 24),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("AI Advisor", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
-                Text("Gemi - Siap bantu atur duitmu!", style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("AI Advisor", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black), overflow: TextOverflow.ellipsis),
+                  Text("Gemi - Siap bantu atur duitmu!", style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey), overflow: TextOverflow.ellipsis),
+                ],
+              ),
             ),
           ],
         ),

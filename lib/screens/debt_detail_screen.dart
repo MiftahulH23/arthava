@@ -28,6 +28,12 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
     decimalDigits: 0,
   );
 
+  final inputFormat = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: '',
+    decimalDigits: 0,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -194,13 +200,15 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                       onChanged: (val) {
                         final s = val.replaceAll(RegExp(r'[^0-9]'), '');
                         if (s.isNotEmpty) {
-                          final formatted = currencyFormat.format(int.parse(s));
+                          final formatted = inputFormat.format(int.parse(s)).trim();
                           amountController.value = TextEditingValue(
                             text: formatted,
                             selection: TextSelection.collapsed(
                               offset: formatted.length,
                             ),
                           );
+                        } else {
+                          amountController.value = const TextEditingValue(text: '');
                         }
                       },
                     ),
@@ -388,15 +396,16 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                                 'balance': newBalance
                               }).eq('id', selectedWalletId!);
                               
-                              final catRes = await _supabase.from('categories').select().eq('user_id', userId).eq('name', 'Sistem: Utang/Piutang').maybeSingle();
+                              bool isExp = isPayable;
+                              String catName = isExp ? 'Sistem: Uang Keluar (Utang/Piutang)' : 'Sistem: Uang Masuk (Utang/Piutang)';
+                              final catRes = await _supabase.from('categories').select().eq('user_id', userId).eq('name', catName).maybeSingle();
                               int? sysCatId;
                               if (catRes == null) {
                                 final insertedCat = await _supabase.from('categories').insert({
                                   'user_id': userId,
-                                  'name': 'Sistem: Utang/Piutang',
-                                  'icon': 'PhosphorIconsFill.handCoins',
-                                  'color': '#009688',
-                                  'is_expense': isPayable, 
+                                  'name': catName,
+                                  'icon_name': 'bank',
+                                  'is_expense': isExp, 
                                 }).select().single();
                                 sysCatId = insertedCat['id'];
                               } else {

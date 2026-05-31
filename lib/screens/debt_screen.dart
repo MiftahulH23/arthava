@@ -32,6 +32,12 @@ class _DebtScreenState extends State<DebtScreen>
     decimalDigits: 0,
   );
 
+  final inputFormat = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: '',
+    decimalDigits: 0,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -132,71 +138,63 @@ class _DebtScreenState extends State<DebtScreen>
                     ),
                     const SizedBox(height: 20),
 
-                    // Tipe Utang
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () =>
-                                setSheetState(() => debtType = 'payable'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: debtType == 'payable'
-                                    ? Colors.red.withOpacity(0.1)
-                                    : Colors.transparent,
-                                border: Border.all(
-                                  color: debtType == 'payable'
-                                      ? Colors.red
-                                      : Colors.grey.shade300,
+                    Container(
+                      height: 50,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setSheetState(() => debtType = 'payable'),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: debtType == 'payable' ? Colors.red : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: debtType == 'payable' ? [
+                                    BoxShadow(color: Colors.red.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))
+                                  ] : [],
                                 ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                "Saya Ngutang",
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  color: debtType == 'payable'
-                                      ? Colors.red
-                                      : Colors.grey,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () =>
-                                setSheetState(() => debtType = 'receivable'),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: debtType == 'receivable'
-                                    ? Colors.green.withOpacity(0.1)
-                                    : Colors.transparent,
-                                border: Border.all(
-                                  color: debtType == 'receivable'
-                                      ? Colors.green
-                                      : Colors.grey.shade300,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                "Piutang (Orang Ngutang)",
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  color: debtType == 'receivable'
-                                      ? Colors.green
-                                      : Colors.grey,
+                                alignment: Alignment.center,
+                                child: Text(
+                                  "Utang",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: debtType == 'payable' ? Colors.white : Colors.grey.shade600,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setSheetState(() => debtType = 'receivable'),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: debtType == 'receivable' ? Colors.green : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: debtType == 'receivable' ? [
+                                    BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))
+                                  ] : [],
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  "Piutang",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: debtType == 'receivable' ? Colors.white : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -263,13 +261,15 @@ class _DebtScreenState extends State<DebtScreen>
                       onChanged: (val) {
                         final s = val.replaceAll(RegExp(r'[^0-9]'), '');
                         if (s.isNotEmpty) {
-                          final formatted = currencyFormat.format(int.parse(s));
+                          final formatted = inputFormat.format(int.parse(s)).trim();
                           amountController.value = TextEditingValue(
                             text: formatted,
                             selection: TextSelection.collapsed(
                               offset: formatted.length,
                             ),
                           );
+                        } else {
+                          amountController.value = const TextEditingValue(text: '');
                         }
                       },
                     ),
@@ -468,15 +468,16 @@ class _DebtScreenState extends State<DebtScreen>
                               
                               // Create Transaction history for the wallet
                               // We should find a category or create a system category for debt
-                              final catRes = await _supabase.from('categories').select().eq('user_id', userId).eq('name', 'Sistem: Utang/Piutang').maybeSingle();
+                              bool isExp = debtType == 'receivable';
+                              String catName = isExp ? 'Sistem: Uang Keluar (Utang/Piutang)' : 'Sistem: Uang Masuk (Utang/Piutang)';
+                              final catRes = await _supabase.from('categories').select().eq('user_id', userId).eq('name', catName).maybeSingle();
                               int? sysCatId;
                               if (catRes == null) {
                                 final insertedCat = await _supabase.from('categories').insert({
                                   'user_id': userId,
-                                  'name': 'Sistem: Utang/Piutang',
-                                  'icon': 'PhosphorIconsFill.handCoins',
-                                  'color': '#009688',
-                                  'is_expense': debtType == 'receivable', 
+                                  'name': catName,
+                                  'icon_name': 'bank',
+                                  'is_expense': isExp, 
                                 }).select().single();
                                 sysCatId = insertedCat['id'];
                               } else {
@@ -729,17 +730,40 @@ class _DebtScreenState extends State<DebtScreen>
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 3,
-          labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-          tabs: const [
-            Tab(text: "Utang Saya"),
-            Tab(text: "Piutang"),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(65),
+          child: Container(
+            height: 50,
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              indicator: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              ),
+              labelColor: AppColors.primary,
+              unselectedLabelColor: Colors.grey.shade500,
+              labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
+              tabs: const [
+                Tab(text: "Utang Saya"),
+                Tab(text: "Piutang"),
+              ],
+            ),
+          ),
         ),
       ),
       body: _isLoading
@@ -757,17 +781,11 @@ class _DebtScreenState extends State<DebtScreen>
                 ),
               ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDebtSheet(context),
         backgroundColor: AppColors.primary,
-        icon: const Icon(PhosphorIconsBold.plus, color: Colors.white),
-        label: Text(
-          "Catat Utang",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        shape: const CircleBorder(),
+        child: const Icon(PhosphorIconsBold.plus, color: Colors.white),
       ),
     );
   }
