@@ -676,8 +676,18 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(inv.name, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-                                  Text(inv.type, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
+                                  Text(
+                                    inv.name, 
+                                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    inv.type, 
+                                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   const SizedBox(height: 8),
                                   Text("Modal: ${_currencyFormat.format(inv.capitalAmount)}", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
                                 ],

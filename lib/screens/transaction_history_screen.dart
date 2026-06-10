@@ -970,8 +970,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                   isPureMutation
                                       ? PhosphorIconsFill.bank
                                       : (widget.isExpense
-                                            ? PhosphorIcons.arrowDown()
-                                            : PhosphorIcons.arrowUp()),
+                                            ? PhosphorIcons.arrowUp()
+                                            : PhosphorIcons.arrowDown()),
                                   color: isPureMutation ? Colors.teal : color,
                                   size: 20,
                                 ),

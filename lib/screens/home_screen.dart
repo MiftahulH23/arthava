@@ -242,7 +242,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required NumberFormat currencyFormat,
   }) {
     return Expanded(
-      child: Column(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -252,20 +253,28 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            currencyFormat.format(amount),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  currencyFormat.format(amount),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -446,36 +455,44 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Column(
                           children: [
-                            _buildCardStatItem(
-                              icon: PhosphorIconsFill.arrowDown,
-                              color: AppColors.income,
-                              title: "Masuk",
-                              amount: _monthlyIncome,
-                              currencyFormat: currencyFormat,
+                            Row(
+                              children: [
+                                _buildCardStatItem(
+                                  icon: PhosphorIconsFill.arrowDown,
+                                  color: AppColors.income,
+                                  title: "Masuk",
+                                  amount: _monthlyIncome,
+                                  currencyFormat: currencyFormat,
+                                ),
+                                _buildCardStatItem(
+                                  icon: PhosphorIconsFill.arrowUp,
+                                  color: AppColors.expense,
+                                  title: "Keluar",
+                                  amount: _monthlyExpense,
+                                  currencyFormat: currencyFormat,
+                                ),
+                              ],
                             ),
-                            _buildCardStatItem(
-                              icon: PhosphorIconsFill.arrowUp,
-                              color: AppColors.expense,
-                              title: "Keluar",
-                              amount: _monthlyExpense,
-                              currencyFormat: currencyFormat,
-                            ),
-                            _buildCardStatItem(
-                              icon: PhosphorIconsFill.piggyBank,
-                              color: Colors.tealAccent,
-                              title: "Tabungan",
-                              amount: _totalSavings,
-                              currencyFormat: currencyFormat,
-                            ),
-                            _buildCardStatItem(
-                              icon: PhosphorIconsFill.chartLineUp,
-                              color: Colors.orangeAccent,
-                              title: "Investasi",
-                              amount: _totalInvestments,
-                              currencyFormat: currencyFormat,
+                            const SizedBox(height: 15),
+                            Row(
+                              children: [
+                                _buildCardStatItem(
+                                  icon: PhosphorIconsFill.piggyBank,
+                                  color: Colors.tealAccent,
+                                  title: "Tabungan",
+                                  amount: _totalSavings,
+                                  currencyFormat: currencyFormat,
+                                ),
+                                _buildCardStatItem(
+                                  icon: PhosphorIconsFill.chartLineUp,
+                                  color: Colors.orangeAccent,
+                                  title: "Investasi",
+                                  amount: _totalInvestments,
+                                  currencyFormat: currencyFormat,
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -960,17 +977,28 @@ class _HomeScreenState extends State<HomeScreen> {
                               decoration: BoxDecoration(
                                 border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              child: Column(
                                 children: [
-                                  _buildCardStatItem(
-                                    icon: PhosphorIconsFill.arrowDown, color: AppColors.income, title: "Masuk", amount: _monthlyIncome, currencyFormat: currencyFormat,
+                                  Row(
+                                    children: [
+                                      _buildCardStatItem(
+                                        icon: PhosphorIconsFill.arrowDown, color: AppColors.income, title: "Masuk", amount: _monthlyIncome, currencyFormat: currencyFormat,
+                                      ),
+                                      _buildCardStatItem(
+                                        icon: PhosphorIconsFill.arrowUp, color: AppColors.expense, title: "Keluar", amount: _monthlyExpense, currencyFormat: currencyFormat,
+                                      ),
+                                    ],
                                   ),
-                                  _buildCardStatItem(
-                                    icon: PhosphorIconsFill.arrowUp, color: AppColors.expense, title: "Keluar", amount: _monthlyExpense, currencyFormat: currencyFormat,
-                                  ),
-                                  _buildCardStatItem(
-                                    icon: PhosphorIconsFill.piggyBank, color: Colors.tealAccent, title: "Tabungan", amount: _totalSavings, currencyFormat: currencyFormat,
+                                  const SizedBox(height: 15),
+                                  Row(
+                                    children: [
+                                      _buildCardStatItem(
+                                        icon: PhosphorIconsFill.piggyBank, color: Colors.tealAccent, title: "Tabungan", amount: _totalSavings, currencyFormat: currencyFormat,
+                                      ),
+                                      _buildCardStatItem(
+                                        icon: PhosphorIconsFill.chartLineUp, color: Colors.orangeAccent, title: "Investasi", amount: _totalInvestments, currencyFormat: currencyFormat,
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
