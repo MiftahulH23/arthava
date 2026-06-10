@@ -19,6 +19,8 @@ import 'package:catat_uang_app/screens/ai_advisor_screen.dart';
 import 'package:catat_uang_app/screens/calendar_screen.dart';
 import 'package:catat_uang_app/screens/wallet_screen.dart';
 import 'package:catat_uang_app/screens/debt_screen.dart';
+import 'package:catat_uang_app/screens/zakat_sedekah_screen.dart';
+import 'package:catat_uang_app/screens/investment_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _monthlyIncome = 0;
   double _monthlyExpense = 0;
   double _totalSavings = 0;
+  double _totalInvestments = 0;
 
   List<Map<String, dynamic>> _wallets = [];
   double _totalWalletBalance = 0;
@@ -162,6 +165,10 @@ class _HomeScreenState extends State<HomeScreen> {
           .from('savings')
           .select('amount')
           .eq('user_id', userId);
+      final invResponse = await _supabase
+          .from('investments')
+          .select('current_value')
+          .eq('user_id', userId);
       final walletsResponse = await _supabase
           .from('wallets')
           .select()
@@ -171,6 +178,11 @@ class _HomeScreenState extends State<HomeScreen> {
       double tempTotalSavings = 0;
       for (var row in savingsResponse as List) {
         tempTotalSavings += (row['amount'] as num).toDouble();
+      }
+
+      double tempTotalInv = 0;
+      for (var row in invResponse as List) {
+        tempTotalInv += (row['current_value'] as num).toDouble();
       }
 
       double tempTotalWallet = 0;
@@ -186,8 +198,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final date = DateTime.parse(item['date']);
         final isExpense = item['categories']['is_expense'] as bool;
         final note = item['note']?.toString() ?? '';
-        final catName =
-            item['categories']['name']?.toString().toLowerCase() ?? '';
+        final catName = item['categories']['name'].toString().toLowerCase();
+
         final isPureMutation =
             note.contains('[SAVING_ID:') &&
             (catName.contains('tabung') || catName.contains('cair'));
@@ -206,6 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _monthlyIncome = displayIncome;
           _monthlyExpense = displayExpense;
           _totalSavings = tempTotalSavings;
+          _totalInvestments = tempTotalInv;
           _wallets = List<Map<String, dynamic>>.from(walletsResponse);
           _totalWalletBalance = tempTotalWallet;
           _isLoading = false;
@@ -455,6 +468,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.tealAccent,
                               title: "Tabungan",
                               amount: _totalSavings,
+                              currencyFormat: currencyFormat,
+                            ),
+                            _buildCardStatItem(
+                              icon: PhosphorIconsFill.chartLineUp,
+                              color: Colors.orangeAccent,
+                              title: "Investasi",
+                              amount: _totalInvestments,
                               currencyFormat: currencyFormat,
                             ),
                           ],
@@ -756,15 +776,26 @@ class _HomeScreenState extends State<HomeScreen> {
                         _buildFeatureButton(
                           icon: PhosphorIconsFill.chartLineUp,
                           label: "Investasi",
-                          color: Colors.cyan,
-                          onTap: () => _showComingSoon(context, "Investasi"),
+                          color: Colors.orangeAccent,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const InvestmentScreen(),
+                              ),
+                            ).then((_) => _refreshData());
+                          },
                         ),
                         _buildFeatureButton(
                           icon: PhosphorIconsFill.handHeart,
                           label: "Zakat",
                           color: Colors.green.shade700,
-                          onTap: () =>
-                              _showComingSoon(context, "Zakat & Sedekah"),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ZakatSedekahScreen(),
+                            ),
+                          ).then((_) => _refreshData()),
                         ),
                       ],
                     ),
@@ -1116,12 +1147,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DebtScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.chartLineUp, label: "Investasi", color: Colors.cyan,
-                      onTap: () => _showComingSoon(context, "Investasi"),
+                      icon: PhosphorIconsFill.chartLineUp,
+                      label: "Investasi",
+                      color: Colors.orangeAccent,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const InvestmentScreen(),
+                          ),
+                        ).then((_) => _refreshData());
+                      },
                     ),
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.handHeart, label: "Zakat", color: Colors.green.shade700,
-                      onTap: () => _showComingSoon(context, "Zakat & Sedekah"),
+                      onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ZakatSedekahScreen(),
+                            ),
+                          ).then((_) => _refreshData()),
                     ),
                   ],
                 ),

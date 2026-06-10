@@ -15,10 +15,9 @@ class DebtScreen extends StatefulWidget {
   State<DebtScreen> createState() => _DebtScreenState();
 }
 
-class _DebtScreenState extends State<DebtScreen>
-    with SingleTickerProviderStateMixin {
+class _DebtScreenState extends State<DebtScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
-  late TabController _tabController;
+  bool _isMyDebt = true;
 
   bool _isLoading = true;
   List<Map<String, dynamic>> _myDebts = [];
@@ -41,13 +40,11 @@ class _DebtScreenState extends State<DebtScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _fetchData();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -95,7 +92,7 @@ class _DebtScreenState extends State<DebtScreen>
     final nameController = TextEditingController();
     final amountController = TextEditingController();
     DateTime? selectedDate;
-    String debtType = _tabController.index == 0 ? 'payable' : 'receivable';
+    String debtType = _isMyDebt ? 'payable' : 'receivable';
     bool affectWallet = false;
     int? selectedWalletId;
 
@@ -730,62 +727,82 @@ class _DebtScreenState extends State<DebtScreen>
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(65),
-          child: Container(
-            height: 50,
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              indicator: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  )
-                ]
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(15),
               ),
-              labelColor: AppColors.primary,
-              unselectedLabelColor: Colors.grey.shade500,
-              labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
-              tabs: const [
-                Tab(text: "Utang Saya"),
-                Tab(text: "Piutang"),
-              ],
+              child: Row(
+                children: [
+                  _buildToggleBtn("Utang Saya", true),
+                  _buildToggleBtn("Piutang", false),
+                ],
+              ),
             ),
           ),
-        ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildDebtList(
+                    _isMyDebt ? _myDebts : _theirDebts,
+                    _isMyDebt 
+                        ? "Belum ada utang yang dicatat.\nAlhamdulillah!"
+                        : "Belum ada orang yang ngutang ke kamu.",
+                  ),
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildDebtList(
-                  _myDebts,
-                  "Belum ada utang yang dicatat.\nAlhamdulillah!",
-                ),
-                _buildDebtList(
-                  _theirDebts,
-                  "Belum ada orang yang ngutang ke kamu.",
-                ),
-              ],
-            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDebtSheet(context),
         backgroundColor: AppColors.primary,
         shape: const CircleBorder(),
         child: const Icon(PhosphorIconsBold.plus, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildToggleBtn(String title, bool isMyDebtBtn) {
+    final bool isSelected = _isMyDebt == isMyDebtBtn;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          if (_isMyDebt != isMyDebtBtn) {
+            setState(() {
+              _isMyDebt = isMyDebtBtn;
+            });
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 5,
+                    ),
+                  ]
+                : [],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.bold,
+              color: isSelected ? AppColors.primary : Colors.grey,
+            ),
+          ),
+        ),
       ),
     );
   }

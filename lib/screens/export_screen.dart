@@ -332,6 +332,13 @@ class _ExportScreenState extends State<ExportScreen> {
       var sortedIncomesList = incomeByCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
       Map<String, double> sortedIncomeByCategory = Map.fromEntries(sortedIncomesList);
 
+      // Tarik data investasi
+      final invRes = await _supabase.from('investments').select('current_value').eq('user_id', userId);
+      double totalInvestments = 0;
+      for (var row in invRes as List) {
+        totalInvestments += (row['current_value'] as num).toDouble();
+      }
+
       final pdfBytes = await PdfService().generateReport(
         month: _isCustomRange ? startDate : _selectedMonth, 
         transactions: validTransactions,
@@ -339,6 +346,7 @@ class _ExportScreenState extends State<ExportScreen> {
         totalIncome: income,
         totalExpense: expense,
         totalSavings: totalSavings, 
+        totalInvestments: totalInvestments,
         mainCashBalance: totalWalletBalance, 
         isCustomRange: _isCustomRange,
         endDate: endDate,
