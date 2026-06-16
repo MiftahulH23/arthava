@@ -443,6 +443,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
               padding: EdgeInsets.only(
                 left: 24,
                 right: 24,
@@ -497,100 +500,109 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    "Kategori",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _categories.map((c) {
-                      final id = c['id'] as int;
-                      final isSelected = _selectedCategoryIds.contains(id);
-                      final color = widget.isExpense ? AppColors.expense : AppColors.income;
-                      return FilterChip(
-                        label: Text(c['name']),
-                        selected: isSelected,
-                        onSelected: (val) {
-                          setSheetState(() {
-                            if (val) {
-                              _selectedCategoryIds.add(id);
-                            } else {
-                              _selectedCategoryIds.remove(id);
-                            }
-                          });
-                          setState(() {});
-                        },
-                        selectedColor: color.withOpacity(0.2),
-                        checkmarkColor: color,
-                        labelStyle: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: isSelected ? color : Colors.black87,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                        backgroundColor: Colors.grey.shade50,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(
-                            color: isSelected ? color : Colors.grey.shade200,
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Kategori",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                        showCheckmark: false,
-                      );
-                    }).toList(),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _categories.map((c) {
+                              final id = c['id'] as int;
+                              final isSelected = _selectedCategoryIds.contains(id);
+                              final color = widget.isExpense ? AppColors.expense : AppColors.income;
+                              return FilterChip(
+                                label: Text(c['name']),
+                                selected: isSelected,
+                                onSelected: (val) {
+                                  setSheetState(() {
+                                    if (val) {
+                                      _selectedCategoryIds.add(id);
+                                    } else {
+                                      _selectedCategoryIds.remove(id);
+                                    }
+                                  });
+                                  setState(() {});
+                                },
+                                selectedColor: color.withOpacity(0.2),
+                                checkmarkColor: color,
+                                labelStyle: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: isSelected ? color : Colors.black87,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                                backgroundColor: Colors.grey.shade50,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  side: BorderSide(
+                                    color: isSelected ? color : Colors.grey.shade200,
+                                  ),
+                                ),
+                                showCheckmark: false,
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            "Dompet",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _walletNames.entries.map((e) {
+                              final id = e.key;
+                              final isSelected = _selectedWalletIds.contains(id);
+                              final color = widget.isExpense ? AppColors.expense : AppColors.income;
+                              return FilterChip(
+                                label: Text(e.value),
+                                selected: isSelected,
+                                onSelected: (val) {
+                                  setSheetState(() {
+                                    if (val) {
+                                      _selectedWalletIds.add(id);
+                                    } else {
+                                      _selectedWalletIds.remove(id);
+                                    }
+                                  });
+                                  setState(() {});
+                                },
+                                selectedColor: color.withOpacity(0.2),
+                                checkmarkColor: color,
+                                labelStyle: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: isSelected ? color : Colors.black87,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                                backgroundColor: Colors.grey.shade50,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  side: BorderSide(
+                                    color: isSelected ? color : Colors.grey.shade200,
+                                  ),
+                                ),
+                                showCheckmark: false,
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    "Dompet",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _walletNames.entries.map((e) {
-                      final id = e.key;
-                      final isSelected = _selectedWalletIds.contains(id);
-                      final color = widget.isExpense ? AppColors.expense : AppColors.income;
-                      return FilterChip(
-                        label: Text(e.value),
-                        selected: isSelected,
-                        onSelected: (val) {
-                          setSheetState(() {
-                            if (val) {
-                              _selectedWalletIds.add(id);
-                            } else {
-                              _selectedWalletIds.remove(id);
-                            }
-                          });
-                          setState(() {});
-                        },
-                        selectedColor: color.withOpacity(0.2),
-                        checkmarkColor: color,
-                        labelStyle: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: isSelected ? color : Colors.black87,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                        backgroundColor: Colors.grey.shade50,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(
-                            color: isSelected ? color : Colors.grey.shade200,
-                          ),
-                        ),
-                        showCheckmark: false,
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
                     height: 50,

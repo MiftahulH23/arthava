@@ -466,7 +466,7 @@ class _DebtScreenState extends State<DebtScreen> {
                               // Create Transaction history for the wallet
                               // We should find a category or create a system category for debt
                               bool isExp = debtType == 'receivable';
-                              String catName = isExp ? 'Sistem: Uang Keluar (Utang/Piutang)' : 'Sistem: Uang Masuk (Utang/Piutang)';
+                              String catName = isExp ? 'Utang/Piutang' : 'Utang/Piutang';
                               final catRes = await _supabase.from('categories').select().eq('user_id', userId).eq('name', catName).maybeSingle();
                               int? sysCatId;
                               if (catRes == null) {
