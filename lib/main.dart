@@ -3,7 +3,10 @@ import 'package:catat_uang_app/core/theme_mode_manager.dart';
 import 'package:catat_uang_app/screens/home_screen.dart';
 import 'package:catat_uang_app/screens/login_screen.dart';
 import 'package:catat_uang_app/screens/lock_screen.dart'; // [NEW] Import Halaman Gembok
+import 'package:catat_uang_app/theme/app_forui_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forui/forui.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -21,7 +24,7 @@ void main() async {
 
   await initializeDateFormatting('id_ID', null);
 
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -103,6 +106,13 @@ class MyApp extends StatelessWidget {
           // Jika User sudah Login, arahkan ke Gembok (LockScreen) dulu.
           // Jika belum Login, suruh LoginScreen.
           home: user != null ? const HomeScreen() : const LoginScreen(),
+
+          // 5. Bungkus dengan FTheme supaya widget forui tersedia di semua
+          // screen yang dinavigasi lewat MaterialApp ini.
+          builder: (context, child) => FTheme(
+            data: appForuiTheme,
+            child: child!,
+          ),
         );
       },
     );
