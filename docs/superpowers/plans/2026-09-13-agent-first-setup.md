@@ -672,15 +672,15 @@ for conventions (colors, icons, font, naming, file locations).
    `feat(<scope>): <summary>` is the usual type for a new feature.
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 4 .claude/skills/add-feature/SKILL.md
 ```
-Expected: `---`, `name: add-feature`, `description: ...`, `---`.
+Ekspektasi: `---`, `name: add-feature`, `description: ...`, `---`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/skills/add-feature/SKILL.md
@@ -689,12 +689,12 @@ git commit -m "chore(skills): add add-feature skill"
 
 ---
 
-## Task 11: `run-and-screenshot` skill
+## Task 11: Skill `run-and-screenshot`
 
 **Files:**
-- Create: `.claude/skills/run-and-screenshot/SKILL.md`
+- Buat: `.claude/skills/run-and-screenshot/SKILL.md`
 
-- [ ] **Step 1: Create the skill file**
+- [ ] **Langkah 1: Buat file skill**
 
 ```markdown
 ---
@@ -734,15 +734,15 @@ procedure before reporting UI work complete.
    claiming the change was visually verified.
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 4 .claude/skills/run-and-screenshot/SKILL.md
 ```
-Expected: `---`, `name: run-and-screenshot`, `description: ...`, `---`.
+Ekspektasi: `---`, `name: run-and-screenshot`, `description: ...`, `---`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/skills/run-and-screenshot/SKILL.md
@@ -751,12 +751,12 @@ git commit -m "chore(skills): add run-and-screenshot skill"
 
 ---
 
-## Task 12: `supabase-schema-change` skill
+## Task 12: Skill `supabase-schema-change`
 
 **Files:**
-- Create: `.claude/skills/supabase-schema-change/SKILL.md`
+- Buat: `.claude/skills/supabase-schema-change/SKILL.md`
 
-- [ ] **Step 1: Create the skill file**
+- [ ] **Langkah 1: Buat file skill**
 
 ```markdown
 ---
@@ -796,15 +796,15 @@ are drafted here and applied manually by the user.
    renders with the new shape.
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 4 .claude/skills/supabase-schema-change/SKILL.md
 ```
-Expected: `---`, `name: supabase-schema-change`, `description: ...`, `---`.
+Ekspektasi: `---`, `name: supabase-schema-change`, `description: ...`, `---`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/skills/supabase-schema-change/SKILL.md
@@ -813,19 +813,19 @@ git commit -m "chore(skills): add supabase-schema-change skill"
 
 ---
 
-## Task 13: `dompetku-feature-spec` skill
+## Task 13: Skill `dompetku-feature-spec`
 
 **Files:**
-- Create: `.claude/skills/dompetku-feature-spec/SKILL.md`
+- Buat: `.claude/skills/dompetku-feature-spec/SKILL.md`
 
 **Interfaces:**
-- Consumes: `superpowers:brainstorming` (external plugin skill, already
-  installed) — this skill extends it, never replaces it.
-- Consumes (by name, not file link): `supabase-schema-agent`,
-  `flutter-ui-builder`, `flutter-qa-writer` subagent names (Tasks 5, 7, 8)
-  for the Data/UI/Testing spec mapping.
+- Mengonsumsi: `superpowers:brainstorming` (skill plugin eksternal, sudah
+  terpasang) — skill ini memperluasnya, tidak pernah menggantikannya.
+- Mengonsumsi (berdasarkan nama, bukan tautan file): nama subagent
+  `supabase-schema-agent`, `flutter-ui-builder`, `flutter-qa-writer`
+  (Task 5, 7, 8) untuk pemetaan spec Data/UI/Testing.
 
-- [ ] **Step 1: Create the skill file**
+- [ ] **Langkah 1: Buat file skill**
 
 ```markdown
 ---
@@ -903,15 +903,15 @@ this is the same rule brainstorming already follows; this skill exists
 to make sure DompetKu-specific ambiguity isn't overlooked.
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 4 .claude/skills/dompetku-feature-spec/SKILL.md
 ```
-Expected: `---`, `name: dompetku-feature-spec`, `description: ...`, `---`.
+Ekspektasi: `---`, `name: dompetku-feature-spec`, `description: ...`, `---`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/skills/dompetku-feature-spec/SKILL.md
@@ -920,43 +920,44 @@ git commit -m "chore(skills): add dompetku-feature-spec skill"
 
 ---
 
-## Task 14: Remove dead legacy scripts
+## Task 14: Hapus skrip legacy yang sudah mati
 
 **Files:**
-- Delete: `update_home_screen.py`
-- Delete: `update_stats.dart`
-- Delete: `update_trx.dart`
+- Hapus: `update_home_screen.py`
+- Hapus: `update_stats.dart`
+- Hapus: `update_trx.dart`
 
 **Interfaces:**
-- None — these files have no incoming references (already confirmed via
-  `git grep` during spec research).
+- Tidak ada — file-file ini tidak memiliki referensi masuk (sudah
+  dikonfirmasi melalui `git grep` saat riset spec).
 
-- [ ] **Step 1: Re-confirm no references exist**
+- [ ] **Langkah 1: Konfirmasi ulang tidak ada referensi**
 
-Run:
+Jalankan:
 ```bash
 git grep -n "update_home_screen\|update_stats\|update_trx" -- . ':!update_home_screen.py' ':!update_stats.dart' ':!update_trx.dart'
 ```
-Expected: no output (empty). If this now shows a match, stop and
-investigate before deleting — do not proceed with deletion.
+Ekspektasi: tidak ada output (kosong). Jika sekarang muncul hasil yang
+cocok, berhenti dan investigasi dulu sebelum menghapus — jangan
+lanjutkan penghapusan.
 
-- [ ] **Step 2: Delete the files**
+- [ ] **Langkah 2: Hapus file-file tersebut**
 
 ```bash
 git rm update_home_screen.py update_stats.dart update_trx.dart
 ```
 
-- [ ] **Step 3: Verify `flutter analyze` still passes**
+- [ ] **Langkah 3: Verifikasi `flutter analyze` tetap lolos**
 
-Run:
+Jalankan:
 ```bash
 flutter analyze
 ```
-Expected: no new errors related to the deleted files (they were never
-part of the analyzed Dart package graph, so this should be a no-op
-confirmation).
+Ekspektasi: tidak ada error baru terkait file yang dihapus (file-file
+tersebut memang tidak pernah menjadi bagian dari graph paket Dart yang
+dianalisis, jadi ini seharusnya hanya konfirmasi no-op).
 
-- [ ] **Step 4: Commit**
+- [ ] **Langkah 4: Commit**
 
 ```bash
 git commit -m "chore: remove dead legacy one-off migration scripts"
@@ -964,46 +965,48 @@ git commit -m "chore: remove dead legacy one-off migration scripts"
 
 ---
 
-## Task 15: Final verification
+## Task 15: Verifikasi akhir
 
-**Files:** none (verification only)
+**Files:** tidak ada (hanya verifikasi)
 
-- [ ] **Step 1: Confirm Claude Code discovers the new subagents and skills**
+- [ ] **Langkah 1: Konfirmasi Claude Code menemukan subagent dan skill baru**
 
-Start a fresh Claude Code session in this repo (or ask the current one,
-if it re-reads `.claude/`) to list available subagents and skills.
-Expected: `flutter-ui-builder`, `flutter-code-reviewer`,
-`supabase-schema-agent`, `flutter-qa-writer`, `git-committer` appear as
-agents; `add-feature`, `run-and-screenshot`, `supabase-schema-change`,
-`dompetku-feature-spec` appear as skills.
+Mulai sesi Claude Code baru di repo ini (atau tanyakan pada sesi yang
+sedang berjalan, jika ia membaca ulang `.claude/`) untuk mendaftar
+subagent dan skill yang tersedia. Ekspektasi: `flutter-ui-builder`,
+`flutter-code-reviewer`, `supabase-schema-agent`, `flutter-qa-writer`,
+`git-committer` muncul sebagai agent; `add-feature`, `run-and-screenshot`,
+`supabase-schema-change`, `dompetku-feature-spec` muncul sebagai skill.
 
-- [ ] **Step 2: Confirm the commit-msg hook survives a fresh clone scenario**
+- [ ] **Langkah 2: Konfirmasi hook commit-msg bertahan pada skenario clone baru**
 
-Run:
+Jalankan:
 ```bash
 git config --get core.hooksPath
 ```
-Expected: `.githooks`. Note in `AGENTS.md`'s Git Hooks section (already
-written in Task 2) that this is a one-time local step per clone — no
-further action needed here, this step just confirms current state.
+Ekspektasi: `.githooks`. Catat di bagian Git Hooks pada `AGENTS.md`
+(sudah ditulis di Task 2) bahwa ini adalah langkah lokal satu kali per
+clone — tidak ada tindakan lebih lanjut yang diperlukan di sini, langkah
+ini hanya mengonfirmasi kondisi saat ini.
 
-- [ ] **Step 3: Confirm `flutter analyze` and `flutter test` are clean**
+- [ ] **Langkah 3: Konfirmasi `flutter analyze` dan `flutter test` bersih**
 
-Run:
+Jalankan:
 ```bash
 flutter analyze
 flutter test
 ```
-Expected: `flutter analyze` shows no new issues introduced by this
-plan; `flutter test` passes (the pre-existing default counter-app test
-is unrelated to this plan's scope and should be unaffected).
+Ekspektasi: `flutter analyze` tidak menunjukkan masalah baru yang
+diakibatkan oleh rencana ini; `flutter test` lolos (test default
+counter-app yang sudah ada sebelumnya tidak terkait dengan cakupan
+rencana ini dan seharusnya tidak terpengaruh).
 
-- [ ] **Step 4: Final status check**
+- [ ] **Langkah 4: Pemeriksaan status akhir**
 
-Run:
+Jalankan:
 ```bash
 git status
 git log --oneline -15
 ```
-Expected: clean working tree, 14 new commits (Tasks 1-14) since the
-spec commits, each with a Conventional Commit message.
+Ekspektasi: working tree bersih, 14 commit baru (Task 1-14) sejak
+commit spec, masing-masing dengan pesan Conventional Commit.
