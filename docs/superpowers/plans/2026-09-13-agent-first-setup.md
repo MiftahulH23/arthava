@@ -222,6 +222,7 @@ These directories are specific to Claude Code (other tools reading this
 | `add-feature` | skill | Adding a new feature/screen end-to-end. |
 | `run-and-screenshot` | skill | Launching the app and visually verifying a UI change. |
 | `supabase-schema-change` | skill | Safely changing Supabase schema and syncing Dart code. |
+| `dompetku-feature-spec` | skill | Alongside brainstorming, when the user describes a new feature/refactor in free-form language. |
 ```
 
 - [ ] **Step 2: Verify required sections are present**
@@ -811,7 +812,102 @@ git commit -m "chore(skills): add supabase-schema-change skill"
 
 ---
 
-## Task 13: Remove dead legacy scripts
+## Task 13: `dompetku-feature-spec` skill
+
+**Files:**
+- Create: `.claude/skills/dompetku-feature-spec/SKILL.md`
+
+**Interfaces:**
+- Consumes: `superpowers:brainstorming` (external plugin skill, already
+  installed) — this skill extends it, never replaces it.
+- Consumes (by name, not file link): `supabase-schema-agent`,
+  `flutter-ui-builder`, `flutter-qa-writer` subagent names (Tasks 5, 7, 8)
+  for the Data/UI/Testing spec mapping.
+
+- [ ] **Step 1: Create the skill file**
+
+```markdown
+---
+name: dompetku-feature-spec
+description: Use alongside superpowers:brainstorming whenever the user describes a new DompetKu feature or refactor in free-form language. Adds DompetKu-specific clarifying questions and structures the resulting spec so flutter-ui-builder, supabase-schema-agent, and other subagents can act on it directly. Never use instead of brainstorming — only to extend its clarifying-questions and design-presentation steps for this repo.
+---
+
+# DompetKu Feature/Refactor Spec Intake
+
+Extends `superpowers:brainstorming` for this repo. Follow brainstorming's
+own process in full (classify spike/bounded/architectural, ask one
+question at a time, propose approaches, present design, get approval,
+write the spec to `docs/superpowers/specs/`) — this skill only adds what
+to ask and how to structure the output for DompetKu specifically. It is
+never a substitute for brainstorming's approval gate.
+
+## Additional clarifying questions to weave in
+
+Ask these one at a time, only the ones relevant to what the user
+described — don't ask all of them mechanically, and don't ask ones
+brainstorming's own questions already answered:
+
+- **Screens touched**: which existing screen(s) in `lib/screens/` does
+  this affect, or is it a new screen entirely?
+- **Data**: does this need a new Supabase table/column, or does it reuse
+  existing data? If new/changed schema, note that `supabase-schema-agent`
+  and the `supabase-schema-change` skill will be needed during
+  implementation.
+- **AI/Gemini involvement**: does this feature need `gemini_service.dart`
+  (receipt scanning, advisory) or is it pure CRUD?
+- **Cross-cutting conventions**: does this affect theming/colors/icons
+  (see `AGENTS.md` Conventions)? If so, note it explicitly so the
+  resulting work updates `AGENTS.md` per its sync rule.
+- **Scope boundary**: is this additive (new screen/feature) or does it
+  change behavior of an existing screen (refactor)? For a refactor, ask
+  explicitly what should NOT change, to avoid scope creep during
+  implementation.
+
+## Structuring the spec for this repo's subagents
+
+When brainstorming reaches its "Present the design" / spec-writing step,
+structure the design into sections that map cleanly onto this repo's
+subagents:
+
+- A **Data** section (Supabase schema + model/service changes) — feeds
+  `supabase-schema-agent`.
+- A **UI** section (screens/widgets, styling) — feeds `flutter-ui-builder`.
+- A **Testing** section (what's worth testing given existing patterns)
+  — feeds `flutter-qa-writer`.
+
+A section can be empty/omitted when the feature genuinely doesn't touch
+that area (e.g. a pure UI tweak has no Data section) — don't pad the spec
+with empty headings.
+
+This mapping doesn't change brainstorming's spec file location or format
+(`docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`) — it just makes
+sure the spec reads as separable, actionable pieces once implementation
+begins.
+
+If anything the user said is ambiguous or conflicts with an existing
+`AGENTS.md` convention, ask about it explicitly rather than guessing —
+this is the same rule brainstorming already follows; this skill exists
+to make sure DompetKu-specific ambiguity isn't overlooked.
+```
+
+- [ ] **Step 2: Verify frontmatter is well-formed**
+
+Run:
+```bash
+head -n 4 .claude/skills/dompetku-feature-spec/SKILL.md
+```
+Expected: `---`, `name: dompetku-feature-spec`, `description: ...`, `---`.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add .claude/skills/dompetku-feature-spec/SKILL.md
+git commit -m "chore(skills): add dompetku-feature-spec skill"
+```
+
+---
+
+## Task 14: Remove dead legacy scripts
 
 **Files:**
 - Delete: `update_home_screen.py`
@@ -855,7 +951,7 @@ git commit -m "chore: remove dead legacy one-off migration scripts"
 
 ---
 
-## Task 14: Final verification
+## Task 15: Final verification
 
 **Files:** none (verification only)
 
@@ -865,8 +961,8 @@ Start a fresh Claude Code session in this repo (or ask the current one,
 if it re-reads `.claude/`) to list available subagents and skills.
 Expected: `flutter-ui-builder`, `flutter-code-reviewer`,
 `supabase-schema-agent`, `flutter-qa-writer`, `git-committer` appear as
-agents; `add-feature`, `run-and-screenshot`, `supabase-schema-change`
-appear as skills.
+agents; `add-feature`, `run-and-screenshot`, `supabase-schema-change`,
+`dompetku-feature-spec` appear as skills.
 
 - [ ] **Step 2: Confirm the commit-msg hook survives a fresh clone scenario**
 
@@ -896,5 +992,5 @@ Run:
 git status
 git log --oneline -15
 ```
-Expected: clean working tree, 13 new commits (Tasks 1-13) since the
+Expected: clean working tree, 14 new commits (Tasks 1-14) since the
 spec commits, each with a Conventional Commit message.
