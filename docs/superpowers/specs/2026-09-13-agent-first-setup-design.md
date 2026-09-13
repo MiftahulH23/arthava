@@ -57,6 +57,10 @@ dead legacy scripts at the repo root.
 6. All subagent and skill definitions are written in English (per user
    instruction), for portability and consistency. `AGENTS.md` and
    `CLAUDE.md` are also written in English.
+7. Keep documented conventions (font, icon, color) in `AGENTS.md` in sync
+   with the code via a written rule plus a `PostToolUse` reminder hook,
+   while dependency/library changes still always require explicit user
+   confirmation (unchanged from standing behavior).
 
 ## Non-Goals
 
@@ -194,7 +198,29 @@ No Node/`package.json` dependency (project is Flutter-only). Instead:
 - The hook applies to anyone committing (human via IDE/CLI, or the
   `git-committer` subagent), regardless of tool.
 
-### 5. Cleanup
+### 5. Keeping `AGENTS.md` in sync — rule + reminder hook
+
+Two layers so documented conventions (font, icon set, color palette)
+don't drift from the actual code:
+
+- **Rule in `AGENTS.md`** itself: "When you change a documented
+  convention (font, icon package, color palette, theming approach),
+  update the Conventions section of this file in the same change. When a
+  change swaps or adds a library/dependency, that already requires
+  explicit user confirmation per standing tool-use rules — do that first,
+  then update this file."
+- **`PostToolUse` hook** (`.claude/settings.json`) that fires after
+  Edit/Write on convention-bearing files — `pubspec.yaml`,
+  `lib/core/colors.dart`, `lib/core/theme_mode_manager.dart` — and injects
+  a reminder into context: "This file affects a documented convention in
+  AGENTS.md — update it if this change alters font/icon/color/theme
+  conventions." This is a nudge, not a blocker: it doesn't stop the edit
+  or require confirmation itself, it just makes drift much less likely
+  across long or resumed sessions. Dependency/library changes remain
+  gated by the existing standing confirmation rule, unaffected by this
+  hook.
+
+### 6. Cleanup
 
 Delete (not move) the three legacy root scripts:
 `update_home_screen.py`, `update_stats.dart`, `update_trx.dart`.
