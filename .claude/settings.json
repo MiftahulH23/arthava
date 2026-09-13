@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "case \"$CLAUDE_TOOL_INPUT_FILE_PATH\" in *pubspec.yaml|*lib/core/colors.dart|*lib/core/theme_mode_manager.dart) echo 'Reminder: this file backs a documented convention in AGENTS.md (font/icon/color/theme). If this change alters that convention, update AGENTS.md in the same commit.' >&2 ;; esac"
+            "command": "input=$(cat); file_path=$(printf '%s' \"$input\" | grep -o '\"file_path\"[[:space:]]*:[[:space:]]*\"[^\"]*\"' | head -n1 | sed -E 's/.*\"file_path\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\\1/'); case \"$file_path\" in *pubspec.yaml|*lib/core/colors.dart|*lib/core/theme_mode_manager.dart) echo 'Reminder: this file backs a documented convention in AGENTS.md (font/icon/color/theme). If this change alters that convention, update AGENTS.md in the same commit.' >&2 ;; esac"
           }
         ]
       }
