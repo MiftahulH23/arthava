@@ -14,6 +14,7 @@ Future<T?> showAppBottomSheet<T>({
   return showFSheet<T>(
     context: context,
     side: FLayout.btt,
-    builder: builder,
+    mainAxisMaxRatio: null,
+    builder: (context) => SingleChildScrollView(child: builder(context)),
   );
 }

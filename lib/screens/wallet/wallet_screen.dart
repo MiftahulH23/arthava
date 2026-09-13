@@ -36,9 +36,7 @@ class WalletScreen extends ConsumerWidget {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: AppCard(
+            return AppCard(
                 title: Text("Transfer Antar Dompet", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -136,7 +134,6 @@ class WalletScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
             );
           },
         );
@@ -156,9 +153,7 @@ class WalletScreen extends ConsumerWidget {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: AppCard(
+            return AppCard(
                 title: Text(isEdit ? "Edit Dompet" : "Tambah Dompet", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -245,7 +240,6 @@ class WalletScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
             );
           },
         );
@@ -281,14 +275,15 @@ class WalletScreen extends ConsumerWidget {
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
                   itemCount: state.wallets.length,
-                  itemBuilder: (context, index) {
+                  itemBuilder: (itemContext, index) {
                     final wallet = state.wallets[index];
                     final colorHex = wallet.color ?? '#1E3A8A';
                     final walletColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
 
                     // Kartu gradient per-wallet TETAP dipertahankan seperti desain
                     // asli (bukan AppCard) — ini bukan bagian dari masalah
-                    // konsistensi tab/card generik yang dilaporkan user.
+                    // konsistensi tab/card generik yang dilaporkan user. Shadow +
+                    // ornamen dekoratif dikembalikan sesuai desain asli (review I-1).
                     return Container(
                       margin: const EdgeInsets.only(bottom: 20),
                       width: double.infinity,
@@ -298,68 +293,144 @@ class WalletScreen extends ConsumerWidget {
                           colors: [walletColor, walletColor.withOpacity(0.8)],
                           begin: Alignment.topLeft, end: Alignment.bottomRight,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: walletColor.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Stack(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(PhosphorIconsFill.wallet, color: Colors.white, size: 16),
-                                    const SizedBox(width: 10),
-                                    Text(wallet.name.toUpperCase(), style: GoogleFonts.poppins(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                                  ],
+                            Positioned(
+                              right: -20,
+                              top: -20,
+                              child: Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.1),
                                 ),
-                                Theme(
-                                  data: Theme.of(context).copyWith(iconTheme: const IconThemeData(color: Colors.white, size: 20)),
-                                  child: PopupMenuButton<String>(
-                                    onSelected: (value) {
-                                      if (value == 'edit') {
-                                        _showAddEditWalletSheet(context, ref, wallet: wallet);
-                                      } else if (value == 'delete') {
-                                        showDialog(
-                                          context: context,
-                                          builder: (ctx) => AlertDialog(
-                                            title: const Text("Hapus Dompet?"),
-                                            content: Text("Yakin ingin menghapus ${wallet.name}?"),
-                                            actions: [
-                                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal")),
-                                              TextButton(
-                                                onPressed: () async {
-                                                  Navigator.pop(ctx);
-                                                  try {
-                                                    await ref.read(walletProvider.notifier).deleteWallet(wallet.id);
-                                                    if (context.mounted) {
-                                                      AppNotification.success(context, "Dompet berhasil dihapus!");
-                                                    }
-                                                  } catch (_) {
-                                                    if (context.mounted) {
-                                                      AppNotification.error(context, "Gagal menghapus dompet. Pastikan tidak ada transaksi di dompet ini.");
-                                                    }
-                                                  }
-                                                },
-                                                child: const Text("Hapus", style: TextStyle(color: Colors.red)),
-                                              ),
-                                            ],
+                              ),
+                            ),
+                            Positioned(
+                              left: -15,
+                              bottom: -15,
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.05),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(PhosphorIconsFill.wallet, color: Colors.white, size: 16),
                                           ),
-                                        );
-                                      }
-                                    },
-                                    itemBuilder: (context) => const [
-                                      PopupMenuItem(value: 'edit', child: Text("Edit")),
-                                      PopupMenuItem(value: 'delete', child: Text("Hapus")),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            wallet.name.toUpperCase(),
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 1,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Theme(
+                                        data: Theme.of(itemContext).copyWith(iconTheme: const IconThemeData(color: Colors.white, size: 20)),
+                                        child: PopupMenuButton<String>(
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 120),
+                                          offset: const Offset(0, 30),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          onSelected: (value) {
+                                            if (value == 'edit') {
+                                              _showAddEditWalletSheet(itemContext, ref, wallet: wallet);
+                                            } else if (value == 'delete') {
+                                              showDialog(
+                                                context: itemContext,
+                                                builder: (ctx) => AlertDialog(
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                  backgroundColor: Colors.white,
+                                                  title: Text("Hapus Dompet?", style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                                                  content: Text("Yakin ingin menghapus ${wallet.name}?", style: GoogleFonts.poppins()),
+                                                  actions: [
+                                                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal", style: TextStyle(color: Colors.grey))),
+                                                    TextButton(
+                                                      onPressed: () async {
+                                                        Navigator.pop(ctx);
+                                                        // Pakai context milik build() (bukan context
+                                                        // baris list-item), karena baris ini bisa
+                                                        // unmount begitu list menyusut setelah hapus
+                                                        // (temuan review I-3) — supaya toast tetap
+                                                        // tampil walau dompet yang dihapus baris
+                                                        // terakhir/satu-satunya di list.
+                                                        try {
+                                                          await ref.read(walletProvider.notifier).deleteWallet(wallet.id);
+                                                          if (context.mounted) {
+                                                            AppNotification.success(context, "Dompet berhasil dihapus!");
+                                                          }
+                                                        } catch (_) {
+                                                          if (context.mounted) {
+                                                            AppNotification.error(context, "Gagal menghapus dompet. Pastikan tidak ada transaksi di dompet ini.");
+                                                          }
+                                                        }
+                                                      },
+                                                      child: const Text("Hapus", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          itemBuilder: (context) => [
+                                            PopupMenuItem(value: 'edit', child: Row(children: [const Icon(PhosphorIconsRegular.pencilSimple, color: Colors.blue, size: 18), const SizedBox(width: 8), Text("Edit", style: GoogleFonts.poppins(fontSize: 13))])),
+                                            PopupMenuItem(value: 'delete', child: Row(children: [const Icon(PhosphorIconsRegular.trash, color: Colors.red, size: 18), const SizedBox(width: 8), Text("Hapus", style: GoogleFonts.poppins(color: Colors.red, fontSize: 13))])),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    "TOTAL SALDO",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white.withOpacity(0.6),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  Text(
+                                    currencyFormat.format(wallet.balance),
+                                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 12),
-                            Text("TOTAL SALDO", style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.6), fontSize: 9, fontWeight: FontWeight.w600)),
-                            Text(currencyFormat.format(wallet.balance), style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -370,24 +441,62 @@ class WalletScreen extends ConsumerWidget {
           ? FloatingActionButton(
               onPressed: () => _showAddEditWalletSheet(context, ref),
               backgroundColor: AppColors.primary,
-              child: const Icon(Icons.add, color: Colors.white),
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: const Icon(Icons.add, color: Colors.white, size: 28),
             )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (state.wallets.length >= 2) ...[
-                  TextButton.icon(
-                    onPressed: () => _showTransferSheet(context, ref, state.wallets),
-                    icon: const Icon(PhosphorIconsBold.arrowsLeftRight, color: Colors.orange),
-                    label: const Text("Transfer", style: TextStyle(color: Colors.orange)),
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
                 ],
-                TextButton.icon(
-                  onPressed: () => _showAddEditWalletSheet(context, ref),
-                  icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
-                  label: const Text("Tambah", style: TextStyle(color: AppColors.primary)),
-                ),
-              ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (state.wallets.length >= 2) ...[
+                    GestureDetector(
+                      onTap: () => _showTransferSheet(context, ref, state.wallets),
+                      child: Row(
+                        children: [
+                          const Icon(PhosphorIconsBold.arrowsLeftRight, color: Colors.orange, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Transfer",
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.orange, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 24,
+                      width: 1,
+                      color: Colors.grey.shade300,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                  ],
+                  GestureDetector(
+                    onTap: () => _showAddEditWalletSheet(context, ref),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Tambah",
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );

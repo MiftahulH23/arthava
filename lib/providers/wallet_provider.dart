@@ -30,7 +30,7 @@ String? validateTransfer({
   return null;
 }
 
-class WalletNotifier extends Notifier<WalletState> {
+class WalletNotifier extends AutoDisposeNotifier<WalletState> {
   SupabaseClient get _supabase => Supabase.instance.client;
 
   @override
@@ -105,10 +105,14 @@ class WalletNotifier extends Notifier<WalletState> {
     final error = validateTransfer(source: source, dest: dest, amount: amount);
     if (error != null) throw Exception(error);
 
-    await _supabase.from('wallets').update({'balance': source.balance - amount}).eq('id', sourceId);
-    await _supabase.from('wallets').update({'balance': dest.balance + amount}).eq('id', destId);
+    try {
+      await _supabase.from('wallets').update({'balance': source.balance - amount}).eq('id', sourceId);
+      await _supabase.from('wallets').update({'balance': dest.balance + amount}).eq('id', destId);
+    } catch (e) {
+      throw Exception('Gagal memproses transfer.');
+    }
     await fetchWallets();
   }
 }
 
-final walletProvider = NotifierProvider<WalletNotifier, WalletState>(WalletNotifier.new);
+final walletProvider = NotifierProvider.autoDispose<WalletNotifier, WalletState>(WalletNotifier.new);
