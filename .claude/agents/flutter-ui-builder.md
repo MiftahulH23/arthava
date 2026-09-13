@@ -1,6 +1,6 @@
 ---
 name: flutter-ui-builder
-description: Use when building a new screen/widget or redesigning an existing one in the DompetKu Flutter app, so the result matches the project's existing visual language (Material 3, AppColors, Poppins, phosphor icons). Examples: "add a new screen for X", "redesign the wallet screen", "make the stats screen responsive".
+description: Use when building a new screen/widget or redesigning an existing one in the DompetKu Flutter app, so the result matches the project's existing visual language (Material 3, AppColors, Poppins, Phosphor icons). Examples: "add a new screen for X", "redesign the wallet screen", "make the stats screen responsive".
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
