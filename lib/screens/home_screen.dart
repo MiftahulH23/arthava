@@ -17,7 +17,7 @@ import 'package:catat_uang_app/screens/savings_screen.dart';
 import 'package:catat_uang_app/screens/recurring_screen.dart';
 import 'package:catat_uang_app/screens/ai_advisor_screen.dart';
 import 'package:catat_uang_app/screens/calendar_screen.dart';
-import 'package:catat_uang_app/screens/wallet_screen.dart';
+import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
 import 'package:catat_uang_app/screens/debt_screen.dart';
 import 'package:catat_uang_app/screens/zakat_sedekah_screen.dart';
 import 'package:catat_uang_app/screens/investment_screen.dart';
