@@ -46,9 +46,10 @@ dead legacy scripts at the repo root.
 2. Provide five specialized subagents matching the user's actual
    workflows: UI building, code review, Supabase/data work, testing, and
    conventional-commit git commits.
-3. Provide three skills for the most common repeatable procedures:
-   adding a feature/screen, running+visually verifying the app, and
-   changing the Supabase schema safely.
+3. Provide four skills for the most common repeatable procedures:
+   adding a feature/screen, running+visually verifying the app, changing
+   the Supabase schema safely, and structuring a free-form feature/
+   refactor description into a DompetKu-specific spec.
 4. Enforce Conventional Commits format (`feat:`, `fix:`, `chore:`, etc.)
    via a native git `commit-msg` hook, so commit history stays consistent
    regardless of who/what is committing.
@@ -182,11 +183,18 @@ All in English.
   manual verification (e.g. Supabase dashboard check) is still needed
   since this session has no direct Supabase MCP/DB access confirmed.
 
-Spec/feature intake for new work ("I want to describe a feature/refactor
-in my own words and have it turned into a clear spec, asking me
-questions when something's unclear") is already handled by the
-pre-installed `superpowers:brainstorming` skill — the same one used to
-produce this document. No additional skill is needed for that.
+- **`dompetku-feature-spec`**: used *alongside* `superpowers:brainstorming`
+  (never instead of it) whenever the user describes a new DompetKu
+  feature/refactor in free-form language. Adds project-specific
+  clarifying questions (which screen, Supabase impact, Gemini/AI
+  involvement, theming impact) to brainstorming's clarifying-questions
+  step, and structures the resulting spec into Data/UI/Testing sections
+  that map directly onto `supabase-schema-agent` / `flutter-ui-builder` /
+  `flutter-qa-writer`. Base spec/feature intake itself (free-form
+  description → structured spec, asking questions when unclear) is
+  already handled by the pre-installed `superpowers:brainstorming`
+  skill — this skill only adds DompetKu-specific content to that
+  existing flow.
 
 ### 4. Conventional Commits enforcement — native git hook
 
