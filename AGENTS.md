@@ -8,7 +8,7 @@ working in this repository. This file is the canonical source of truth;
 
 DompetKu (package name `catat_uang_app`) is a personal finance tracker
 built with Flutter, backed by Supabase (Postgres + Auth). Features
-include transactions, wallets, budgets, savings, targets, debts,
+include transactions, wallets, budgets, savings, targets, investments, debts,
 recurring transactions, a financial calendar, PDF export, biometric
 lock, and an AI advisor / receipt scanner powered by Google Gemini
 (`google_generative_ai`).
