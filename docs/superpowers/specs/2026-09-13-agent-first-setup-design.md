@@ -182,6 +182,12 @@ All in English.
   manual verification (e.g. Supabase dashboard check) is still needed
   since this session has no direct Supabase MCP/DB access confirmed.
 
+Spec/feature intake for new work ("I want to describe a feature/refactor
+in my own words and have it turned into a clear spec, asking me
+questions when something's unclear") is already handled by the
+pre-installed `superpowers:brainstorming` skill — the same one used to
+produce this document. No additional skill is needed for that.
+
 ### 4. Conventional Commits enforcement — native git hook
 
 No Node/`package.json` dependency (project is Flutter-only). Instead:
