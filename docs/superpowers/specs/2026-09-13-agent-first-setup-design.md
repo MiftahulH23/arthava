@@ -194,7 +194,9 @@ All in English.
   description → structured spec, asking questions when unclear) is
   already handled by the pre-installed `superpowers:brainstorming`
   skill — this skill only adds DompetKu-specific content to that
-  existing flow.
+  existing flow. The generated spec **document** is written in Bahasa
+  Indonesia (the user's language for reading it); the skill file itself
+  stays in English like all other skills/subagents in this repo.
 
 ### 4. Conventional Commits enforcement — native git hook
 

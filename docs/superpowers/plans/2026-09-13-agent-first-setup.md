@@ -829,7 +829,7 @@ git commit -m "chore(skills): add supabase-schema-change skill"
 ```markdown
 ---
 name: dompetku-feature-spec
-description: Use alongside superpowers:brainstorming whenever the user describes a new DompetKu feature or refactor in free-form language. Adds DompetKu-specific clarifying questions and structures the resulting spec so flutter-ui-builder, supabase-schema-agent, and other subagents can act on it directly. Never use instead of brainstorming — only to extend its clarifying-questions and design-presentation steps for this repo.
+description: Use alongside superpowers:brainstorming whenever the user describes a new DompetKu feature or refactor in free-form language. Adds DompetKu-specific clarifying questions, writes the resulting spec document in Bahasa Indonesia, and structures it so flutter-ui-builder, supabase-schema-agent, and other subagents can act on it directly. Never use instead of brainstorming — only to extend its clarifying-questions and design-presentation steps for this repo.
 ---
 
 # DompetKu Feature/Refactor Spec Intake
@@ -862,6 +862,18 @@ brainstorming's own questions already answered:
   change behavior of an existing screen (refactor)? For a refactor, ask
   explicitly what should NOT change, to avoid scope creep during
   implementation.
+
+## Language of the spec output
+
+Write the spec document itself (the file saved to
+`docs/superpowers/specs/`) in **Bahasa Indonesia** — that's what the user
+reads. This applies to the spec's prose: headings, requirements,
+rationale. Keep code identifiers, file paths, and technical terms
+(class/method names, package names) as-is/untranslated inside that
+Indonesian prose, the same way you would in a normal Indonesian
+technical document. This is specific to specs produced via this skill —
+it does not change the language of `AGENTS.md`, subagent files, or
+skill files themselves, which stay in English.
 
 ## Structuring the spec for this repo's subagents
 
