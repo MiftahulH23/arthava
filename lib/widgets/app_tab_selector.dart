@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
 /// Selector tab standar aplikasi, membungkus [FTabs] milik forui.
@@ -22,10 +22,16 @@ class AppTabSelector extends StatelessWidget {
   final int initialIndex;
   final ValueChanged<int> onChanged;
 
+  /// Warna latar indikator tab terpilih untuk instance ini saja, mengganti
+  /// warna default dari tema global. Dipakai oleh screen yang punya sinyal
+  /// warna dinamis (mis. merah untuk pengeluaran, hijau untuk pemasukan).
+  final Color? activeColor;
+
   const AppTabSelector({
     required this.labels,
     required this.initialIndex,
     required this.onChanged,
+    this.activeColor,
     super.key,
   });
 
@@ -33,6 +39,12 @@ class AppTabSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return FTabs(
       control: FTabControl.managed(initial: initialIndex, onChange: onChanged),
+      style: activeColor == null
+          ? null
+          : (style) => style.copyWith(
+                indicatorDecoration: style.indicatorDecoration.copyWith(color: activeColor),
+                selectedLabelTextStyle: style.selectedLabelTextStyle.copyWith(color: Colors.white),
+              ),
       children: [
         for (final label in labels) FTabEntry.entry(label: Text(label), child: const SizedBox.shrink()),
       ],

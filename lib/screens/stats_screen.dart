@@ -1,4 +1,5 @@
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/widgets/app_tab_selector.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -774,63 +775,18 @@ class _StatsScreenState extends State<StatsScreen> {
                 ),
                 const SizedBox(height: 15),
 
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: ['Harian', 'Bulanan', 'Tahunan', 'Periode'].map((
-                      type,
-                    ) {
-                      final isSelected = _filterType == type;
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            if (!isSelected) {
-                              setState(() => _filterType = type);
-                              _fetchStats();
-                            }
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? activeColor
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: activeColor.withOpacity(0.2),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : [],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              type,
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.grey.shade600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                AppTabSelector(
+                  labels: const ['Harian', 'Bulanan', 'Tahunan', 'Periode'],
+                  initialIndex: ['Harian', 'Bulanan', 'Tahunan', 'Periode']
+                      .indexOf(_filterType),
+                  activeColor: activeColor,
+                  onChanged: (index) {
+                    final type = ['Harian', 'Bulanan', 'Tahunan', 'Periode'][index];
+                    if (_filterType != type) {
+                      setState(() => _filterType = type);
+                      _fetchStats();
+                    }
+                  },
                 ),
                 const SizedBox(height: 15),
 

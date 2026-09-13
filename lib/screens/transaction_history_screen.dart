@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/app_notification.dart'; // [NEW] Tambah impo
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/screens/input_transaction_screen.dart';
+import 'package:catat_uang_app/widgets/app_tab_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -678,61 +679,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 const SizedBox(height: 15),
 
                 // TABS FILTER TIPE
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: ['Harian', 'Bulanan', 'Tahunan', 'Periode'].map((
-                      type,
-                    ) {
-                      final isSelected = _filterType == type;
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            if (!isSelected) {
-                              setState(() => _filterType = type);
-                              _fetchTransactions();
-                            }
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: isSelected ? color : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: color.withOpacity(0.2),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : [],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              type,
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.grey.shade600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                AppTabSelector(
+                  labels: const ['Harian', 'Bulanan', 'Tahunan', 'Periode'],
+                  initialIndex: ['Harian', 'Bulanan', 'Tahunan', 'Periode']
+                      .indexOf(_filterType),
+                  activeColor: color,
+                  onChanged: (index) {
+                    final type = ['Harian', 'Bulanan', 'Tahunan', 'Periode'][index];
+                    if (_filterType != type) {
+                      setState(() => _filterType = type);
+                      _fetchTransactions();
+                    }
+                  },
                 ),
                 const SizedBox(height: 15),
 

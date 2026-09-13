@@ -77,4 +77,28 @@ void main() {
       expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 2);
     },
   );
+
+  testWidgets(
+    'AppTabSelector memakai activeColor sebagai warna indikator & label terpilih saat diberikan',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => FTheme(data: appForuiTheme, child: child!),
+          home: Scaffold(
+            body: AppTabSelector(
+              labels: const ['Harian', 'Bulanan', 'Tahunan'],
+              initialIndex: 0,
+              onChanged: (_) {},
+              activeColor: Colors.red,
+            ),
+          ),
+        ),
+      );
+
+      final bar = tester.widget<TabBar>(find.byType(TabBar));
+      final indicator = bar.indicator as BoxDecoration;
+      expect(indicator.color, Colors.red);
+      expect(bar.labelStyle!.color, Colors.white);
+    },
+  );
 }
