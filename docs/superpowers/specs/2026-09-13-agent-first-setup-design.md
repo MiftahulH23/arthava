@@ -39,19 +39,24 @@ dead legacy scripts at the repo root.
 
 ## Goals
 
-1. Give every agent session standing context about this project via
-   `CLAUDE.md`, so agents don't need to rediscover structure/conventions
-   from scratch each time.
-2. Provide four specialized subagents matching the user's actual workflows:
-   UI building, code review, Supabase/data work, and testing.
+1. Give every agent session standing context about this project via a
+   tool-agnostic `AGENTS.md`, so agents don't need to rediscover
+   structure/conventions from scratch each time — and so tools other than
+   Claude Code (Codex, Cursor, etc.) can read the same instructions.
+2. Provide five specialized subagents matching the user's actual
+   workflows: UI building, code review, Supabase/data work, testing, and
+   conventional-commit git commits.
 3. Provide three skills for the most common repeatable procedures:
    adding a feature/screen, running+visually verifying the app, and
    changing the Supabase schema safely.
-4. Remove dead weight (legacy scripts) that would otherwise confuse an
+4. Enforce Conventional Commits format (`feat:`, `fix:`, `chore:`, etc.)
+   via a native git `commit-msg` hook, so commit history stays consistent
+   regardless of who/what is committing.
+5. Remove dead weight (legacy scripts) that would otherwise confuse an
    agent exploring the repo.
-5. All subagent and skill definitions are written in English (per user
-   instruction), for portability and consistency. `CLAUDE.md` is also
-   written in English.
+6. All subagent and skill definitions are written in English (per user
+   instruction), for portability and consistency. `AGENTS.md` and
+   `CLAUDE.md` are also written in English.
 
 ## Non-Goals
 
@@ -61,10 +66,17 @@ dead legacy scripts at the repo root.
 - No CI/CD pipeline setup (not requested).
 - No new automated test writing in this phase (the QA subagent is scaffolding
   for future use, not a mandate to write tests now).
+- No PR-creation automation — the commit subagent handles commits only,
+  not pushing or opening PRs (those still go through explicit user request,
+  per standing tool-use rules).
 
 ## Design
 
-### 1. `CLAUDE.md` (repo root)
+### 1. `AGENTS.md` (repo root) — canonical, tool-agnostic instructions
+
+This is the single source of truth. Any AI coding tool that follows the
+`AGENTS.md` convention (Claude Code, Codex, Cursor, etc.) reads this file
+directly.
 
 Sections:
 - **Project overview**: what DompetKu is, tech stack (Flutter, Supabase,
@@ -81,13 +93,30 @@ Sections:
     Supabase table shape (verify per-file, don't assume a shared base).
 - **Commands**: `flutter analyze`, `flutter test`, `flutter run -d chrome`
   / `-d windows`, `flutter pub get`.
+- **Commit convention**: Conventional Commits (`feat:`, `fix:`, `chore:`,
+  `docs:`, `refactor:`, `test:`, `style:`, `perf:`, `build:`, `ci:`),
+  enforced by the `commit-msg` git hook described below.
 - **Known context / do-not-touch-silently**:
   - Supabase anon key is hardcoded in `lib/main.dart` by design for this
     project's current stage; don't "fix" this unless explicitly asked.
   - No CI currently; `flutter analyze` + `flutter test` are the local
     verification bar before claiming work done.
 - **Pointers to subagents/skills**: one-line table of when to reach for
-  each of the four subagents and three skills defined below.
+  each of the five Claude Code subagents and three skills defined below
+  (noted as Claude-Code-specific, since `.claude/` format isn't part of
+  the `AGENTS.md` cross-tool standard).
+
+### 1b. `CLAUDE.md` (repo root) — thin Claude Code entry point
+
+Contains only:
+```
+@AGENTS.md
+```
+plus, if needed, a short Claude-Code-specific addendum (e.g. explicitly
+naming the `.claude/agents/` and `.claude/skills/` directories so Claude
+Code's own routing picks them up — this is metadata Claude Code already
+discovers automatically, so the addendum will likely just be the import
+line unless testing shows otherwise).
 
 ### 2. Subagents — `.claude/agents/*.md`
 
@@ -112,11 +141,22 @@ All in English. Each file: YAML frontmatter (`name`, `description`,
   Purpose: write widget/unit tests for Flutter screens and logic,
   following `flutter_test` conventions. Full tool access, scoped to
   `test/` and read access to `lib/`.
+- **`git-committer`**
+  Purpose: stage and commit changes with a well-formed Conventional
+  Commits message (correct type — `feat`/`fix`/`chore`/`docs`/`refactor`/
+  `test`/`style`/`perf`/`build`/`ci` — concise scope/summary, body
+  explaining why when non-obvious). Follows the same git safety rules
+  already in force for this session (new commits not amends, no
+  `--no-verify`, never push without explicit request, review staged diff
+  before committing, HEREDOC for multi-line messages, required
+  Co-Authored-By/Claude-Session trailer). Tools: Bash (git only, in
+  practice) + Read for diff inspection. This subagent is only invoked
+  when the user asks to commit — it does not commit proactively.
 
 Each subagent description states clearly when it should be invoked, so
 routing doesn't overlap (e.g. UI builder doesn't do data-layer work,
 schema agent doesn't touch widget trees beyond what's needed to keep
-models in sync).
+models in sync, git-committer never writes application code).
 
 ### 3. Skills — `.claude/skills/<name>/SKILL.md`
 
@@ -138,7 +178,23 @@ All in English.
   manual verification (e.g. Supabase dashboard check) is still needed
   since this session has no direct Supabase MCP/DB access confirmed.
 
-### 4. Cleanup
+### 4. Conventional Commits enforcement — native git hook
+
+No Node/`package.json` dependency (project is Flutter-only). Instead:
+- `.githooks/commit-msg` — a POSIX shell script that validates the commit
+  message's first line against a Conventional Commits regex
+  (`^(feat|fix|chore|docs|refactor|test|style|perf|build|ci)(\(.+\))?!?: .+`),
+  rejecting the commit with a clear error + example if it doesn't match.
+- Repo is configured to use this hooks directory: `git config core.hooksPath .githooks`.
+  This is a local, one-time setup step (not committed as global git config) —
+  documented in `AGENTS.md` so a human or agent setting up the repo fresh
+  knows to run it. Cannot be auto-applied by cloning alone since
+  `core.hooksPath` is a local config, not a repo file that git reads
+  automatically for security reasons.
+- The hook applies to anyone committing (human via IDE/CLI, or the
+  `git-committer` subagent), regardless of tool.
+
+### 5. Cleanup
 
 Delete (not move) the three legacy root scripts:
 `update_home_screen.py`, `update_stats.dart`, `update_trx.dart`.
@@ -155,6 +211,12 @@ This is a docs/config-only change (plus a deletion). Verification:
 - Manually confirm `.claude/agents/*.md` and `.claude/skills/*/SKILL.md`
   are well-formed (valid frontmatter) by having Claude Code list
   available agents/skills after setup.
+- Confirm `CLAUDE.md`'s `@AGENTS.md` import actually pulls in content
+  (test by asking a fresh Claude Code session a question only answerable
+  from `AGENTS.md` content).
+- Test the `commit-msg` hook directly: after `git config core.hooksPath
+  .githooks`, attempt a commit with a non-conforming message (expect
+  rejection) and a conforming one (expect success).
 
 ## Open Questions
 
