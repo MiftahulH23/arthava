@@ -1,4 +1,5 @@
 import 'package:catat_uang_app/models/wallet_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -35,7 +36,13 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
 
   @override
   WalletState build() {
-    fetchWallets();
+    // JANGAN panggil fetchWallets() langsung di sini: badan fungsi async
+    // berjalan sinkron sampai `await` pertama, dan statement pertamanya
+    // membaca `state` — padahal state baru diinisialisasi Riverpod SETELAH
+    // build() return. Itu melempar StateError yang tertelan Future terbuang,
+    // sehingga isLoading tidak pernah jadi false (loading selamanya).
+    // Future.microtask menunda eksekusinya sampai build() selesai.
+    Future.microtask(fetchWallets);
     return const WalletState();
   }
 
@@ -54,6 +61,7 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
         isLoading: false,
       );
     } catch (e) {
+      debugPrint("Error fetch wallets: $e");
       state = state.copyWith(isLoading: false);
     }
   }

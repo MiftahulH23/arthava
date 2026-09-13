@@ -1,8 +1,42 @@
 import 'package:catat_uang_app/models/wallet_model.dart';
 import 'package:catat_uang_app/providers/wallet_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('WalletNotifier.build() tidak membaca state sebelum terinisialisasi', () async {
+    // Regresi: sebelumnya build() memanggil fetchWallets() langsung. Badan
+    // fungsi async berjalan sinkron sampai `await` pertama, dan statement
+    // pertamanya (`state = state.copyWith(isLoading: true)`) membaca `state`
+    // padahal Riverpod baru menginisialisasi state SETELAH build() return.
+    // Hasilnya StateError yang tertelan Future terbuang: tidak ada crash,
+    // tapi isLoading tidak pernah jadi false dan layar loading selamanya.
+    //
+    // Di sini Supabase memang belum diinisialisasi, jadi fetchWallets pasti
+    // gagal — justru itu intinya: dengan perbaikan, error ditangkap catch
+    // block dan isLoading turun ke false. Dengan bug lama, fetchWallets
+    // tidak pernah sampai ke catch block-nya sehingga isLoading tetap true.
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    // walletProvider autoDispose: tanpa listener aktif, provider langsung
+    // dibuang setelah read() dan dibangun ulang pada read() berikutnya
+    // (isLoading balik ke true). listen() menahannya tetap hidup.
+    container.listen(walletProvider, (previous, next) {}, fireImmediately: true);
+
+    expect(container.read(walletProvider).isLoading, isTrue);
+
+    // Beri kesempatan microtask + error handling berjalan.
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      container.read(walletProvider).isLoading,
+      isFalse,
+      reason: 'fetchWallets harus selesai (sukses atau gagal) dan menurunkan isLoading',
+    );
+  });
+
   group('validateTransfer', () {
     final source = WalletModel(id: 1, userId: 'u1', name: 'BCA', balance: 100000);
     final dest = WalletModel(id: 2, userId: 'u1', name: 'GoPay', balance: 50000);

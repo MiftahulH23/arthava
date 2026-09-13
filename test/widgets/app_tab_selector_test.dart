@@ -45,4 +45,36 @@ void main() {
 
     expect(selected, 1);
   });
+
+  testWidgets(
+    'AppTabSelector memindahkan seleksi visual sendiri setelah di-tap '
+    '(tanpa parent mengirim balik index baru)',
+    (tester) async {
+      // Regresi: sebelumnya widget ini memakai FTabControl.lifted, yang membuat
+      // index dikontrol penuh oleh parent. onChanged tetap terpanggil, tapi tab
+      // yang di-tap TIDAK pernah terlihat terpilih karena parent di sini tidak
+      // pernah mengirim index baru. Parent di test ini sengaja statis.
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => FTheme(data: appForuiTheme, child: child!),
+          home: Scaffold(
+            body: AppTabSelector(
+              labels: const ['Harian', 'Bulanan', 'Tahunan'],
+              initialIndex: 0,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      final bar = tester.widget<TabBar>(find.byType(TabBar));
+      expect(bar.controller!.index, 0);
+
+      await tester.tap(find.text('Tahunan'));
+      await tester.pumpAndSettle();
+
+      // Controller internal TabBar yang menentukan indikator/label terpilih.
+      expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 2);
+    },
+  );
 }
