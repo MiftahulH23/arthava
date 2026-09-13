@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:forui/forui.dart';
 
 /// Helper standar untuk menampilkan bottom sheet aplikasi, membungkus
@@ -25,7 +25,10 @@ Future<T?> showAppBottomSheet<T>({
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height - MediaQuery.viewInsetsOf(context).bottom,
       ),
-      child: SingleChildScrollView(child: builder(context)),
+      child: Material(
+        type: MaterialType.transparency,
+        child: SingleChildScrollView(child: builder(context)),
+      ),
     ),
   );
 }
