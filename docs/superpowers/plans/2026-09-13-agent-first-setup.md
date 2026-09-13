@@ -1,39 +1,39 @@
-# Agent-First Setup Implementation Plan
+# Rencana Implementasi Agent-First Setup
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Untuk pekerja agentik:** SUB-SKILL WAJIB: Gunakan superpowers:subagent-driven-development (direkomendasikan) atau superpowers:executing-plans untuk mengimplementasikan rencana ini task demi task. Langkah-langkah menggunakan sintaks checkbox (`- [ ]`) untuk pelacakan.
 
-**Goal:** Make the DompetKu repository agent-first: a tool-agnostic `AGENTS.md` (imported by a thin `CLAUDE.md`), five Claude Code subagents, three skills, a native Conventional-Commits git hook, a convention-sync reminder hook, and removal of three dead legacy scripts.
+**Tujuan:** Menjadikan repository DompetKu agent-first: sebuah `AGENTS.md` yang tool-agnostic (diimpor oleh `CLAUDE.md` yang tipis), lima subagent Claude Code, tiga skill, sebuah git hook Conventional-Commits native, sebuah hook pengingat sinkronisasi konvensi, dan penghapusan tiga skrip legacy yang sudah mati.
 
-**Architecture:** Pure documentation/configuration change. No `lib/` application code is touched except deleting three unreferenced root scripts. All new files live in `.claude/agents/`, `.claude/skills/`, `.githooks/`, plus `AGENTS.md` and `CLAUDE.md` at repo root.
+**Arsitektur:** Perubahan murni dokumentasi/konfigurasi. Tidak ada kode aplikasi `lib/` yang disentuh kecuali menghapus tiga skrip root yang tidak direferensikan. Semua file baru berada di `.claude/agents/`, `.claude/skills/`, `.githooks/`, ditambah `AGENTS.md` dan `CLAUDE.md` di root repo.
 
-**Tech Stack:** Flutter/Dart app (unaffected), Claude Code agent/skill markdown format, POSIX shell git hook (works via Git for Windows' bundled `sh`).
+**Tech Stack:** Aplikasi Flutter/Dart (tidak terpengaruh), format markdown agent/skill Claude Code, git hook POSIX shell (berjalan lewat `sh` bawaan Git for Windows).
 
 **Spec:** `docs/superpowers/specs/2026-09-13-agent-first-setup-design.md`
 
-## Global Constraints
+## Batasan Global
 
-- All subagent (`.claude/agents/*.md`) and skill (`.claude/skills/*/SKILL.md`) content is written in English.
-- `AGENTS.md` and `CLAUDE.md` are written in English.
-- No changes to `lib/` application code except the two deletions listed in Task 13 (already confirmed dead).
-- No Node/`package.json`/husky dependency — commit-msg enforcement is a native POSIX shell git hook.
-- No change to how the Supabase anon key is stored (out of scope, documented as known context instead).
-- The `git-committer` subagent must follow the same git safety rules already standing for this session: new commits not amends, no `--no-verify`, never push without explicit request, review staged diff before committing, HEREDOC for multi-line messages, required `Co-Authored-By`/`Claude-Session` trailer.
-- Conventional Commits regex used everywhere in this plan: `^(feat|fix|chore|docs|refactor|test|style|perf|build|ci)(\([a-z0-9_-]+\))?!?: .+`
+- Semua konten subagent (`.claude/agents/*.md`) dan skill (`.claude/skills/*/SKILL.md`) ditulis dalam Bahasa Inggris.
+- `AGENTS.md` dan `CLAUDE.md` ditulis dalam Bahasa Inggris.
+- Tidak ada perubahan pada kode aplikasi `lib/` kecuali dua penghapusan yang tercantum di Task 13 (sudah dikonfirmasi mati).
+- Tidak ada dependensi Node/`package.json`/husky — penegakan commit-msg adalah git hook POSIX shell native.
+- Tidak ada perubahan pada cara penyimpanan anon key Supabase (di luar cakupan, didokumentasikan sebagai known context saja).
+- Subagent `git-committer` harus mengikuti aturan keamanan git yang sudah berlaku untuk sesi ini: commit baru bukan amend, tanpa `--no-verify`, jangan pernah push tanpa permintaan eksplisit, review staged diff sebelum commit, HEREDOC untuk pesan multi-baris, trailer `Co-Authored-By`/`Claude-Session` wajib disertakan.
+- Regex Conventional Commits yang digunakan di seluruh rencana ini: `^(feat|fix|chore|docs|refactor|test|style|perf|build|ci)(\([a-z0-9_-]+\))?!?: .+`
 
 ---
 
-## Task 1: Conventional Commits git hook
+## Task 1: Git hook Conventional Commits
 
 **Files:**
-- Create: `.githooks/commit-msg`
-- Modify: (local git config only, not a file) — `core.hooksPath`
+- Buat: `.githooks/commit-msg`
+- Ubah: (hanya konfigurasi git lokal, bukan file) — `core.hooksPath`
 
 **Interfaces:**
-- Produces: a `commit-msg` hook enforcing the Conventional Commits regex above. All later tasks' commits in this plan must conform to it once this task's git config step has run.
+- Menghasilkan: hook `commit-msg` yang menegakkan regex Conventional Commits di atas. Semua commit dari task-task berikutnya di rencana ini harus mematuhinya setelah langkah konfigurasi git task ini dijalankan.
 
-- [ ] **Step 1: Create the hooks directory and script**
+- [ ] **Langkah 1: Buat direktori hooks dan skrip**
 
-Create `.githooks/commit-msg` with this content:
+Buat `.githooks/commit-msg` dengan konten berikut.
 
 ```sh
 #!/bin/sh
@@ -59,34 +59,34 @@ fi
 exit 0
 ```
 
-- [ ] **Step 2: Make the hook executable and register the hooks path**
+- [ ] **Langkah 2: Jadikan hook executable dan daftarkan hooks path**
 
-Run:
+Jalankan:
 ```bash
 chmod +x .githooks/commit-msg
 git config core.hooksPath .githooks
 ```
 
-- [ ] **Step 3: Test the hook rejects a bad message**
+- [ ] **Langkah 3: Uji hook menolak pesan yang buruk**
 
-Run:
+Jalankan:
 ```bash
 git commit --allow-empty -m "this is not conventional"
 ```
-Expected: command fails, stderr shows the `commit-msg hook:` error above, no commit is created (`git log -1` still shows the previous commit).
+Ekspektasi: perintah gagal, stderr menampilkan error `commit-msg hook:` di atas, tidak ada commit yang terbuat (`git log -1` masih menampilkan commit sebelumnya).
 
-- [ ] **Step 4: Test the hook accepts a good message**
+- [ ] **Langkah 4: Uji hook menerima pesan yang baik**
 
-Run:
+Jalankan:
 ```bash
 git commit --allow-empty -m "chore: verify commit-msg hook"
 ```
-Expected: commit succeeds. Then undo this empty test commit so it doesn't pollute history:
+Ekspektasi: commit berhasil. Kemudian batalkan commit uji kosong ini agar tidak mengotori history:
 ```bash
 git reset --soft HEAD~1
 ```
 
-- [ ] **Step 5: Commit the hook itself**
+- [ ] **Langkah 5: Commit hook itu sendiri**
 
 ```bash
 git add .githooks/commit-msg
@@ -95,15 +95,15 @@ git commit -m "chore(git): add Conventional Commits commit-msg hook"
 
 ---
 
-## Task 2: `AGENTS.md` — canonical project instructions
+## Task 2: `AGENTS.md` — instruksi kanonik proyek
 
 **Files:**
-- Create: `AGENTS.md`
+- Buat: `AGENTS.md`
 
 **Interfaces:**
-- Produces: the canonical instructions file every subsequent task's subagents/skills reference via pointers (Task 5-12 files link back to relevant `AGENTS.md` sections by name, not by line number, since this file will keep evolving).
+- Menghasilkan: file instruksi kanonik yang direferensikan oleh subagent/skill di semua task berikutnya melalui pointer (file-file Task 5-12 menautkan kembali ke bagian `AGENTS.md` yang relevan berdasarkan nama, bukan nomor baris, karena file ini akan terus berevolusi).
 
-- [ ] **Step 1: Create `AGENTS.md`**
+- [ ] **Langkah 1: Buat `AGENTS.md`**
 
 ```markdown
 # AGENTS.md — DompetKu
@@ -225,15 +225,15 @@ These directories are specific to Claude Code (other tools reading this
 | `dompetku-feature-spec` | skill | Alongside brainstorming, when the user describes a new feature/refactor in free-form language. |
 ```
 
-- [ ] **Step 2: Verify required sections are present**
+- [ ] **Langkah 2: Verifikasi bagian-bagian yang diperlukan sudah ada**
 
-Run:
+Jalankan:
 ```bash
 grep -c "^## " AGENTS.md
 ```
-Expected: `7` (Project Overview, Structure, Conventions, Commands, Git Hooks, Known Context, Claude Code Subagents & Skills — the "Keeping this file in sync" heading doesn't count since it's a level-3 `###` heading). If the number differs, confirm every section listed in Step 1 exists via `grep "^## " AGENTS.md`.
+Ekspektasi: `7` (Project Overview, Structure, Conventions, Commands, Git Hooks, Known Context, Claude Code Subagents & Skills — heading "Keeping this file in sync" tidak dihitung karena merupakan heading level-3 `###`). Jika angkanya berbeda, konfirmasi bahwa setiap bagian yang tercantum di Langkah 1 ada melalui `grep "^## " AGENTS.md`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add AGENTS.md
@@ -242,29 +242,29 @@ git commit -m "docs: add AGENTS.md canonical project instructions"
 
 ---
 
-## Task 3: `CLAUDE.md` — thin import for Claude Code
+## Task 3: `CLAUDE.md` — import tipis untuk Claude Code
 
 **Files:**
-- Create: `CLAUDE.md`
+- Buat: `CLAUDE.md`
 
 **Interfaces:**
-- Consumes: `AGENTS.md` (Task 2) via Claude Code's `@path` import syntax.
+- Mengonsumsi: `AGENTS.md` (Task 2) melalui sintaks import `@path` milik Claude Code.
 
-- [ ] **Step 1: Create `CLAUDE.md`**
+- [ ] **Langkah 1: Buat `CLAUDE.md`**
 
 ```markdown
 @AGENTS.md
 ```
 
-- [ ] **Step 2: Verify the import resolves**
+- [ ] **Langkah 2: Verifikasi import ter-resolve**
 
-Ask a fresh question in this same Claude Code session that can only be
-answered from `AGENTS.md` content, e.g. "What icon package does this
-project use?" Expected answer: `phosphor_flutter`, sourced from the
-imported file. (This step is a manual verification during plan
-execution — there is no automated command for it.)
+Ajukan pertanyaan baru dalam sesi Claude Code yang sama, yang hanya bisa
+dijawab dari konten `AGENTS.md`, misalnya "What icon package does this
+project use?" Jawaban yang diharapkan: `phosphor_flutter`, bersumber dari
+file yang diimpor. (Langkah ini adalah verifikasi manual selama eksekusi
+rencana — tidak ada perintah otomatis untuk ini.)
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add CLAUDE.md
@@ -273,17 +273,17 @@ git commit -m "chore: add CLAUDE.md importing AGENTS.md"
 
 ---
 
-## Task 4: Convention-sync reminder hook
+## Task 4: Hook pengingat sinkronisasi konvensi
 
 **Files:**
-- Create: `.claude/settings.json`
+- Buat: `.claude/settings.json`
 
 **Interfaces:**
-- Produces: a `PostToolUse` hook matching Edit/Write on `pubspec.yaml`,
-  `lib/core/colors.dart`, `lib/core/theme_mode_manager.dart` that prints
-  a reminder to update `AGENTS.md`.
+- Menghasilkan: hook `PostToolUse` yang mencocokkan Edit/Write pada
+  `pubspec.yaml`, `lib/core/colors.dart`, `lib/core/theme_mode_manager.dart`
+  yang menampilkan pengingat untuk memperbarui `AGENTS.md`.
 
-- [ ] **Step 1: Create `.claude/settings.json`**
+- [ ] **Langkah 1: Buat `.claude/settings.json`**
 
 ```json
 {
@@ -303,16 +303,17 @@ git commit -m "chore: add CLAUDE.md importing AGENTS.md"
 }
 ```
 
-- [ ] **Step 2: Verify the hook fires**
+- [ ] **Langkah 2: Verifikasi hook terpicu**
 
-Make a trivial whitespace edit to `lib/core/colors.dart` (e.g. add then
-remove a blank line via Edit tool) and confirm the reminder text appears
-in tool output. Revert the trivial edit if it left any diff:
+Lakukan edit whitespace sepele pada `lib/core/colors.dart` (misalnya
+tambahkan lalu hapus baris kosong lewat Edit tool) dan konfirmasi teks
+pengingat muncul di output tool. Kembalikan edit sepele tersebut jika
+meninggalkan diff:
 ```bash
 git checkout -- lib/core/colors.dart
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/settings.json
@@ -321,12 +322,12 @@ git commit -m "chore: add AGENTS.md convention-sync reminder hook"
 
 ---
 
-## Task 5: `flutter-ui-builder` subagent
+## Task 5: Subagent `flutter-ui-builder`
 
 **Files:**
-- Create: `.claude/agents/flutter-ui-builder.md`
+- Buat: `.claude/agents/flutter-ui-builder.md`
 
-- [ ] **Step 1: Create the subagent file**
+- [ ] **Langkah 1: Buat file subagent**
 
 ```markdown
 ---
@@ -365,15 +366,15 @@ Rules specific to your role:
   that agent or note the dependency.
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 5 .claude/agents/flutter-ui-builder.md
 ```
-Expected: shows `---`, `name: flutter-ui-builder`, `description: ...`, `tools: ...`, `---` in that order.
+Ekspektasi: menampilkan `---`, `name: flutter-ui-builder`, `description: ...`, `tools: ...`, `---` dalam urutan tersebut.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/agents/flutter-ui-builder.md
@@ -382,12 +383,12 @@ git commit -m "chore(agents): add flutter-ui-builder subagent"
 
 ---
 
-## Task 6: `flutter-code-reviewer` subagent
+## Task 6: Subagent `flutter-code-reviewer`
 
 **Files:**
-- Create: `.claude/agents/flutter-code-reviewer.md`
+- Buat: `.claude/agents/flutter-code-reviewer.md`
 
-- [ ] **Step 1: Create the subagent file**
+- [ ] **Langkah 1: Buat file subagent**
 
 ```markdown
 ---
@@ -424,15 +425,15 @@ Report findings as a plain list: file, line, what's wrong, why it
 matters, suggested fix — you don't apply fixes yourself.
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 5 .claude/agents/flutter-code-reviewer.md
 ```
-Expected: valid frontmatter block as in Task 5 Step 2.
+Ekspektasi: blok frontmatter valid seperti pada Task 5 Langkah 2.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/agents/flutter-code-reviewer.md
@@ -441,12 +442,12 @@ git commit -m "chore(agents): add flutter-code-reviewer subagent"
 
 ---
 
-## Task 7: `supabase-schema-agent` subagent
+## Task 7: Subagent `supabase-schema-agent`
 
 **Files:**
-- Create: `.claude/agents/supabase-schema-agent.md`
+- Buat: `.claude/agents/supabase-schema-agent.md`
 
-- [ ] **Step 1: Create the subagent file**
+- [ ] **Langkah 1: Buat file subagent**
 
 ```markdown
 ---
@@ -479,15 +480,15 @@ Rules specific to your role:
   verification needed).
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 5 .claude/agents/supabase-schema-agent.md
 ```
-Expected: valid frontmatter block.
+Ekspektasi: blok frontmatter valid.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/agents/supabase-schema-agent.md
@@ -496,12 +497,12 @@ git commit -m "chore(agents): add supabase-schema-agent subagent"
 
 ---
 
-## Task 8: `flutter-qa-writer` subagent
+## Task 8: Subagent `flutter-qa-writer`
 
 **Files:**
-- Create: `.claude/agents/flutter-qa-writer.md`
+- Buat: `.claude/agents/flutter-qa-writer.md`
 
-- [ ] **Step 1: Create the subagent file**
+- [ ] **Langkah 1: Buat file subagent**
 
 ```markdown
 ---
@@ -535,15 +536,15 @@ Rules specific to your role:
   silently changing production code.
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 5 .claude/agents/flutter-qa-writer.md
 ```
-Expected: valid frontmatter block.
+Ekspektasi: blok frontmatter valid.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/agents/flutter-qa-writer.md
@@ -552,12 +553,12 @@ git commit -m "chore(agents): add flutter-qa-writer subagent"
 
 ---
 
-## Task 9: `git-committer` subagent
+## Task 9: Subagent `git-committer`
 
 **Files:**
-- Create: `.claude/agents/git-committer.md`
+- Buat: `.claude/agents/git-committer.md`
 
-- [ ] **Step 1: Create the subagent file**
+- [ ] **Langkah 1: Buat file subagent**
 
 ```markdown
 ---
@@ -605,15 +606,15 @@ Process:
    report the commit hash and message back to the user.
 ```
 
-- [ ] **Step 2: Verify frontmatter is well-formed**
+- [ ] **Langkah 2: Verifikasi frontmatter valid**
 
-Run:
+Jalankan:
 ```bash
 head -n 5 .claude/agents/git-committer.md
 ```
-Expected: valid frontmatter block.
+Ekspektasi: blok frontmatter valid.
 
-- [ ] **Step 3: Commit**
+- [ ] **Langkah 3: Commit**
 
 ```bash
 git add .claude/agents/git-committer.md
@@ -622,12 +623,12 @@ git commit -m "chore(agents): add git-committer subagent"
 
 ---
 
-## Task 10: `add-feature` skill
+## Task 10: Skill `add-feature`
 
 **Files:**
-- Create: `.claude/skills/add-feature/SKILL.md`
+- Buat: `.claude/skills/add-feature/SKILL.md`
 
-- [ ] **Step 1: Create the skill file**
+- [ ] **Langkah 1: Buat file skill**
 
 ```markdown
 ---

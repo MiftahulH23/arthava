@@ -1,265 +1,285 @@
 # Agent-First Setup for DompetKu — Design Spec
 
 Date: 2026-09-13
-Status: Approved by user, pending implementation plan
+Status: Disetujui oleh user, menunggu rencana implementasi
 
 ## Context
 
-DompetKu (`catat_uang_app`) is a Flutter + Supabase personal finance app.
-The user wants to invest in UI/UX next, but first wants the repository set
-up to be "agent-first": standing instructions, subagents, and skills so
-that AI coding agents (Claude Code) can work on this codebase reliably and
-consistently, without re-deriving project context every session.
+DompetKu (`catat_uang_app`) adalah aplikasi keuangan pribadi berbasis Flutter +
+Supabase. Selanjutnya user ingin berinvestasi pada UI/UX, tetapi terlebih
+dahulu ingin repository ini disiapkan agar "agent-first": instruksi baku,
+subagent, dan skill agar AI coding agent (Claude Code) dapat bekerja pada
+codebase ini secara andal dan konsisten, tanpa perlu menurunkan ulang konteks
+proyek di setiap sesi.
 
-This phase is infrastructure/tooling only. No application code in `lib/`
-is refactored as part of this work, except for removing three confirmed-
-dead legacy scripts at the repo root.
+Fase ini murni infrastruktur/tooling. Tidak ada kode aplikasi di `lib/` yang
+di-refactor dalam pekerjaan ini, kecuali penghapusan tiga skrip legacy yang
+sudah dikonfirmasi mati di root repo.
 
 ## Current State (observed)
 
-- Flutter app, Material3, `google_fonts` (Poppins), custom `AppColors`.
-- No state management library — theme uses a global `ValueNotifier`
-  (`lib/core/theme_mode_manager.dart`); screens are mostly `StatefulWidget`
-  with local state and direct Supabase calls.
-- `lib/screens/` is flat — 20+ screens, no widgets/ or features/ subfolder.
+- Aplikasi Flutter, Material3, `google_fonts` (Poppins), `AppColors` kustom.
+- Tidak ada library state management — tema menggunakan `ValueNotifier`
+  global (`lib/core/theme_mode_manager.dart`); sebagian besar screen berupa
+  `StatefulWidget` dengan state lokal dan pemanggilan Supabase langsung.
+- `lib/screens/` bersifat flat — 20+ screen, tanpa subfolder widgets/ atau
+  features/.
 - `lib/models/`, `lib/services/` (`auth_service.dart`, `gemini_service.dart`,
-  `pdf_service.dart`) are the only separation beyond screens.
-- Backend: Supabase (`supabase_flutter`). Anon key is hardcoded in
-  `lib/main.dart` — acceptable for a Supabase anon key IF RLS policies are
-  correctly scoped, but worth flagging to agents as a known fact, not a
-  bug to silently "fix".
-- No CI config found. No meaningful test suite (`test/widget_test.dart` is
-  the default Flutter counter-app test, not adapted to this app).
-- Three one-off codegen scripts at repo root are dead: `update_home_screen.py`,
-  `update_stats.dart`, `update_trx.dart`. Confirmed via `git grep` — not
-  referenced anywhere. Each is a single-purpose mutation script whose
-  transformation is already applied to the target file (confirmed by
-  matching commit history, e.g. "responsive web layout" commit). They are
-  not reusable tools.
+  `pdf_service.dart`) adalah satu-satunya pemisahan di luar screens.
+- Backend: Supabase (`supabase_flutter`). Anon key di-hardcode di
+  `lib/main.dart` — dapat diterima untuk anon key Supabase SELAMA kebijakan
+  RLS sudah di-scope dengan benar, tetapi perlu ditandai ke agent sebagai
+  fakta yang diketahui, bukan bug yang harus "diperbaiki" secara diam-diam.
+- Tidak ditemukan konfigurasi CI. Tidak ada test suite yang bermakna
+  (`test/widget_test.dart` masih berupa test default counter-app Flutter,
+  belum disesuaikan dengan aplikasi ini).
+- Tiga skrip codegen sekali pakai di root repo sudah mati:
+  `update_home_screen.py`, `update_stats.dart`, `update_trx.dart`.
+  Dikonfirmasi lewat `git grep` — tidak direferensikan di mana pun. Masing-
+  masing adalah skrip mutasi satu tujuan yang transformasinya sudah
+  diterapkan ke file target (dikonfirmasi dengan mencocokkan riwayat commit,
+  misalnya commit "responsive web layout"). Ketiganya bukan tool yang bisa
+  dipakai ulang.
 
 ## Goals
 
-1. Give every agent session standing context about this project via a
-   tool-agnostic `AGENTS.md`, so agents don't need to rediscover
-   structure/conventions from scratch each time — and so tools other than
-   Claude Code (Codex, Cursor, etc.) can read the same instructions.
-2. Provide five specialized subagents matching the user's actual
-   workflows: UI building, code review, Supabase/data work, testing, and
-   conventional-commit git commits.
-3. Provide four skills for the most common repeatable procedures:
-   adding a feature/screen, running+visually verifying the app, changing
-   the Supabase schema safely, and structuring a free-form feature/
-   refactor description into a DompetKu-specific spec.
-4. Enforce Conventional Commits format (`feat:`, `fix:`, `chore:`, etc.)
-   via a native git `commit-msg` hook, so commit history stays consistent
-   regardless of who/what is committing.
-5. Remove dead weight (legacy scripts) that would otherwise confuse an
-   agent exploring the repo.
-6. All subagent and skill definitions are written in English (per user
-   instruction), for portability and consistency. `AGENTS.md` and
-   `CLAUDE.md` are also written in English.
-7. Keep documented conventions (font, icon, color) in `AGENTS.md` in sync
-   with the code via a written rule plus a `PostToolUse` reminder hook,
-   while dependency/library changes still always require explicit user
-   confirmation (unchanged from standing behavior).
+1. Memberi setiap sesi agent konteks baku tentang proyek ini lewat
+   `AGENTS.md` yang tool-agnostic, sehingga agent tidak perlu menemukan
+   ulang struktur/konvensi dari nol setiap kali — dan agar tool selain
+   Claude Code (Codex, Cursor, dll.) bisa membaca instruksi yang sama.
+2. Menyediakan lima subagent khusus yang sesuai dengan alur kerja nyata
+   user: pembuatan UI, code review, kerja Supabase/data, testing, dan
+   commit git dengan format conventional-commit.
+3. Menyediakan empat skill untuk prosedur berulang yang paling umum:
+   menambah fitur/screen, menjalankan+memverifikasi tampilan aplikasi
+   secara visual, mengubah skema Supabase dengan aman, dan menyusun
+   deskripsi fitur/refactor bebas menjadi spec khusus DompetKu.
+4. Menegakkan format Conventional Commits (`feat:`, `fix:`, `chore:`, dll.)
+   lewat native git hook `commit-msg`, sehingga riwayat commit tetap
+   konsisten terlepas dari siapa/apa yang melakukan commit.
+5. Menghapus beban mati (skrip legacy) yang jika dibiarkan bisa membingungkan
+   agent yang sedang menjelajahi repo.
+6. Semua definisi subagent dan skill ditulis dalam bahasa Inggris (sesuai
+   instruksi user), demi portabilitas dan konsistensi. `AGENTS.md` dan
+   `CLAUDE.md` juga ditulis dalam bahasa Inggris.
+7. Menjaga konvensi yang terdokumentasi (font, ikon, warna) di `AGENTS.md`
+   tetap selaras dengan kode lewat kombinasi aturan tertulis dan hook
+   pengingat `PostToolUse`, sementara perubahan dependency/library tetap
+   selalu memerlukan konfirmasi eksplisit dari user (tidak berubah dari
+   perilaku baku yang berlaku).
 
 ## Non-Goals
 
-- No refactor of `lib/` structure (no widget extraction, no state
-  management introduction, no repository-layer introduction).
-- No change to how the Supabase anon key is configured/stored.
-- No CI/CD pipeline setup (not requested).
-- No new automated test writing in this phase (the QA subagent is scaffolding
-  for future use, not a mandate to write tests now).
-- No PR-creation automation — the commit subagent handles commits only,
-  not pushing or opening PRs (those still go through explicit user request,
-  per standing tool-use rules).
+- Tidak ada refactor struktur `lib/` (tidak ada ekstraksi widget, tidak ada
+  pengenalan state management, tidak ada pengenalan repository layer).
+- Tidak ada perubahan pada cara anon key Supabase dikonfigurasi/disimpan.
+- Tidak ada penyiapan pipeline CI/CD (tidak diminta).
+- Tidak ada penulisan automated test baru pada fase ini (subagent QA
+  bersifat scaffolding untuk penggunaan di masa depan, bukan mandat untuk
+  menulis test sekarang).
+- Tidak ada otomasi pembuatan PR — subagent commit hanya menangani commit,
+  bukan push atau membuka PR (hal itu tetap harus melalui permintaan
+  eksplisit dari user, sesuai aturan baku penggunaan tool).
 
 ## Design
 
-### 1. `AGENTS.md` (repo root) — canonical, tool-agnostic instructions
+### 1. `AGENTS.md` (repo root) — instruksi kanonis, tool-agnostic
 
-This is the single source of truth. Any AI coding tool that follows the
-`AGENTS.md` convention (Claude Code, Codex, Cursor, etc.) reads this file
-directly.
+Ini adalah single source of truth. Tool AI coding apa pun yang mengikuti
+konvensi `AGENTS.md` (Claude Code, Codex, Cursor, dll.) membaca file ini
+secara langsung.
 
-Sections:
-- **Project overview**: what DompetKu is, tech stack (Flutter, Supabase,
-  Gemini AI for receipt scanning/advisory, fl_chart, pdf/printing export).
-- **Structure**: explanation of `lib/core`, `lib/models`, `lib/screens`,
-  `lib/services`, and the fact that screens are currently flat/monolithic
-  (stated as fact, not as a problem to fix).
+Bagian-bagian:
+- **Project overview**: apa itu DompetKu, tech stack (Flutter, Supabase,
+  Gemini AI untuk pemindaian struk/advisory, fl_chart, ekspor pdf/printing).
+- **Structure**: penjelasan `lib/core`, `lib/models`, `lib/screens`,
+  `lib/services`, serta fakta bahwa screen saat ini masih flat/monolitik
+  (dinyatakan sebagai fakta, bukan masalah yang harus diperbaiki).
 - **Conventions observed**: Material3 + `ColorScheme.fromSeed`, `AppColors`
-  for palette, Poppins via `google_fonts`, `ValueNotifier<ThemeMode>` for
-  theme switching, Indonesian (`id_ID`) locale/date formatting, snake_case
-  file names / PascalCase classes (standard Dart).
-  - Screen file naming: `*_screen.dart` in `lib/screens/`.
-  - Models are plain Dart classes with `fromJson`/`toJson` matching
-    Supabase table shape (verify per-file, don't assume a shared base).
+  untuk palet, Poppins lewat `google_fonts`, `ValueNotifier<ThemeMode>`
+  untuk pergantian tema, locale/format tanggal Indonesia (`id_ID`), penamaan
+  file snake_case / class PascalCase (standar Dart).
+  - Penamaan file screen: `*_screen.dart` di `lib/screens/`.
+  - Model berupa class Dart biasa dengan `fromJson`/`toJson` yang mengikuti
+    bentuk tabel Supabase (verifikasi per file, jangan asumsikan ada base
+    class bersama).
 - **Commands**: `flutter analyze`, `flutter test`, `flutter run -d chrome`
   / `-d windows`, `flutter pub get`.
 - **Commit convention**: Conventional Commits (`feat:`, `fix:`, `chore:`,
   `docs:`, `refactor:`, `test:`, `style:`, `perf:`, `build:`, `ci:`),
-  enforced by the `commit-msg` git hook described below.
+  ditegakkan oleh git hook `commit-msg` yang dijelaskan di bawah.
 - **Known context / do-not-touch-silently**:
-  - Supabase anon key is hardcoded in `lib/main.dart` by design for this
-    project's current stage; don't "fix" this unless explicitly asked.
-  - No CI currently; `flutter analyze` + `flutter test` are the local
-    verification bar before claiming work done.
-- **Pointers to subagents/skills**: one-line table of when to reach for
-  each of the five Claude Code subagents and three skills defined below
-  (noted as Claude-Code-specific, since `.claude/` format isn't part of
-  the `AGENTS.md` cross-tool standard).
+  - Anon key Supabase di-hardcode di `lib/main.dart` secara sengaja untuk
+    tahap proyek saat ini; jangan "perbaiki" hal ini kecuali diminta secara
+    eksplisit.
+  - Belum ada CI saat ini; `flutter analyze` + `flutter test` adalah standar
+    verifikasi lokal sebelum mengklaim pekerjaan selesai.
+- **Pointers to subagents/skills**: tabel satu baris berisi kapan harus
+  menggunakan masing-masing dari lima subagent Claude Code dan tiga skill
+  yang didefinisikan di bawah (dicatat sebagai khusus Claude Code, karena
+  format `.claude/` bukan bagian dari standar lintas-tool `AGENTS.md`).
 
-### 1b. `CLAUDE.md` (repo root) — thin Claude Code entry point
+### 1b. `CLAUDE.md` (repo root) — entry point tipis untuk Claude Code
 
-Contains only:
+Hanya berisi:
 ```
 @AGENTS.md
 ```
-plus, if needed, a short Claude-Code-specific addendum (e.g. explicitly
-naming the `.claude/agents/` and `.claude/skills/` directories so Claude
-Code's own routing picks them up — this is metadata Claude Code already
-discovers automatically, so the addendum will likely just be the import
-line unless testing shows otherwise).
+ditambah, bila diperlukan, addendum singkat khusus Claude Code (misalnya
+menyebutkan secara eksplisit direktori `.claude/agents/` dan
+`.claude/skills/` agar routing Claude Code sendiri mendeteksinya — ini
+sebenarnya metadata yang sudah otomatis ditemukan oleh Claude Code, jadi
+addendum kemungkinan besar hanya berupa baris import tersebut kecuali
+pengujian menunjukkan sebaliknya).
 
-### 2. Subagents — `.claude/agents/*.md`
+### 2. Subagent — `.claude/agents/*.md`
 
-All in English. Each file: YAML frontmatter (`name`, `description`,
-`tools`) + a short system prompt body.
+Semua ditulis dalam bahasa Inggris. Setiap file: YAML frontmatter (`name`,
+`description`, `tools`) + system prompt body singkat.
 
 - **`flutter-ui-builder`**
-  Purpose: build and redesign screens/widgets to match the project's
-  existing visual language (Material3, AppColors, Poppins). Full tool
-  access (Read/Write/Edit/Bash) since it needs to run the app to verify
-  visually (pairs with the `run-and-screenshot` skill).
+  Tujuan: membangun dan mendesain ulang screen/widget agar sesuai dengan
+  bahasa visual proyek yang sudah ada (Material3, AppColors, Poppins). Akses
+  tool penuh (Read/Write/Edit/Bash) karena perlu menjalankan aplikasi untuk
+  verifikasi visual (dipasangkan dengan skill `run-and-screenshot`).
 - **`flutter-code-reviewer`**
-  Purpose: review Dart diffs for correctness, null-safety, state/rebuild
-  issues, and consistency with existing patterns in the file being
-  touched. Read-only tools (Read/Grep/Glob/Bash for `flutter analyze`) —
-  no Write/Edit, so it can't "fix while reviewing".
+  Tujuan: mereview diff Dart untuk correctness, null-safety, masalah
+  state/rebuild, dan konsistensi dengan pola yang sudah ada pada file yang
+  disentuh. Tool read-only (Read/Grep/Glob/Bash untuk `flutter analyze`) —
+  tanpa Write/Edit, sehingga tidak bisa "memperbaiki sambil mereview".
 - **`supabase-schema-agent`**
-  Purpose: work with Supabase table schema, RLS, and the Dart
-  models/services that mirror them; keep `lib/models/*` and
-  `lib/services/*` in sync with schema changes. Full tool access.
+  Tujuan: bekerja dengan skema tabel Supabase, RLS, dan model/service Dart
+  yang mencerminkannya; menjaga `lib/models/*` dan `lib/services/*` tetap
+  selaras dengan perubahan skema. Akses tool penuh.
 - **`flutter-qa-writer`**
-  Purpose: write widget/unit tests for Flutter screens and logic,
-  following `flutter_test` conventions. Full tool access, scoped to
-  `test/` and read access to `lib/`.
+  Tujuan: menulis widget/unit test untuk screen dan logika Flutter,
+  mengikuti konvensi `flutter_test`. Akses tool penuh, dibatasi pada
+  `test/` dengan akses baca ke `lib/`.
 - **`git-committer`**
-  Purpose: stage and commit changes with a well-formed Conventional
-  Commits message (correct type — `feat`/`fix`/`chore`/`docs`/`refactor`/
-  `test`/`style`/`perf`/`build`/`ci` — concise scope/summary, body
-  explaining why when non-obvious). Follows the same git safety rules
-  already in force for this session (new commits not amends, no
-  `--no-verify`, never push without explicit request, review staged diff
-  before committing, HEREDOC for multi-line messages, required
-  Co-Authored-By/Claude-Session trailer). Tools: Bash (git only, in
-  practice) + Read for diff inspection. This subagent is only invoked
-  when the user asks to commit — it does not commit proactively.
+  Tujuan: melakukan staging dan commit perubahan dengan pesan Conventional
+  Commits yang tersusun baik (type yang benar — `feat`/`fix`/`chore`/`docs`/
+  `refactor`/`test`/`style`/`perf`/`build`/`ci` — scope/summary yang ringkas,
+  body yang menjelaskan alasan bila tidak jelas dengan sendirinya). Mengikuti
+  aturan keamanan git yang sama yang sudah berlaku untuk sesi ini (commit
+  baru bukan amend, tanpa `--no-verify`, tidak pernah push tanpa permintaan
+  eksplisit, mereview staged diff sebelum commit, HEREDOC untuk pesan
+  multi-baris, trailer Co-Authored-By/Claude-Session yang wajib). Tools:
+  Bash (pada praktiknya hanya git) + Read untuk inspeksi diff. Subagent ini
+  hanya dipanggil saat user meminta commit — tidak melakukan commit secara
+  proaktif.
 
-Each subagent description states clearly when it should be invoked, so
-routing doesn't overlap (e.g. UI builder doesn't do data-layer work,
-schema agent doesn't touch widget trees beyond what's needed to keep
-models in sync, git-committer never writes application code).
+Deskripsi setiap subagent menyatakan dengan jelas kapan ia harus dipanggil,
+sehingga routing tidak tumpang tindih (misalnya UI builder tidak mengerjakan
+data layer, schema agent tidak menyentuh widget tree kecuali yang diperlukan
+untuk menjaga model tetap sinkron, git-committer tidak pernah menulis kode
+aplikasi).
 
-### 3. Skills — `.claude/skills/<name>/SKILL.md`
+### 3. Skill — `.claude/skills/<name>/SKILL.md`
 
-All in English.
+Semua ditulis dalam bahasa Inggris.
 
-- **`add-feature`**: step-by-step checklist for adding a new
-  feature/screen — model → service (Supabase calls) → screen → route
-  wiring in `main.dart` or navigation → styling per `AppColors`/theme
-  conventions. Written as a procedure the `flutter-ui-builder` or a
-  general session follows, not as a standalone agent.
-- **`run-and-screenshot`**: procedure to launch the app (choose a target:
-  chrome for quick web preview, windows for desktop) and capture visual
-  state before reporting UI work as complete — operationalizes the
-  "test the golden path in a browser" system guidance for this specific
-  project.
-- **`supabase-schema-change`**: safe procedure for changing Supabase
-  schema — plan the migration, apply it, update RLS if needed, then
-  update the corresponding Dart model(s) and service(s), and note what
-  manual verification (e.g. Supabase dashboard check) is still needed
-  since this session has no direct Supabase MCP/DB access confirmed.
+- **`add-feature`**: checklist langkah demi langkah untuk menambah
+  fitur/screen baru — model → service (pemanggilan Supabase) → screen →
+  penyambungan route di `main.dart` atau navigasi → styling sesuai konvensi
+  `AppColors`/tema. Ditulis sebagai prosedur yang diikuti oleh
+  `flutter-ui-builder` atau sesi umum, bukan sebagai agent tersendiri.
+- **`run-and-screenshot`**: prosedur untuk menjalankan aplikasi (memilih
+  target: chrome untuk preview web cepat, windows untuk desktop) dan
+  menangkap kondisi visual sebelum melaporkan pekerjaan UI selesai —
+  mengoperasionalkan panduan sistem "uji golden path di browser" khusus
+  untuk proyek ini.
+- **`supabase-schema-change`**: prosedur aman untuk mengubah skema
+  Supabase — merencanakan migrasi, menerapkannya, memperbarui RLS bila
+  perlu, lalu memperbarui model dan service Dart yang sesuai, serta
+  mencatat verifikasi manual apa (misalnya pengecekan dashboard Supabase)
+  yang masih diperlukan karena sesi ini belum dikonfirmasi memiliki akses
+  MCP/DB Supabase langsung.
 
-- **`dompetku-feature-spec`**: used *alongside* `superpowers:brainstorming`
-  (never instead of it) whenever the user describes a new DompetKu
-  feature/refactor in free-form language. Adds project-specific
-  clarifying questions (which screen, Supabase impact, Gemini/AI
-  involvement, theming impact) to brainstorming's clarifying-questions
-  step, and structures the resulting spec into Data/UI/Testing sections
-  that map directly onto `supabase-schema-agent` / `flutter-ui-builder` /
-  `flutter-qa-writer`. Base spec/feature intake itself (free-form
-  description → structured spec, asking questions when unclear) is
-  already handled by the pre-installed `superpowers:brainstorming`
-  skill — this skill only adds DompetKu-specific content to that
-  existing flow. The generated spec **document** is written in Bahasa
-  Indonesia (the user's language for reading it); the skill file itself
-  stays in English like all other skills/subagents in this repo.
+- **`dompetku-feature-spec`**: digunakan *bersamaan dengan*
+  `superpowers:brainstorming` (tidak pernah menggantikannya) setiap kali
+  user mendeskripsikan fitur/refactor DompetKu baru dalam bahasa bebas.
+  Menambahkan pertanyaan klarifikasi khusus proyek (screen mana, dampak
+  terhadap Supabase, keterlibatan Gemini/AI, dampak theming) ke langkah
+  pertanyaan klarifikasi milik brainstorming, dan menyusun spec yang
+  dihasilkan menjadi bagian Data/UI/Testing yang langsung memetakan ke
+  `supabase-schema-agent` / `flutter-ui-builder` / `flutter-qa-writer`.
+  Intake spec/fitur dasar itu sendiri (deskripsi bebas → spec terstruktur,
+  bertanya saat kurang jelas) sudah ditangani oleh skill
+  `superpowers:brainstorming` yang sudah terpasang — skill ini hanya
+  menambahkan konten khusus DompetKu ke alur yang sudah ada tersebut.
+  **Dokumen** spec yang dihasilkan ditulis dalam Bahasa Indonesia (bahasa
+  yang digunakan user untuk membacanya); file skill itu sendiri tetap dalam
+  bahasa Inggris seperti semua skill/subagent lain di repo ini.
 
-### 4. Conventional Commits enforcement — native git hook
+### 4. Penegakan Conventional Commits — native git hook
 
-No Node/`package.json` dependency (project is Flutter-only). Instead:
-- `.githooks/commit-msg` — a POSIX shell script that validates the commit
-  message's first line against a Conventional Commits regex
+Tanpa dependency Node/`package.json` (proyek ini murni Flutter). Sebagai
+gantinya:
+- `.githooks/commit-msg` — skrip shell POSIX yang memvalidasi baris pertama
+  pesan commit terhadap regex Conventional Commits
   (`^(feat|fix|chore|docs|refactor|test|style|perf|build|ci)(\(.+\))?!?: .+`),
-  rejecting the commit with a clear error + example if it doesn't match.
-- Repo is configured to use this hooks directory: `git config core.hooksPath .githooks`.
-  This is a local, one-time setup step (not committed as global git config) —
-  documented in `AGENTS.md` so a human or agent setting up the repo fresh
-  knows to run it. Cannot be auto-applied by cloning alone since
-  `core.hooksPath` is a local config, not a repo file that git reads
-  automatically for security reasons.
-- The hook applies to anyone committing (human via IDE/CLI, or the
-  `git-committer` subagent), regardless of tool.
+  menolak commit dengan pesan error yang jelas + contoh jika tidak cocok.
+- Repo dikonfigurasi untuk menggunakan direktori hooks ini:
+  `git config core.hooksPath .githooks`.
+  Ini adalah langkah setup lokal, sekali jalan (tidak di-commit sebagai
+  konfigurasi git global) — didokumentasikan di `AGENTS.md` agar manusia
+  atau agent yang menyiapkan repo dari awal tahu harus menjalankannya.
+  Tidak dapat diterapkan otomatis hanya dengan clone karena `core.hooksPath`
+  adalah konfigurasi lokal, bukan file repo yang otomatis dibaca git demi
+  alasan keamanan.
+- Hook ini berlaku untuk siapa pun yang melakukan commit (manusia lewat
+  IDE/CLI, atau subagent `git-committer`), terlepas dari tool yang dipakai.
 
-### 5. Keeping `AGENTS.md` in sync — rule + reminder hook
+### 5. Menjaga `AGENTS.md` tetap sinkron — aturan + reminder hook
 
-Two layers so documented conventions (font, icon set, color palette)
-don't drift from the actual code:
+Dua lapis agar konvensi yang terdokumentasi (font, set ikon, palet warna)
+tidak melenceng dari kode yang sebenarnya:
 
-- **Rule in `AGENTS.md`** itself: "When you change a documented
-  convention (font, icon package, color palette, theming approach),
-  update the Conventions section of this file in the same change. When a
-  change swaps or adds a library/dependency, that already requires
-  explicit user confirmation per standing tool-use rules — do that first,
-  then update this file."
-- **`PostToolUse` hook** (`.claude/settings.json`) that fires after
-  Edit/Write on convention-bearing files — `pubspec.yaml`,
-  `lib/core/colors.dart`, `lib/core/theme_mode_manager.dart` — and injects
-  a reminder into context: "This file affects a documented convention in
-  AGENTS.md — update it if this change alters font/icon/color/theme
-  conventions." This is a nudge, not a blocker: it doesn't stop the edit
-  or require confirmation itself, it just makes drift much less likely
-  across long or resumed sessions. Dependency/library changes remain
-  gated by the existing standing confirmation rule, unaffected by this
-  hook.
+- **Aturan di `AGENTS.md`** itu sendiri: "Saat mengubah konvensi yang
+  terdokumentasi (font, package ikon, palet warna, pendekatan theming),
+  perbarui bagian Conventions pada file ini dalam perubahan yang sama.
+  Ketika sebuah perubahan mengganti atau menambah library/dependency, hal
+  itu sudah memerlukan konfirmasi eksplisit dari user sesuai aturan baku
+  penggunaan tool — lakukan itu dulu, baru kemudian perbarui file ini."
+- **Hook `PostToolUse`** (`.claude/settings.json`) yang aktif setelah
+  Edit/Write pada file yang membawa konvensi — `pubspec.yaml`,
+  `lib/core/colors.dart`, `lib/core/theme_mode_manager.dart` — dan
+  menyuntikkan pengingat ke konteks: "File ini memengaruhi konvensi yang
+  terdokumentasi di AGENTS.md — perbarui jika perubahan ini mengubah
+  konvensi font/ikon/warna/tema." Ini adalah nudge, bukan blocker: tidak
+  menghentikan proses edit atau memerlukan konfirmasi tersendiri, hanya
+  membuat drift jauh lebih kecil kemungkinannya pada sesi yang panjang atau
+  dilanjutkan. Perubahan dependency/library tetap terikat oleh aturan
+  konfirmasi baku yang sudah ada, tidak terpengaruh oleh hook ini.
 
 ### 6. Cleanup
 
-Delete (not move) the three legacy root scripts:
+Menghapus (bukan memindahkan) tiga skrip legacy di root:
 `update_home_screen.py`, `update_stats.dart`, `update_trx.dart`.
-Rationale: confirmed unreferenced via `git grep`, and each is a one-shot
-mutation already applied to its target file — keeping them around would
-mislead an agent into thinking they are reusable tooling.
+Alasan: sudah dikonfirmasi tidak direferensikan lewat `git grep`, dan
+masing-masing adalah skrip mutasi sekali pakai yang sudah diterapkan ke file
+targetnya — membiarkannya tetap ada berisiko membuat agent salah mengira
+skrip-skrip ini adalah tooling yang bisa dipakai ulang.
 
 ## Testing / Verification
 
-This is a docs/config-only change (plus a deletion). Verification:
-- `flutter analyze` still passes after script deletion (scripts aren't
-  part of the analyzed Dart package target anyway, but confirm no build
-  reference breaks).
-- Manually confirm `.claude/agents/*.md` and `.claude/skills/*/SKILL.md`
-  are well-formed (valid frontmatter) by having Claude Code list
-  available agents/skills after setup.
-- Confirm `CLAUDE.md`'s `@AGENTS.md` import actually pulls in content
-  (test by asking a fresh Claude Code session a question only answerable
-  from `AGENTS.md` content).
-- Test the `commit-msg` hook directly: after `git config core.hooksPath
-  .githooks`, attempt a commit with a non-conforming message (expect
-  rejection) and a conforming one (expect success).
+Ini adalah perubahan yang murni docs/config (ditambah satu penghapusan).
+Verifikasi:
+- `flutter analyze` tetap lolos setelah penghapusan skrip (skrip-skrip
+  tersebut memang bukan bagian dari target package Dart yang dianalisis,
+  tetapi tetap perlu dikonfirmasi tidak ada referensi build yang rusak).
+- Konfirmasi secara manual bahwa `.claude/agents/*.md` dan
+  `.claude/skills/*/SKILL.md` terbentuk dengan baik (frontmatter valid)
+  dengan meminta Claude Code menampilkan daftar agent/skill yang tersedia
+  setelah setup.
+- Konfirmasi bahwa import `@AGENTS.md` di `CLAUDE.md` benar-benar menarik
+  konten (diuji dengan menanyakan sesi Claude Code baru sebuah pertanyaan
+  yang hanya bisa dijawab dari konten `AGENTS.md`).
+- Menguji hook `commit-msg` secara langsung: setelah menjalankan
+  `git config core.hooksPath .githooks`, coba commit dengan pesan yang
+  tidak sesuai format (diharapkan ditolak) dan pesan yang sesuai format
+  (diharapkan berhasil).
 
 ## Open Questions
 
-None outstanding — all resolved during brainstorming.
+Tidak ada yang tersisa — semua sudah diselesaikan selama brainstorming.
