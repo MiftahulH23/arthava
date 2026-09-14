@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/services/gemini_service.dart';
+import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -157,11 +158,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
   }
 
   void _showImageSourceBottomSheet() {
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
         height: 200,

@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/recurring_transaction_model.dart';
+import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -133,10 +134,8 @@ class _RecurringScreenState extends State<RecurringScreen> {
     final noteController = TextEditingController(text: isEdit ? item.note ?? '' : '');
     final frequencies = ['Harian', 'Mingguan', 'Bulanan', 'Tahunan'];
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
@@ -144,11 +143,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                 .where((c) => c['is_expense'] == isExpense)
                 .toList();
 
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
+            return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -721,8 +716,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                     ),
                   ],
                 ),
-              ),
-            );
+              );
           },
         );
       },

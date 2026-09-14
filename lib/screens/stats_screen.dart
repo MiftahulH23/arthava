@@ -1,4 +1,5 @@
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:catat_uang_app/widgets/app_tab_selector.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -447,10 +448,8 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   void _showFilterSheet() {
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
@@ -458,12 +457,7 @@ class _StatsScreenState extends State<StatsScreen> {
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
+              padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(25)),

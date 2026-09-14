@@ -1,6 +1,7 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/saving_model.dart';
+import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -164,18 +165,12 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
 
     amountController.text = currencyFormat.format(saving.amount.abs());
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
+            return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -510,8 +505,7 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                     ),
                   ],
                 ),
-              ),
-            );
+              );
           },
         );
       },
