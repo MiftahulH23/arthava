@@ -1,6 +1,7 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/investment_model.dart';
+import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -103,14 +104,10 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     final amountController = TextEditingController();
     int? selectedWalletId = _wallets.isNotEmpty ? _wallets.first['id'] as int : null;
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Container(
+        builder: (context, setSheetState) => Container(
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -266,14 +263,12 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
   void _showActionSheet(InvestmentModel inv) {
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
@@ -331,14 +326,10 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     final amountController = TextEditingController();
     int? selectedWalletId = _wallets.isNotEmpty ? _wallets.first['id'] as int : null;
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Container(
+        builder: (context, setSheetState) => Container(
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -461,21 +452,16 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
   void _showUpdateValueSheet(InvestmentModel inv) {
     final amountController = TextEditingController(text: _inputFormat.format(inv.currentValue));
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Container(
+        builder: (context, setSheetState) => Container(
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -562,7 +548,6 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
