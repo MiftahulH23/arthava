@@ -56,8 +56,12 @@ class CalendarNotifier extends AutoDisposeNotifier<CalendarState> {
   }
 
   Future<void> _loadAll() async {
-    await fetchWallets();
-    await fetchTransactions();
+    // Dijalankan paralel (bukan berurutan) supaya waktu tunggu total sama
+    // dengan fetch terlama, bukan jumlah keduanya — sesuai perilaku asli
+    // (initState memanggil keduanya tanpa await berurutan). Aman karena
+    // fetchWallets dan fetchTransactions tidak saling baca data satu sama
+    // lain dan masing-masing hanya menulis field state miliknya sendiri.
+    await Future.wait([fetchWallets(), fetchTransactions()]);
   }
 
   // [NEW] Ambil nama & warna dompet buat badge
