@@ -3,6 +3,7 @@ import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/budget_model.dart';
 import 'package:catat_uang_app/models/category_model.dart';
 import 'package:catat_uang_app/screens/budget_detail_screen.dart';
+import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -232,16 +233,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
     List<CategoryModel> dropdownOptions = _allCategories;
     final years = List.generate(11, (i) => (DateTime.now().year - 5) + i);
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: Container(
+            return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -369,8 +366,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ),
                   ],
                 ),
-              ),
-            );
+              );
           },
         );
       },
