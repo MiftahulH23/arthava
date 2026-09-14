@@ -2,104 +2,26 @@ import 'package:flutter/services.dart';
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/recurring_transaction_model.dart';
+import 'package:catat_uang_app/providers/recurring_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class RecurringScreen extends StatefulWidget {
+class RecurringScreen extends ConsumerStatefulWidget {
   const RecurringScreen({super.key});
 
   @override
-  State<RecurringScreen> createState() => _RecurringScreenState();
+  ConsumerState<RecurringScreen> createState() => _RecurringScreenState();
 }
 
-class _RecurringScreenState extends State<RecurringScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isLoading = true;
-  List<RecurringTransactionModel> _recurringList = [];
-  List<Map<String, dynamic>> _categories = [];
-
-  // [NEW] Nyimpen data dompet
-  List<Map<String, dynamic>> _wallets = [];
-  Map<int, String> _walletNames = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchWallets(); // Panggil dompet dulu
-    _fetchCategories();
-    _fetchData();
-  }
-
-  // [NEW] Tarik data dompet
-  Future<void> _fetchWallets() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('wallets')
-          .select()
-          .eq('user_id', userId)
-          .order('name');
-      if (mounted) {
-        setState(() {
-          _wallets = List<Map<String, dynamic>>.from(res);
-          for (var w in _wallets) {
-            _walletNames[w['id']] = w['name'].toString();
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetch wallets: $e");
-    }
-  }
-
-  Future<void> _fetchCategories() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('categories')
-          .select()
-          .or('user_id.is.null,user_id.eq.$userId');
-      if (mounted)
-        setState(() => _categories = List<Map<String, dynamic>>.from(res));
-    } catch (e) {
-      debugPrint("Error fetching categories: $e");
-    }
-  }
-
-  Future<void> _fetchData() async {
-    setState(() => _isLoading = true);
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('recurring_transactions')
-          .select('*, categories(*)')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
-
-      if (mounted) {
-        setState(() {
-          _recurringList = (res as List)
-              .map((e) => RecurringTransactionModel.fromJson(e))
-              .toList();
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
+class _RecurringScreenState extends ConsumerState<RecurringScreen> {
   Future<void> _toggleActive(RecurringTransactionModel item, bool value) async {
     try {
-      await _supabase
-          .from('recurring_transactions')
-          .update({'is_active': value})
-          .eq('id', item.id);
-      _fetchData();
+      await ref.read(recurringProvider.notifier).toggleActive(item, value);
     } catch (e) {
       if (mounted) AppNotification.error(context, "Gagal mengubah status");
     }
@@ -107,8 +29,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
 
   Future<void> _deleteItem(int id) async {
     try {
-      await _supabase.from('recurring_transactions').delete().eq('id', id);
-      _fetchData();
+      await ref.read(recurringProvider.notifier).deleteItem(id);
       if (mounted) AppNotification.success(context, "Jadwal otomatis dihapus");
     } catch (e) {
       if (mounted) AppNotification.error(context, "Gagal menghapus data");
@@ -124,9 +45,10 @@ class _RecurringScreenState extends State<RecurringScreen> {
       decimalDigits: 0,
     );
 
+    final wallets = ref.read(recurringProvider).wallets;
     bool isExpense = isEdit ? (item.category?['is_expense'] ?? true) : true;
     int? selectedCatId = isEdit ? item.categoryId : null;
-    int? selectedWalletId = isEdit ? item.walletId : (_wallets.isNotEmpty ? _wallets.first['id'] as int : null);
+    int? selectedWalletId = isEdit ? item.walletId : (wallets.isNotEmpty ? wallets.first['id'] as int : null);
     String selectedFreq = isEdit ? item.frequency : 'Bulanan';
     DateTime selectedDate = isEdit ? item.startDate : DateTime.now();
 
@@ -139,7 +61,9 @@ class _RecurringScreenState extends State<RecurringScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final filteredCats = _categories
+            final categories = ref.read(recurringProvider).categories;
+            final wallets = ref.read(recurringProvider).wallets;
+            final filteredCats = categories
                 .where((c) => c['is_expense'] == isExpense)
                 .toList();
 
@@ -317,7 +241,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                                   isExpanded: true,
                                   dropdownColor: Colors.white,
                                   hint: Text(
-                                    _wallets.isEmpty
+                                    wallets.isEmpty
                                         ? "Belum ada dompet"
                                         : "Pilih Dompet",
                                     style: GoogleFonts.poppins(
@@ -328,7 +252,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
                                     PhosphorIconsRegular.caretDown,
                                     color: Colors.grey,
                                   ),
-                                  items: _wallets.map((w) {
+                                  items: wallets.map((w) {
                                     return DropdownMenuItem<int>(
                                       value: w['id'] as int,
                                       child: Text(
@@ -662,7 +586,8 @@ class _RecurringScreenState extends State<RecurringScreen> {
                               '',
                             ),
                           );
-                          final userId = _supabase.auth.currentUser!.id;
+                          final userId =
+                              Supabase.instance.client.auth.currentUser!.id;
                           final dateStr = DateFormat(
                             'yyyy-MM-dd',
                           ).format(selectedDate);
@@ -679,19 +604,17 @@ class _RecurringScreenState extends State<RecurringScreen> {
                             };
 
                             if (isEdit) {
-                              await _supabase
-                                  .from('recurring_transactions')
-                                  .update(data)
-                                  .eq('id', item.id);
+                              await ref
+                                  .read(recurringProvider.notifier)
+                                  .updateRecurring(item.id, data);
                             } else {
-                              await _supabase
-                                  .from('recurring_transactions')
-                                  .insert(data);
+                              await ref
+                                  .read(recurringProvider.notifier)
+                                  .addRecurring(data);
                             }
 
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _fetchData();
                               AppNotification.success(
                                 context,
                                 isEdit ? "Jadwal diperbarui!" : "Jadwal berhasil dibuat!",
@@ -731,6 +654,11 @@ class _RecurringScreenState extends State<RecurringScreen> {
       decimalDigits: 0,
     );
 
+    final recurringState = ref.watch(recurringProvider);
+    final isLoading = recurringState.isLoading;
+    final recurringList = recurringState.recurringList;
+    final walletNames = recurringState.walletNames;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -750,9 +678,9 @@ class _RecurringScreenState extends State<RecurringScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _recurringList.isEmpty
+          : recurringList.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -772,16 +700,16 @@ class _RecurringScreenState extends State<RecurringScreen> {
             )
           : ListView.builder(
               padding: const EdgeInsets.all(20),
-              itemCount: _recurringList.length,
+              itemCount: recurringList.length,
               itemBuilder: (context, index) {
-                final item = _recurringList[index];
+                final item = recurringList[index];
                 final isExpense = item.category?['is_expense'] ?? true;
                 final catName = item.category?['name'] ?? 'Umum';
                 final color = isExpense ? AppColors.expense : AppColors.income;
 
                 // [NEW] Tampilkan Nama Dompet
                 final walletName =
-                    _walletNames[item.walletId] ?? 'Dompet Dihapus';
+                    walletNames[item.walletId] ?? 'Dompet Dihapus';
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 15),

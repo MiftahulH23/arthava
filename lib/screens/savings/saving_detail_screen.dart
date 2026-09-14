@@ -1,100 +1,66 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/saving_model.dart';
+import 'package:catat_uang_app/providers/savings_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SavingDetailScreen extends StatefulWidget {
+class SavingDetailScreen extends ConsumerStatefulWidget {
   final String savingName;
   const SavingDetailScreen({super.key, required this.savingName});
 
   @override
-  State<SavingDetailScreen> createState() => _SavingDetailScreenState();
+  ConsumerState<SavingDetailScreen> createState() =>
+      _SavingDetailScreenState();
 }
 
-class _SavingDetailScreenState extends State<SavingDetailScreen> {
+class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isLoading = true;
-  List<SavingModel> _history = [];
-  double _currentBalance = 0;
 
-  // [NEW] Untuk mapping ID Tabungan ke ID Dompet
-  Map<int, String> _walletNames = {};
+  // Daftar riwayat & saldo dompet sudah tersedia lewat savingsProvider
+  // (dibagi dengan SavingsScreen) — layar ini hanya perlu mengambil
+  // pemetaan tabungan->dompet dari tabel transactions sendiri.
+  bool _isLoading = true;
   Map<int, int> _savingToWallet = {};
 
   @override
   void initState() {
     super.initState();
-    _fetchDetail();
+    _fetchSavingToWallet();
   }
 
-  Future<void> _fetchDetail() async {
+  Future<void> _fetchSavingToWallet() async {
     setState(() => _isLoading = true);
     try {
       final userId = _supabase.auth.currentUser!.id;
-
-      // 1. Ambil Data Dompet (Buat kamus nama dompet)
-      final wRes = await _supabase
-          .from('wallets')
-          .select('id, name')
-          .eq('user_id', userId);
-      Map<int, String> tempWallets = {};
-      for (var w in wRes) {
-        tempWallets[w['id'] as int] = w['name'].toString();
-      }
-
-      // 2. Ambil Histori Tabungan
-      final res = await _supabase
-          .from('savings')
-          .select()
+      final trxRes = await _supabase
+          .from('transactions')
+          .select('note, wallet_id')
           .eq('user_id', userId)
-          .ilike('name', widget.savingName)
-          .order('created_at', ascending: false);
+          .ilike('note', '%[SAVING_ID:%');
 
-      double total = 0;
-      List<SavingModel> loadedData = [];
-      List<int> savingIds = [];
-
-      for (var item in res) {
-        final saving = SavingModel.fromJson(item);
-        loadedData.add(saving);
-        total += saving.amount;
-        savingIds.add(saving.id);
-      }
-
-      // 3. [NEW] Ambil Transaksi terkait buat tau dompetnya
       Map<int, int> tempSavingWallet = {};
-      if (savingIds.isNotEmpty) {
-        final trxRes = await _supabase
-            .from('transactions')
-            .select('note, wallet_id')
-            .eq('user_id', userId)
-            .ilike('note', '%[SAVING_ID:%');
-
-        for (var t in trxRes) {
-          String note = t['note']?.toString() ?? '';
-          int? wId = t['wallet_id'] as int?;
-          if (wId != null) {
-            final match = RegExp(r'\[SAVING_ID:(\d+)\]').firstMatch(note);
-            if (match != null) {
-              int sId = int.parse(match.group(1)!);
-              tempSavingWallet[sId] = wId;
-            }
+      for (var t in trxRes) {
+        String note = t['note']?.toString() ?? '';
+        int? wId = t['wallet_id'] as int?;
+        if (wId != null) {
+          final match = RegExp(r'\[SAVING_ID:(\d+)\]').firstMatch(note);
+          if (match != null) {
+            int sId = int.parse(match.group(1)!);
+            tempSavingWallet[sId] = wId;
           }
         }
       }
 
       if (mounted) {
         setState(() {
-          _walletNames = tempWallets;
           _savingToWallet = tempSavingWallet;
-          _history = loadedData;
-          _currentBalance = total;
           _isLoading = false;
         });
       }
@@ -106,39 +72,7 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
   // Hapus Tabungan & Kembalikan Saldo Dompet
   Future<void> _deleteSaving(SavingModel item) async {
     try {
-      final noteMarker = "[SAVING_ID:${item.id}]";
-
-      final trxRes = await _supabase
-          .from('transactions')
-          .select('id, amount, wallet_id')
-          .like('note', '%$noteMarker%')
-          .maybeSingle();
-
-      if (trxRes != null && trxRes['wallet_id'] != null) {
-        final walletId = trxRes['wallet_id'];
-        final trxAmount = (trxRes['amount'] as num).toDouble();
-
-        final walletRes = await _supabase
-            .from('wallets')
-            .select('balance')
-            .eq('id', walletId)
-            .single();
-        double currentBal = (walletRes['balance'] as num).toDouble();
-
-        double refundAmount = item.amount > 0 ? trxAmount : -trxAmount;
-        await _supabase
-            .from('wallets')
-            .update({'balance': currentBal + refundAmount})
-            .eq('id', walletId);
-      }
-
-      await _supabase
-          .from('transactions')
-          .delete()
-          .like('note', '%$noteMarker%');
-      await _supabase.from('savings').delete().eq('id', item.id);
-
-      _fetchDetail();
+      await ref.read(savingsProvider.notifier).deleteSavingItem(item);
       if (mounted)
         AppNotification.success(
           context,
@@ -421,66 +355,20 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                               '',
                             ),
                           );
-                          final finalAmount = isDeposit
-                              ? rawAmount
-                              : -rawAmount;
 
                           try {
-                            final noteMarker = "[SAVING_ID:${saving.id}]";
-                            final trxRes = await _supabase
-                                .from('transactions')
-                                .select('id, amount, wallet_id')
-                                .like('note', '%$noteMarker%')
-                                .maybeSingle();
-
-                            if (trxRes != null && trxRes['wallet_id'] != null) {
-                              final walletId = trxRes['wallet_id'];
-                              final oldTrxAmount = (trxRes['amount'] as num)
-                                  .toDouble();
-
-                              final walletRes = await _supabase
-                                  .from('wallets')
-                                  .select('balance')
-                                  .eq('id', walletId)
-                                  .single();
-                              double currentBal = (walletRes['balance'] as num)
-                                  .toDouble();
-
-                              double revertAmount = saving.amount > 0
-                                  ? oldTrxAmount
-                                  : -oldTrxAmount;
-                              double balanceAfterRevert =
-                                  currentBal + revertAmount;
-
-                              double applyAmount = isDeposit
-                                  ? rawAmount
-                                  : -rawAmount;
-                              double finalWalletBalance =
-                                  balanceAfterRevert - applyAmount;
-
-                              await _supabase
-                                  .from('wallets')
-                                  .update({'balance': finalWalletBalance})
-                                  .eq('id', walletId);
-                            }
-
-                            await _supabase
-                                .from('savings')
-                                .update({
-                                  'amount': finalAmount,
-                                  'location': locationController.text.trim(),
-                                  'notes': notesController.text.trim(),
-                                })
-                                .eq('id', saving.id);
-
-                            await _supabase
-                                .from('transactions')
-                                .update({'amount': rawAmount})
-                                .like('note', '%$noteMarker%');
+                            await ref
+                                .read(savingsProvider.notifier)
+                                .editSavingItem(
+                                  saving: saving,
+                                  rawAmount: rawAmount,
+                                  isDeposit: isDeposit,
+                                  location: locationController.text.trim(),
+                                  notes: notesController.text.trim(),
+                                );
 
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _fetchDetail();
                               AppNotification.success(
                                 context,
                                 "Perubahan disimpan!",
@@ -519,6 +407,21 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
       symbol: 'Rp ',
       decimalDigits: 0,
     );
+
+    final savingsState = ref.watch(savingsProvider);
+    // Riwayat & saldo kelompok tabungan ini diturunkan reaktif dari
+    // savingsProvider (dibagi dengan SavingsScreen) — perubahan lewat
+    // _showEditSheet/_deleteSaving di layar ini otomatis tercermin di sini
+    // dan di SavingsScreen tanpa refetch manual setelah Navigator.pop.
+    final history = savingsState.groupedSavings[widget.savingName] ?? [];
+    final currentBalance = history.fold<double>(
+      0,
+      (sum, item) => sum + item.amount,
+    );
+    final Map<int, String> walletNames = {
+      for (final w in savingsState.wallets) w['id'] as int: w['name'].toString(),
+    };
+    final isLoading = savingsState.isLoading || _isLoading;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -574,7 +477,7 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      currency.format(_currentBalance),
+                      currency.format(currentBalance),
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 28,
@@ -601,7 +504,7 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
           const SizedBox(height: 10),
 
           Expanded(
-            child: _isLoading
+            child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(
@@ -609,9 +512,9 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                       vertical: 10,
                     ),
                     physics: const BouncingScrollPhysics(),
-                    itemCount: _history.length,
+                    itemCount: history.length,
                     itemBuilder: (context, index) {
-                      final item = _history[index];
+                      final item = history[index];
                       final isWithdrawal = item.amount < 0;
                       final Color cardColor = isWithdrawal
                           ? AppColors.expense
@@ -620,7 +523,7 @@ class _SavingDetailScreenState extends State<SavingDetailScreen> {
                       // [NEW] Persiapan Info Dompet & Badge
                       final walletId = _savingToWallet[item.id];
                       final walletName = walletId != null
-                          ? _walletNames[walletId]
+                          ? walletNames[walletId]
                           : null;
 
                       return Container(
