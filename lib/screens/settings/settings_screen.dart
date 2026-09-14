@@ -1,24 +1,20 @@
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/edit_profile_screen.dart';
+import 'package:catat_uang_app/screens/edit_profile/edit_profile_screen.dart';
 import 'package:catat_uang_app/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SettingsScreen extends StatefulWidget {
+// StatelessWidget: layar ini tidak punya state lokal (tidak ada setState di
+// mana pun) — hanya satu aksi one-shot (_logout) tanpa data yang perlu
+// dipertahankan, jadi tidak butuh StatefulWidget atau Riverpod provider.
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-
-  Future<void> _logout() async {
-    await _supabase.auth.signOut();
-    if (mounted) {
+  Future<void> _logout(BuildContext context) async {
+    await Supabase.instance.client.auth.signOut();
+    if (context.mounted) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -29,7 +25,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Cek apakah mode gelap sedang aktif (untuk styling UI halaman ini)
+    // Cek apakah mode gelap sedang aktif (untuk styling UI halaman ini).
+    // CATATAN: sengaja TIDAK memakai AppCard di sini — AppCard (forui)
+    // light-only by design, sedangkan layar ini mendukung dark mode secara
+    // manual lewat Container/ListTile dinamis. Memakai AppCard akan
+    // meregresi dark mode di layar ini.
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final contentColor = isDark ? Colors.white : Colors.black;
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
@@ -75,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
 
-           
+
 
             const SizedBox(height: 20),
             _buildSectionHeader("Lainnya"),
@@ -105,7 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               contentColor: contentColor, // Text default
               iconColor: Colors.red,
               textColor: Colors.red,
-              onTap: _logout,
+              onTap: () => _logout(context),
             ),
           ],
         ),

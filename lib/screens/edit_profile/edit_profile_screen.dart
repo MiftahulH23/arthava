@@ -1,30 +1,30 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/providers/edit_profile_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   // Controller jangan di-init kosong, tapi nanti di initState
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
-  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    final user = _supabase.auth.currentUser;
-    
-    // 1. ISI DATA LANGSUNG (Synchronous) dari Metadata Auth
+    final user = Supabase.instance.client.auth.currentUser;
+
+    // ISI DATA LANGSUNG (Synchronous) dari Metadata Auth
     // Ini biar pas buka layar, textfield TIDAK KOSONG
     String initialName = user?.userMetadata?['name'] ?? "";
     String initialEmail = user?.email ?? "";
@@ -32,8 +32,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController = TextEditingController(text: initialName);
     _emailController = TextEditingController(text: initialEmail);
 
-    // 2. Cek lagi ke Database (Untuk memastikan data paling update)
-    _loadLatestData();
+    // Cek lagi ke Database (untuk memastikan data paling update) dilakukan
+    // oleh editProfileProvider saat pertama kali di-watch/build di bawah.
   }
 
   @override
@@ -43,68 +43,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _loadLatestData() async {
-    final user = _supabase.auth.currentUser;
-    if (user == null) return;
-
-    try {
-      final data = await _supabase
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-      
-      if (data != null && mounted) {
-        // Kalau data di database beda sama yang di textfield, update
-        if (_nameController.text != data['name']) {
-          setState(() {
-            _nameController.text = data['name'];
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Gagal load profile db: $e");
-    }
-  }
-
   Future<void> _updateProfile() async {
     if (_nameController.text.trim().isEmpty) {
       AppNotification.error(context, "Nama tidak boleh kosong");
       return;
     }
 
-    setState(() => _isLoading = true);
     try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
-
-      // 1. Update ke Tabel Profiles
-      await _supabase.from('profiles').upsert({
-        'id': user.id,
-        'name': _nameController.text.trim(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
-
-      // 2. Update ke User Metadata (Penting biar cache lokal juga update)
-      await _supabase.auth.updateUser(
-        UserAttributes(
-          data: {'name': _nameController.text.trim()},
-        ),
-      );
+      await ref
+          .read(editProfileProvider.notifier)
+          .updateProfile(_nameController.text.trim());
 
       if (mounted) {
         AppNotification.success(context, "Profil berhasil diperbarui!");
-        Navigator.pop(context, true); 
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) AppNotification.error(context, "Gagal update: $e");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(editProfileProvider);
+
+    // Kalau data di database beda sama yang di textfield, update — meniru
+    // _loadLatestData yang lama.
+    ref.listen<EditProfileState>(editProfileProvider, (previous, next) {
+      if (next.latestName != null && _nameController.text != next.latestName) {
+        _nameController.text = next.latestName!;
+      }
+    });
+
+    final isLoading = state.isSaving;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -172,7 +144,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _updateProfile,
+                onPressed: isLoading ? null : _updateProfile,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.textPrimary,
                   shape: RoundedRectangleBorder(
@@ -180,7 +152,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   elevation: 0,
                 ),
-                child: _isLoading
+                child: isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
                         "Simpan Perubahan",
