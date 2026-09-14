@@ -1,30 +1,30 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/budget_model.dart';
+import 'package:catat_uang_app/providers/budget_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class BudgetDetailScreen extends StatefulWidget {
+class BudgetDetailScreen extends ConsumerStatefulWidget {
   final BudgetModel budget;
 
   const BudgetDetailScreen({super.key, required this.budget});
 
   @override
-  State<BudgetDetailScreen> createState() => _BudgetDetailScreenState();
+  ConsumerState<BudgetDetailScreen> createState() => _BudgetDetailScreenState();
 }
 
-class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
+class _BudgetDetailScreenState extends ConsumerState<BudgetDetailScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   bool _isLoading = true;
   List<Map<String, dynamic>> _transactions = [];
   double _totalSpent = 0;
-
-  late BudgetModel _currentBudget;
 
   // [NEW] Persiapan Data Dompet
   Map<int, String> _walletNames = {};
@@ -33,7 +33,6 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _currentBudget = widget.budget;
     _fetchWallets(); // Panggil dompet dulu
     _fetchTransactions();
   }
@@ -67,10 +66,10 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
       final userId = _supabase.auth.currentUser!.id;
       final startMonth = DateFormat(
         'yyyy-MM-01',
-      ).format(DateTime(_currentBudget.year, _currentBudget.month));
+      ).format(DateTime(widget.budget.year, widget.budget.month));
       final nextMonth = DateFormat(
         'yyyy-MM-01',
-      ).format(DateTime(_currentBudget.year, _currentBudget.month + 1));
+      ).format(DateTime(widget.budget.year, widget.budget.month + 1));
 
       // [UPDATE] Tambahin wallet_id di select query
       final res = await _supabase
@@ -91,7 +90,7 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
         // [FIX] Celah gaib ditutup! Mutasi tabungan gak boleh masuk hitungan anggaran
         if (noteStr.contains('[SAVING_ID:')) continue;
 
-        if (catId == _currentBudget.categoryId) {
+        if (catId == widget.budget.categoryId) {
           final amount = (item['amount'] as num).toDouble();
           spent += amount;
           filteredData.add(item);
@@ -111,14 +110,14 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
   }
 
   // [UX UPGRADE] DIALOG EDIT BERUBAH JADI BOTTOM SHEET
-  void _showEditSheet() {
+  void _showEditSheet(BudgetModel currentBudget) {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: '',
       decimalDigits: 0,
     );
     final amountController = TextEditingController(
-      text: currencyFormat.format(_currentBudget.amount),
+      text: currencyFormat.format(currentBudget.amount),
     );
 
     showAppBottomSheet(
@@ -164,7 +163,7 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
                       ],
                     ),
                     Text(
-                      "Ubah limit untuk kategori ${_currentBudget.category?.name}",
+                      "Ubah limit untuk kategori ${currentBudget.category?.name}",
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         color: Colors.grey,
@@ -258,32 +257,23 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
                           );
 
                           try {
-                            await _supabase
-                                .from('budgets')
-                                .update({'amount': cleanAmount})
-                                .eq('id', _currentBudget.id);
-                            setState(() {
-                              _currentBudget = BudgetModel(
-                                id: _currentBudget.id,
-                                categoryId: _currentBudget.categoryId,
-                                amount: cleanAmount,
-                                month: _currentBudget.month,
-                                year: _currentBudget.year,
-                                category: _currentBudget.category,
-                              );
-                            });
+                            await ref
+                                .read(budgetProvider.notifier)
+                                .updateBudgetAmount(currentBudget.id, cleanAmount);
                             if (context.mounted) Navigator.pop(context);
-                            if (context.mounted)
+                            if (context.mounted) {
                               AppNotification.success(
                                 context,
                                 "Limit berhasil diperbarui!",
                               );
+                            }
                           } catch (e) {
-                            if (context.mounted)
+                            if (context.mounted) {
                               AppNotification.error(
                                 context,
                                 "Gagal update limit",
                               );
+                            }
                           }
                         },
                         child: Text(
@@ -306,25 +296,36 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Anggaran ini juga ditampilkan di daftar BudgetScreen lewat
+    // budgetProvider yang sama — cari versi terkini dari state supaya
+    // perubahan `amount` lewat _showEditSheet langsung tercermin di sini
+    // tanpa state lokal duplikat. Fallback ke widget.budget kalau item ini
+    // sudah tidak ada di state (mis. dihapus dari layar lain).
+    final budgetState = ref.watch(budgetProvider);
+    final currentBudget = budgetState.budgets.firstWhere(
+      (b) => b.id == widget.budget.id,
+      orElse: () => widget.budget,
+    );
+
     final currency = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-    final progress = _currentBudget.amount == 0
+    final progress = currentBudget.amount == 0
         ? 0.0
-        : _totalSpent / _currentBudget.amount;
+        : _totalSpent / currentBudget.amount;
     final isOver = progress > 1.0;
     final color = isOver
         ? Colors.redAccent
         : (progress > 0.8 ? Colors.orange : Colors.tealAccent);
-    final sisa = _currentBudget.amount - _totalSpent;
+    final sisa = currentBudget.amount - _totalSpent;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          _currentBudget.category?.name ?? "Detail Anggaran",
+          currentBudget.category?.name ?? "Detail Anggaran",
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.bold,
             color: Colors.black,
@@ -343,7 +344,7 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
               PhosphorIconsRegular.pencilSimple,
               color: Colors.purple,
             ),
-            onPressed: _showEditSheet,
+            onPressed: () => _showEditSheet(currentBudget),
           ),
         ],
       ),
@@ -415,7 +416,7 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
                                 ),
                               ),
                               Text(
-                                currency.format(_currentBudget.amount),
+                                currency.format(currentBudget.amount),
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
