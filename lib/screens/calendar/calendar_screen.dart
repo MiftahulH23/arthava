@@ -1,127 +1,28 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
+import 'package:catat_uang_app/providers/calendar_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-class CalendarScreen extends StatefulWidget {
+class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-
+class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-
-  Map<DateTime, List<TransactionModel>> _groupedTransactions = {};
-  List<TransactionModel> _selectedTransactions = [];
-  bool _isLoading = true;
-
-  Map<String, String> _savingNames = {};
-
-  // [NEW] Simpen data dompet biar bisa dipanggil warnanya
-  Map<int, String> _walletNames = {};
-  Map<int, Color> _walletColors = {};
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _fetchWallets(); // [NEW] Panggil data dompet
-    _fetchTransactions();
-  }
-
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
-
-  // [NEW] Ambil nama & warna dompet buat badge
-  Future<void> _fetchWallets() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('wallets')
-          .select()
-          .eq('user_id', userId);
-      if (mounted) {
-        setState(() {
-          for (var w in res as List) {
-            _walletNames[w['id']] = w['name'].toString();
-            final colorHex = w['color']?.toString() ?? '#1E3A8A';
-            _walletColors[w['id']] = Color(
-              int.parse(colorHex.replaceFirst('#', '0xFF')),
-            );
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint("Error wallets: $e");
-    }
-  }
-
-  Future<void> _fetchTransactions() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      // 1. Ambil nama tabungan buat kamus
-      final savingsRes = await _supabase
-          .from('savings')
-          .select('id, name')
-          .eq('user_id', userId);
-      Map<String, String> tempSavings = {};
-      for (var row in savingsRes as List) {
-        tempSavings[row['id'].toString()] = row['name'].toString();
-      }
-
-      // 2. Ambil data transaksinya
-      final res = await _supabase
-          .from('transactions')
-          .select('*, categories(*)')
-          .eq('user_id', userId)
-          .order('date', ascending: false);
-
-      Map<DateTime, List<TransactionModel>> tempGroups = {};
-
-      for (var item in res) {
-        final trx = TransactionModel.fromJson(item);
-        final normalizedDate = _normalizeDate(trx.date);
-
-        final catName = trx.category?.name.toLowerCase() ?? '';
-        final note = trx.note ?? '';
-        final isSystemCat =
-            catName.contains('tabung') || catName.contains('cair');
-        final isPureMutation = note.contains('[SAVING_ID:') && isSystemCat;
-
-        if (!isPureMutation) {
-          if (tempGroups[normalizedDate] == null) {
-            tempGroups[normalizedDate] = [];
-          }
-          tempGroups[normalizedDate]!.add(trx);
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _savingNames = tempSavings;
-          _groupedTransactions = tempGroups;
-          _selectedTransactions = _getEventsForDay(_selectedDay!);
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  List<TransactionModel> _getEventsForDay(DateTime day) {
-    return _groupedTransactions[_normalizeDate(day)] ?? [];
   }
 
   IconData _getCategoryIcon(String categoryName) {
@@ -143,6 +44,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(calendarProvider);
+    final selectedTransactions = state.eventsForDay(_selectedDay!);
+
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -151,7 +55,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     double dailyIncome = 0;
     double dailyExpense = 0;
-    for (var trx in _selectedTransactions) {
+    for (var trx in selectedTransactions) {
       if (trx.category?.isExpense ?? true) {
         dailyExpense += trx.amount;
       } else {
@@ -177,7 +81,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
+      body: state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
@@ -233,13 +137,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         color: AppColors.primary,
                       ),
                     ),
-                    eventLoader: _getEventsForDay,
+                    eventLoader: state.eventsForDay,
                     onDaySelected: (selectedDay, focusedDay) {
                       if (!isSameDay(_selectedDay, selectedDay)) {
                         setState(() {
                           _selectedDay = selectedDay;
                           _focusedDay = focusedDay;
-                          _selectedTransactions = _getEventsForDay(selectedDay);
                         });
                       }
                     },
@@ -389,7 +292,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                 // LIST TRANSAKSI HARIAN DENGAN BADGE DOMPET
                 Expanded(
-                  child: _selectedTransactions.isEmpty
+                  child: selectedTransactions.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -416,9 +319,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             vertical: 5,
                           ),
                           physics: const BouncingScrollPhysics(),
-                          itemCount: _selectedTransactions.length,
+                          itemCount: selectedTransactions.length,
                           itemBuilder: (context, index) {
-                            final trx = _selectedTransactions[index];
+                            final trx = selectedTransactions[index];
                             final isExpense = trx.category?.isExpense ?? true;
 
                             // Logika Bersihin Saving ID
@@ -428,7 +331,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ).firstMatch(displayNote);
                             if (match != null) {
                               String sId = match.group(1)!;
-                              String sName = _savingNames[sId] ?? 'Tabungan';
+                              String sName =
+                                  state.savingNames[sId] ?? 'Tabungan';
                               displayNote = displayNote
                                   .replaceAll(
                                     match.group(0)!,
@@ -441,8 +345,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                             // [NEW] Persiapan Wallet Badge
                             final wId = trx.walletId;
-                            final wName = _walletNames[wId] ?? 'Kas Utama';
-                            final wColor = _walletColors[wId] ?? Colors.grey;
+                            final wName =
+                                state.walletNames[wId] ?? 'Kas Utama';
+                            final wColor =
+                                state.walletColors[wId] ?? Colors.grey;
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),

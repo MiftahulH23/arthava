@@ -1,7 +1,7 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/input_transaction_screen.dart';
-import 'package:catat_uang_app/screens/manage_category_screen.dart';
+import 'package:catat_uang_app/screens/manage_category/manage_category_screen.dart';
 import 'package:catat_uang_app/screens/settings/settings_screen.dart';
 import 'package:catat_uang_app/screens/stats_screen.dart';
 import 'package:catat_uang_app/screens/transaction_history_screen.dart';
@@ -16,10 +16,10 @@ import 'package:catat_uang_app/screens/target_screen.dart';
 import 'package:catat_uang_app/screens/savings_screen.dart';
 import 'package:catat_uang_app/screens/recurring_screen.dart';
 import 'package:catat_uang_app/screens/ai_advisor/ai_advisor_screen.dart';
-import 'package:catat_uang_app/screens/calendar_screen.dart';
+import 'package:catat_uang_app/screens/calendar/calendar_screen.dart';
 import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
 import 'package:catat_uang_app/screens/debt_screen.dart';
-import 'package:catat_uang_app/screens/zakat_sedekah_screen.dart';
+import 'package:catat_uang_app/screens/zakat_sedekah/zakat_sedekah_screen.dart';
 import 'package:catat_uang_app/screens/investment_screen.dart';
 
 class HomeScreen extends StatefulWidget {

@@ -1,29 +1,14 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/category_model.dart';
+import 'package:catat_uang_app/providers/category_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ManageCategoryScreen extends StatefulWidget {
+class ManageCategoryScreen extends ConsumerWidget {
   const ManageCategoryScreen({super.key});
-
-  @override
-  State<ManageCategoryScreen> createState() => _ManageCategoryScreenState();
-}
-
-class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isExpense = true;
-  List<CategoryModel> _categories = [];
-  bool _isLoadingList = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchCategories();
-  }
 
   // [UPDATE: Fungsi pintar untuk membaca icon_name atau menebak dari namanya]
   IconData _getCategoryIcon(String categoryName, String? iconName) {
@@ -68,53 +53,13 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
     return PhosphorIcons.tag(PhosphorIconsStyle.fill);
   }
 
-  Future<void> _fetchCategories() async {
-    setState(() => _isLoadingList = true);
+  Future<void> _deleteCategory(BuildContext context, WidgetRef ref, int id) async {
     try {
-      final userId = _supabase.auth.currentUser!.id;
-      final response = await _supabase
-          .from('categories')
-          .select()
-          .eq('is_expense', _isExpense)
-          .or('user_id.is.null,user_id.eq.$userId')
-          .order('id', ascending: true);
-
-      final data = response as List<dynamic>;
-
-      if (mounted) {
-        setState(() {
-          _categories = data
-              .map((json) => CategoryModel.fromJson(json))
-              .toList();
-          _isLoadingList = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoadingList = false);
-    }
-  }
-
-  Future<void> _addCategoryLogic(String name) async {
-    await _supabase.from('categories').insert({
-      'name': name,
-      'is_expense': _isExpense,
-      'user_id': _supabase.auth.currentUser!.id,
-      'icon_name': 'tag', // Beri default tag untuk kategori buatan user
-    });
-  }
-
-  Future<void> _editCategoryLogic(int id, String newName) async {
-    await _supabase.from('categories').update({'name': newName}).eq('id', id);
-  }
-
-  Future<void> _deleteCategory(int id) async {
-    try {
-      await _supabase.from('categories').delete().eq('id', id);
-      _fetchCategories();
-      if (mounted)
+      await ref.read(categoryProvider.notifier).deleteCategory(id);
+      if (context.mounted)
         AppNotification.success(context, "Kategori berhasil dihapus!");
     } catch (e) {
-      if (mounted)
+      if (context.mounted)
         AppNotification.error(
           context,
           "Gagal hapus. Kategori sedang digunakan.",
@@ -122,8 +67,13 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
     }
   }
 
-  void _showInputDialog({CategoryModel? categoryToEdit}) {
+  void _showInputDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    CategoryModel? categoryToEdit,
+  }) {
     final isEditing = categoryToEdit != null;
+    final isExpense = ref.read(categoryProvider).isExpense;
     final controller = TextEditingController(
       text: isEditing ? categoryToEdit.name : '',
     );
@@ -148,7 +98,7 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                 child: Text(
                   isEditing
                       ? "Edit Kategori"
-                      : (_isExpense
+                      : (isExpense
                             ? "Tambah Pengeluaran"
                             : "Tambah Pemasukan"),
                   style: GoogleFonts.poppins(
@@ -234,18 +184,19 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                                 setDialogState(() => isSaving = true);
                                 try {
                                   if (isEditing) {
-                                    await _editCategoryLogic(
-                                      categoryToEdit.id,
-                                      controller.text.trim(),
-                                    );
+                                    await ref
+                                        .read(categoryProvider.notifier)
+                                        .editCategory(
+                                          categoryToEdit.id,
+                                          controller.text.trim(),
+                                        );
                                   } else {
-                                    await _addCategoryLogic(
-                                      controller.text.trim(),
-                                    );
+                                    await ref
+                                        .read(categoryProvider.notifier)
+                                        .addCategory(controller.text.trim());
                                   }
                                   if (context.mounted) {
                                     Navigator.pop(context);
-                                    _fetchCategories();
                                     AppNotification.success(
                                       context,
                                       isEditing
@@ -296,7 +247,10 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(categoryProvider);
+    final isExpense = state.isExpense;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -328,16 +282,16 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
               ),
               child: Row(
                 children: [
-                  _buildToggleBtn("Pengeluaran", true),
-                  _buildToggleBtn("Pemasukan", false),
+                  _buildToggleBtn(ref, "Pengeluaran", true, isExpense),
+                  _buildToggleBtn(ref, "Pemasukan", false, isExpense),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: _isLoadingList
+            child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _categories.isEmpty
+                : state.categories.isEmpty
                 ? Center(
                     child: Text(
                       "Belum ada kategori",
@@ -346,9 +300,9 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(20),
-                    itemCount: _categories.length,
+                    itemCount: state.categories.length,
                     itemBuilder: (context, index) {
-                      final cat = _categories[index];
+                      final cat = state.categories[index];
                       final isSystem = cat.userId == null;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -365,7 +319,7 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: _isExpense
+                                color: isExpense
                                     ? AppColors.expense.withOpacity(0.1)
                                     : AppColors.income.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
@@ -373,7 +327,7 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                               // [UPDATE: Panggil fungsi getCategoryIcon di sini]
                               child: Icon(
                                 _getCategoryIcon(cat.name, cat.iconName),
-                                color: _isExpense
+                                color: isExpense
                                     ? AppColors.expense
                                     : AppColors.income,
                                 size: 20,
@@ -410,8 +364,11 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                                   color: Colors.blue,
                                   size: 20,
                                 ),
-                                onPressed: () =>
-                                    _showInputDialog(categoryToEdit: cat),
+                                onPressed: () => _showInputDialog(
+                                  context,
+                                  ref,
+                                  categoryToEdit: cat,
+                                ),
                               ),
                               IconButton(
                                 icon: const Icon(
@@ -440,7 +397,7 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
                                         TextButton(
                                           onPressed: () {
                                             Navigator.pop(ctx);
-                                            _deleteCategory(cat.id);
+                                            _deleteCategory(context, ref, cat.id);
                                           },
                                           child: const Text(
                                             "Hapus",
@@ -462,7 +419,7 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showInputDialog(),
+        onPressed: () => _showInputDialog(context, ref),
         backgroundColor: AppColors.primary,
         shape: const CircleBorder(),
         child: const Icon(Icons.add, color: Colors.white),
@@ -470,16 +427,20 @@ class _ManageCategoryScreenState extends State<ManageCategoryScreen> {
     );
   }
 
-  Widget _buildToggleBtn(String title, bool isExpenseBtn) {
-    final bool isSelected = _isExpense == isExpenseBtn;
+  Widget _buildToggleBtn(
+    WidgetRef ref,
+    String title,
+    bool isExpenseBtn,
+    bool currentIsExpense,
+  ) {
+    final bool isSelected = currentIsExpense == isExpenseBtn;
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          if (_isExpense != isExpenseBtn) {
-            setState(() {
-              _isExpense = isExpenseBtn;
-              _fetchCategories();
-            });
+          if (currentIsExpense != isExpenseBtn) {
+            ref.read(categoryProvider.notifier).fetchCategories(
+                  isExpense: isExpenseBtn,
+                );
           }
         },
         child: AnimatedContainer(
