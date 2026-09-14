@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/saving_model.dart';
 import 'package:catat_uang_app/screens/saving_detail_screen.dart';
+import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -205,16 +206,10 @@ class _SavingsScreenState extends State<SavingsScreen> {
       decimalDigits: 0,
     );
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Container(
+        builder: (context, setSheetState) => Container(
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -588,7 +583,6 @@ class _SavingsScreenState extends State<SavingsScreen> {
               ),
             ),
           ),
-        ),
       ),
     );
   }
@@ -599,15 +593,9 @@ class _SavingsScreenState extends State<SavingsScreen> {
     final locationController = TextEditingController(text: oldLocation);
     final notesController = TextEditingController(text: oldNotes);
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
+      builder: (context) => Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -808,7 +796,6 @@ class _SavingsScreenState extends State<SavingsScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
@@ -863,16 +850,10 @@ class _SavingsScreenState extends State<SavingsScreen> {
       decimalDigits: 0,
     );
 
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Container(
+        builder: (context, setSheetState) => Container(
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -1072,7 +1053,6 @@ class _SavingsScreenState extends State<SavingsScreen> {
               ],
             ),
           ),
-        ),
       ),
     );
   }
