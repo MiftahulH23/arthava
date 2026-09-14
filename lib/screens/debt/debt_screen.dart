@@ -1,30 +1,24 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'debt_detail_screen.dart';
 
-class DebtScreen extends StatefulWidget {
+class DebtScreen extends ConsumerStatefulWidget {
   const DebtScreen({super.key});
 
   @override
-  State<DebtScreen> createState() => _DebtScreenState();
+  ConsumerState<DebtScreen> createState() => _DebtScreenState();
 }
 
-class _DebtScreenState extends State<DebtScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
+class _DebtScreenState extends ConsumerState<DebtScreen> {
   bool _isMyDebt = true;
-
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _myDebts = [];
-  List<Map<String, dynamic>> _theirDebts = [];
-
-  List<Map<String, dynamic>> _wallets = [];
 
   final currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
@@ -37,57 +31,6 @@ class _DebtScreenState extends State<DebtScreen> {
     symbol: '',
     decimalDigits: 0,
   );
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchData();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  Future<void> _fetchData() async {
-    setState(() => _isLoading = true);
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      final resWallets =
-          await _supabase.from('wallets').select().eq('user_id', userId);
-
-      final resDebts = await _supabase
-          .from('debts')
-          .select()
-          .eq('user_id', userId)
-          .order('status', ascending: true) // 'active' comes before 'paid'
-          .order('created_at', ascending: false);
-
-      List<Map<String, dynamic>> myDebts = [];
-      List<Map<String, dynamic>> theirDebts = [];
-
-      for (var item in resDebts as List) {
-        if (item['type'] == 'payable') {
-          myDebts.add(Map<String, dynamic>.from(item));
-        } else {
-          theirDebts.add(Map<String, dynamic>.from(item));
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _wallets = List<Map<String, dynamic>>.from(resWallets);
-          _myDebts = myDebts;
-          _theirDebts = theirDebts;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching debts: $e");
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   void _showAddDebtSheet(BuildContext context) {
     final nameController = TextEditingController();
@@ -102,6 +45,7 @@ class _DebtScreenState extends State<DebtScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final wallets = ref.read(debtProvider).wallets;
             return Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -368,7 +312,7 @@ class _DebtScreenState extends State<DebtScreen> {
                                   vertical: 10,
                                 ),
                               ),
-                              items: _wallets.map((w) {
+                              items: wallets.map((w) {
                                 return DropdownMenuItem<int>(
                                   value: w['id'],
                                   child: Text(
@@ -439,69 +383,17 @@ class _DebtScreenState extends State<DebtScreen> {
                           );
 
                           try {
-                            final userId = _supabase.auth.currentUser!.id;
-                            
-                            if (affectWallet && selectedWalletId != null) {
-                              final w = _wallets.firstWhere((w) => w['id'] == selectedWalletId);
-                              final currentBalance = (w['balance'] as num).toDouble();
-                              double newBalance = currentBalance;
-                              if (debtType == 'payable') {
-                                newBalance = currentBalance + rawAmount;
-                              } else {
-                                if (currentBalance < rawAmount) {
-                                  AppNotification.error(context, "Saldo dompet tidak mencukupi untuk dipinjamkan!");
-                                  return;
-                                }
-                                newBalance = currentBalance - rawAmount;
-                              }
-                              
-                              await _supabase.from('wallets').update({
-                                'balance': newBalance
-                              }).eq('id', selectedWalletId!);
-                              
-                              // Create Transaction history for the wallet
-                              // We should find a category or create a system category for debt
-                              bool isExp = debtType == 'receivable';
-                              String catName = isExp ? 'Utang/Piutang' : 'Utang/Piutang';
-                              final catRes = await _supabase.from('categories').select().eq('user_id', userId).eq('name', catName).maybeSingle();
-                              int? sysCatId;
-                              if (catRes == null) {
-                                final insertedCat = await _supabase.from('categories').insert({
-                                  'user_id': userId,
-                                  'name': catName,
-                                  'icon_name': 'bank',
-                                  'is_expense': isExp, 
-                                }).select().single();
-                                sysCatId = insertedCat['id'];
-                              } else {
-                                sysCatId = catRes['id'];
-                              }
-                              
-                              await _supabase.from('transactions').insert({
-                                'user_id': userId,
-                                'wallet_id': selectedWalletId,
-                                'category_id': sysCatId,
-                                'amount': rawAmount,
-                                'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-                                'note': debtType == 'payable' ? 'Pinjaman diterima dari ${nameController.text.trim()}' : 'Memberi pinjaman ke ${nameController.text.trim()}'
-                              });
-                            }
-
-                            await _supabase.from('debts').insert({
-                              'user_id': userId,
-                              'name': nameController.text.trim(),
-                              'type': debtType,
-                              'amount': rawAmount,
-                              'remaining_amount': rawAmount,
-                              'due_date': selectedDate != null
-                                  ? DateFormat('yyyy-MM-dd')
-                                      .format(selectedDate!)
-                                  : null,
-                            });
+                            await ref.read(debtProvider.notifier).addDebt(
+                                  name: nameController.text.trim(),
+                                  debtType: debtType,
+                                  amount: rawAmount,
+                                  dueDate: selectedDate,
+                                  affectWallet: affectWallet,
+                                  walletId: selectedWalletId,
+                                );
 
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _fetchData();
                               AppNotification.success(
                                 context,
                                 "Utang/Piutang berhasil dicatat!",
@@ -510,7 +402,10 @@ class _DebtScreenState extends State<DebtScreen> {
                           } catch (e) {
                             debugPrint(e.toString());
                             if (context.mounted) {
-                              AppNotification.error(context, "Terjadi kesalahan sistem");
+                              AppNotification.error(
+                                context,
+                                e.toString().replaceFirst('Exception: ', ''),
+                              );
                             }
                           }
                         },
@@ -564,20 +459,19 @@ class _DebtScreenState extends State<DebtScreen> {
         final paid = amount - remaining;
         final percentage = amount > 0 ? (paid / amount) : 0.0;
         final isPaid = debt['status'] == 'paid' || remaining <= 0;
-        
+
         final isPayable = debt['type'] == 'payable';
         final mainColor = isPayable ? Colors.red : Colors.green;
         final label = isPayable ? "Saya berutang ke:" : "Piutang dari:";
 
         return GestureDetector(
-          onTap: () async {
-            await Navigator.push(
+          onTap: () {
+            Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => DebtDetailScreen(debtId: debt['id']),
+                builder: (context) => DebtDetailScreen(debt: debt),
               ),
             );
-            _fetchData();
           },
           child: Container(
             margin: const EdgeInsets.only(bottom: 15),
@@ -710,6 +604,8 @@ class _DebtScreenState extends State<DebtScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final debtState = ref.watch(debtProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -744,11 +640,11 @@ class _DebtScreenState extends State<DebtScreen> {
             ),
           ),
           Expanded(
-            child: _isLoading
+            child: debtState.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _buildDebtList(
-                    _isMyDebt ? _myDebts : _theirDebts,
-                    _isMyDebt 
+                    _isMyDebt ? debtState.myDebts : debtState.theirDebts,
+                    _isMyDebt
                         ? "Belum ada utang yang dicatat.\nAlhamdulillah!"
                         : "Belum ada orang yang ngutang ke kamu.",
                   ),

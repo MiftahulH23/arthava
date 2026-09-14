@@ -1,27 +1,27 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class DebtDetailScreen extends StatefulWidget {
-  final int debtId;
+class DebtDetailScreen extends ConsumerStatefulWidget {
+  final Map<String, dynamic> debt;
 
-  const DebtDetailScreen({super.key, required this.debtId});
+  const DebtDetailScreen({super.key, required this.debt});
 
   @override
-  State<DebtDetailScreen> createState() => _DebtDetailScreenState();
+  ConsumerState<DebtDetailScreen> createState() => _DebtDetailScreenState();
 }
 
-class _DebtDetailScreenState extends State<DebtDetailScreen> {
+class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
   bool _isLoading = true;
-  Map<String, dynamic>? _debt;
   List<Map<String, dynamic>> _payments = [];
-  List<Map<String, dynamic>> _wallets = [];
 
   final currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
@@ -38,41 +38,24 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchDetail();
+    _fetchPayments();
   }
 
-  Future<void> _fetchDetail() async {
+  // Utang/dompet sudah tersedia lewat debtProvider (dibagi dengan
+  // DebtScreen) — layar ini hanya perlu mengambil riwayat cicilan sendiri.
+  Future<void> _fetchPayments() async {
     setState(() => _isLoading = true);
     try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      final resDebt = await _supabase
-          .from('debts')
-          .select()
-          .eq('id', widget.debtId)
-          .eq('user_id', userId)
-          .maybeSingle();
-
-      if (resDebt == null) {
-        if (mounted) Navigator.pop(context);
-        return;
-      }
-
       final resPayments = await _supabase
           .from('debt_payments')
           .select('*, wallets(name)')
-          .eq('debt_id', widget.debtId)
+          .eq('debt_id', widget.debt['id'])
           .order('date', ascending: false)
           .order('created_at', ascending: false);
 
-      final resWallets =
-          await _supabase.from('wallets').select().eq('user_id', userId);
-
       if (mounted) {
         setState(() {
-          _debt = resDebt;
           _payments = List<Map<String, dynamic>>.from(resPayments);
-          _wallets = List<Map<String, dynamic>>.from(resWallets);
           _isLoading = false;
         });
       }
@@ -82,10 +65,8 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
     }
   }
 
-  void _showAddPaymentSheet(BuildContext context) {
-    if (_debt == null) return;
-    
-    final remainingAmount = (_debt!['remaining_amount'] as num).toDouble();
+  void _showAddPaymentSheet(BuildContext context, Map<String, dynamic> debt) {
+    final remainingAmount = (debt['remaining_amount'] as num).toDouble();
     if (remainingAmount <= 0) {
       AppNotification.success(context, "Utang ini sudah lunas!");
       return;
@@ -95,13 +76,14 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
     DateTime selectedDate = DateTime.now();
     bool affectWallet = false;
     int? selectedWalletId;
-    final isPayable = _debt!['type'] == 'payable';
+    final isPayable = debt['type'] == 'payable';
 
     showAppBottomSheet(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final wallets = ref.read(debtProvider).wallets;
             return Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -209,7 +191,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    
+
                     Text(
                       "Tanggal Pembayaran",
                       style: GoogleFonts.poppins(
@@ -305,7 +287,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                                   vertical: 10,
                                 ),
                               ),
-                              items: _wallets.map((w) {
+                              items: wallets.map((w) {
                                 return DropdownMenuItem<int>(
                                   value: w['id'],
                                   child: Text(
@@ -347,7 +329,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                         ),
                         onPressed: () async {
                           if (amountController.text.isEmpty) return;
-                          
+
                           if (affectWallet && selectedWalletId == null) {
                             AppNotification.error(
                               context,
@@ -363,80 +345,18 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                             ),
                           );
 
-                          if (rawAmount > remainingAmount) {
-                            AppNotification.error(
-                              context,
-                              "Jumlah bayar tidak boleh melebihi sisa utang!",
-                            );
-                            return;
-                          }
-
                           try {
-                            final userId = _supabase.auth.currentUser!.id;
-                            
-                            if (affectWallet && selectedWalletId != null) {
-                              final w = _wallets.firstWhere((w) => w['id'] == selectedWalletId);
-                              final currentBalance = (w['balance'] as num).toDouble();
-                              double newBalance = currentBalance;
-                              if (isPayable) {
-                                if (currentBalance < rawAmount) {
-                                  AppNotification.error(context, "Saldo dompet tidak mencukupi!");
-                                  return;
-                                }
-                                newBalance = currentBalance - rawAmount;
-                              } else {
-                                newBalance = currentBalance + rawAmount;
-                              }
-                              
-                              await _supabase.from('wallets').update({
-                                'balance': newBalance
-                              }).eq('id', selectedWalletId!);
-                              
-                              bool isExp = isPayable;
-                              String catName = isExp ? 'Sistem: Uang Keluar (Utang/Piutang)' : 'Sistem: Uang Masuk (Utang/Piutang)';
-                              final catRes = await _supabase.from('categories').select().eq('user_id', userId).eq('name', catName).maybeSingle();
-                              int? sysCatId;
-                              if (catRes == null) {
-                                final insertedCat = await _supabase.from('categories').insert({
-                                  'user_id': userId,
-                                  'name': catName,
-                                  'icon_name': 'bank',
-                                  'is_expense': isExp, 
-                                }).select().single();
-                                sysCatId = insertedCat['id'];
-                              } else {
-                                sysCatId = catRes['id'];
-                              }
-                              
-                              await _supabase.from('transactions').insert({
-                                'user_id': userId,
-                                'wallet_id': selectedWalletId,
-                                'category_id': sysCatId,
-                                'amount': rawAmount,
-                                'date': DateFormat('yyyy-MM-dd').format(selectedDate),
-                                'note': isPayable ? 'Bayar utang ke ${_debt!['name']}' : 'Menerima bayaran dari ${_debt!['name']}'
-                              });
-                            }
-
-                            // Insert payment record
-                            await _supabase.from('debt_payments').insert({
-                              'debt_id': widget.debtId,
-                              'user_id': userId,
-                              'wallet_id': selectedWalletId,
-                              'amount': rawAmount,
-                              'date': DateFormat('yyyy-MM-dd').format(selectedDate),
-                            });
-
-                            // Update remaining amount and status
-                            final newRemaining = remainingAmount - rawAmount;
-                            await _supabase.from('debts').update({
-                              'remaining_amount': newRemaining,
-                              'status': newRemaining <= 0 ? 'paid' : 'active',
-                            }).eq('id', widget.debtId);
+                            await ref.read(debtProvider.notifier).addPayment(
+                                  debt: debt,
+                                  amount: rawAmount,
+                                  date: selectedDate,
+                                  affectWallet: affectWallet,
+                                  walletId: selectedWalletId,
+                                );
 
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _fetchDetail();
+                              _fetchPayments();
                               AppNotification.success(
                                 context,
                                 "Pembayaran berhasil dicatat!",
@@ -445,7 +365,10 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                           } catch (e) {
                             debugPrint(e.toString());
                             if (context.mounted) {
-                              AppNotification.error(context, "Terjadi kesalahan sistem");
+                              AppNotification.error(
+                                context,
+                                e.toString().replaceFirst('Exception: ', ''),
+                              );
                             }
                           }
                         },
@@ -493,7 +416,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
     if (confirm != true) return;
 
     try {
-      await _supabase.from('debts').delete().eq('id', widget.debtId);
+      await ref.read(debtProvider.notifier).deleteDebt(widget.debt['id'] as int);
       if (mounted) {
         Navigator.pop(context);
         AppNotification.success(context, "Data berhasil dihapus!");
@@ -505,6 +428,18 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Utang ini juga ditampilkan di daftar DebtScreen lewat debtProvider
+    // yang sama — cari versi terkini dari state supaya perubahan
+    // `remaining_amount`/`status` lewat _showAddPaymentSheet langsung
+    // tercermin di sini tanpa state lokal duplikat. Fallback ke
+    // widget.debt kalau item ini sudah tidak ada di state (mis. dihapus
+    // dari layar lain).
+    final debtState = ref.watch(debtProvider);
+    final debt = debtState.allDebts.firstWhere(
+      (d) => d['id'] == widget.debt['id'],
+      orElse: () => widget.debt,
+    );
+
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.background,
@@ -512,18 +447,11 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
       );
     }
 
-    if (_debt == null) {
-      return const Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(child: Text("Data tidak ditemukan.")),
-      );
-    }
-
-    final isPayable = _debt!['type'] == 'payable';
-    final amount = (_debt!['amount'] as num).toDouble();
-    final remaining = (_debt!['remaining_amount'] as num).toDouble();
+    final isPayable = debt['type'] == 'payable';
+    final amount = (debt['amount'] as num).toDouble();
+    final remaining = (debt['remaining_amount'] as num).toDouble();
     final paid = amount - remaining;
-    final isPaid = _debt!['status'] == 'paid' || remaining <= 0;
+    final isPaid = debt['status'] == 'paid' || remaining <= 0;
     final percentage = amount > 0 ? (paid / amount) : 0.0;
     final mainColor = isPayable ? Colors.red : Colors.green;
 
@@ -576,7 +504,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                   ),
                   const SizedBox(height: 15),
                   Text(
-                    _debt!['name'],
+                    debt['name'],
                     style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -601,17 +529,17 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                         ),
                       ),
                     )
-                  else if (_debt!['due_date'] != null)
+                  else if (debt['due_date'] != null)
                     Text(
-                      "Jatuh Tempo: ${DateFormat('dd MMM yyyy').format(DateTime.parse(_debt!['due_date']))}",
+                      "Jatuh Tempo: ${DateFormat('dd MMM yyyy').format(DateTime.parse(debt['due_date']))}",
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         color: Colors.white70,
                       ),
                     ),
-                  
+
                   const SizedBox(height: 30),
-                  
+
                   // Stats Box
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -699,9 +627,9 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Payment History List
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -718,7 +646,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                 ],
               ),
             ),
-            
+
             if (_payments.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(40),
@@ -740,7 +668,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                   final pay = _payments[index];
                   final payAmount = (pay['amount'] as num).toDouble();
                   final walletName = pay['wallets'] != null ? pay['wallets']['name'] : 'Tanpa Dompet';
-                  
+
                   return Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(16),
@@ -798,13 +726,13 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                   );
                 },
               ),
-              
+
             const SizedBox(height: 80), // Padding for FAB
           ],
         ),
       ),
       floatingActionButton: !isPaid ? FloatingActionButton.extended(
-        onPressed: () => _showAddPaymentSheet(context),
+        onPressed: () => _showAddPaymentSheet(context, debt),
         backgroundColor: mainColor,
         icon: const Icon(PhosphorIconsBold.money, color: Colors.white),
         label: Text(

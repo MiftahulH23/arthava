@@ -1,108 +1,36 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/investment_model.dart';
+import 'package:catat_uang_app/providers/investment_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-class InvestmentScreen extends StatefulWidget {
+class InvestmentScreen extends ConsumerWidget {
   const InvestmentScreen({super.key});
 
-  @override
-  State<InvestmentScreen> createState() => _InvestmentScreenState();
-}
-
-class _InvestmentScreenState extends State<InvestmentScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isLoading = true;
-
-  List<InvestmentModel> _investments = [];
-  List<Map<String, dynamic>> _wallets = [];
-
-  double _totalCapital = 0;
-  double _totalValue = 0;
-
-  final _currencyFormat = NumberFormat.currency(
+  static final _currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
     decimalDigits: 0,
   );
 
-  final _inputFormat = NumberFormat.currency(
+  static final _inputFormat = NumberFormat.currency(
     locale: 'id_ID',
     symbol: '',
     decimalDigits: 0,
   );
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchData();
-  }
-
-  Future<void> _fetchData() async {
-    setState(() => _isLoading = true);
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      final resWallets = await _supabase.from('wallets').select().eq('user_id', userId).order('name');
-      final resInv = await _supabase.from('investments').select().eq('user_id', userId).order('created_at', ascending: false);
-
-      double cap = 0;
-      double val = 0;
-      List<InvestmentModel> invs = [];
-
-      for (var item in resInv) {
-        final inv = InvestmentModel.fromJson(item);
-        invs.add(inv);
-        cap += inv.capitalAmount;
-        val += inv.currentValue;
-      }
-
-      if (mounted) {
-        setState(() {
-          _wallets = List<Map<String, dynamic>>.from(resWallets);
-          _investments = invs;
-          _totalCapital = cap;
-          _totalValue = val;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching investments: $e");
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<int> _getOrCreateCategory(String name, bool isExpense) async {
-    final userId = _supabase.auth.currentUser!.id;
-    final res = await _supabase
-        .from('categories')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_expense', isExpense)
-        .ilike('name', '%$name%')
-        .maybeSingle();
-    if (res != null) return res['id'] as int;
-    
-    final ins = await _supabase.from('categories').insert({
-      'user_id': userId,
-      'name': name,
-      'is_expense': isExpense,
-      'icon_name': 'chart-line-up',
-    }).select('id').single();
-    return ins['id'] as int;
-  }
-
-  void _showAddInvestmentSheet() {
+  void _showAddInvestmentSheet(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final typeController = TextEditingController();
     final amountController = TextEditingController();
-    int? selectedWalletId = _wallets.isNotEmpty ? _wallets.first['id'] as int : null;
+    final wallets = ref.read(investmentProvider).wallets;
+    int? selectedWalletId = wallets.isNotEmpty ? wallets.first['id'] as int : null;
 
     showAppBottomSheet(
       context: context,
@@ -194,7 +122,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                       child: DropdownButton<int>(
                         value: selectedWalletId,
                         isExpanded: true,
-                        items: _wallets.map((w) => DropdownMenuItem(value: w['id'] as int, child: Text("${w['name']} (Sisa: ${_currencyFormat.format(w['balance'])})", style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
+                        items: wallets.map((w) => DropdownMenuItem(value: w['id'] as int, child: Text("${w['name']} (Sisa: ${_currencyFormat.format(w['balance'])})", style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
                         onChanged: (v) => setSheetState(() => selectedWalletId = v),
                       ),
                     ),
@@ -215,44 +143,23 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                           return;
                         }
                         final amount = double.parse(amountController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-                        final wallet = _wallets.firstWhere((w) => w['id'] == selectedWalletId);
-                        if (amount > (wallet['balance'] as num).toDouble()) {
-                          AppNotification.error(context, "Saldo dompet tidak mencukupi!");
-                          return;
-                        }
+
                         try {
-                          final userId = _supabase.auth.currentUser!.id;
-                          final catId = await _getOrCreateCategory('Investasi', true);
-                          
-                          // Insert Investment
-                          final inv = await _supabase.from('investments').insert({
-                            'user_id': userId,
-                            'name': nameController.text.trim(),
-                            'type': typeController.text.trim(),
-                            'capital_amount': amount,
-                            'current_value': amount,
-                          }).select().single();
+                          await ref.read(investmentProvider.notifier).buyInvestment(
+                                name: nameController.text.trim(),
+                                type: typeController.text.trim(),
+                                amount: amount,
+                                walletId: selectedWalletId!,
+                              );
 
-                          // Insert Transaction
-                          await _supabase.from('transactions').insert({
-                            'user_id': userId,
-                            'wallet_id': selectedWalletId,
-                            'category_id': catId,
-                            'amount': amount,
-                            'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-                            'note': 'Beli Aset: ${nameController.text.trim()}'
-                          });
-
-                          // Update Wallet
-                          await _supabase.from('wallets').update({'balance': (wallet['balance'] as num).toDouble() - amount}).eq('id', selectedWalletId!);
-
-                          if (mounted) {
+                          if (context.mounted) {
                             Navigator.pop(context);
-                            _fetchData();
                             AppNotification.success(context, "Investasi berhasil dibeli!");
                           }
                         } catch (e) {
-                          if (mounted) AppNotification.error(context, "Error: $e");
+                          if (context.mounted) {
+                            AppNotification.error(context, e.toString().replaceFirst('Exception: ', ''));
+                          }
                         }
                       },
                       child: Text("Beli Aset", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -266,7 +173,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     );
   }
 
-  void _showActionSheet(InvestmentModel inv) {
+  void _showActionSheet(BuildContext context, WidgetRef ref, InvestmentModel inv) {
     showAppBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -287,7 +194,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
               title: Text("Beli Tambahan (Top Up)", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context);
-                _showBuySellSheet(inv, true);
+                _showBuySellSheet(context, ref, inv, true);
               },
             ),
             ListTile(
@@ -295,7 +202,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
               title: Text("Jual Aset (Withdraw)", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context);
-                _showBuySellSheet(inv, false);
+                _showBuySellSheet(context, ref, inv, false);
               },
             ),
             ListTile(
@@ -304,7 +211,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
               subtitle: Text("Sesuaikan dengan harga pasar saat ini", style: GoogleFonts.poppins(fontSize: 12)),
               onTap: () {
                 Navigator.pop(context);
-                _showUpdateValueSheet(inv);
+                _showUpdateValueSheet(context, ref, inv);
               },
             ),
             ListTile(
@@ -312,8 +219,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
               title: Text("Hapus Portofolio", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.grey)),
               onTap: () async {
                 Navigator.pop(context);
-                await _supabase.from('investments').delete().eq('id', inv.id);
-                _fetchData();
+                await ref.read(investmentProvider.notifier).deleteInvestment(inv.id);
               },
             ),
           ],
@@ -322,9 +228,10 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     );
   }
 
-  void _showBuySellSheet(InvestmentModel inv, bool isBuy) {
+  void _showBuySellSheet(BuildContext context, WidgetRef ref, InvestmentModel inv, bool isBuy) {
     final amountController = TextEditingController();
-    int? selectedWalletId = _wallets.isNotEmpty ? _wallets.first['id'] as int : null;
+    final wallets = ref.read(investmentProvider).wallets;
+    int? selectedWalletId = wallets.isNotEmpty ? wallets.first['id'] as int : null;
 
     showAppBottomSheet(
       context: context,
@@ -382,7 +289,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                       child: DropdownButton<int>(
                         value: selectedWalletId,
                         isExpanded: true,
-                        items: _wallets.map((w) => DropdownMenuItem(value: w['id'] as int, child: Text("${w['name']} (Sisa: ${_currencyFormat.format(w['balance'])})", style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
+                        items: wallets.map((w) => DropdownMenuItem(value: w['id'] as int, child: Text("${w['name']} (Sisa: ${_currencyFormat.format(w['balance'])})", style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
                         onChanged: (v) => setSheetState(() => selectedWalletId = v),
                       ),
                     ),
@@ -397,51 +304,23 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                         if (amountController.text.isEmpty) return;
                         if (selectedWalletId == null) return;
                         final amount = double.parse(amountController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-                        final wallet = _wallets.firstWhere((w) => w['id'] == selectedWalletId);
-                        
-                        if (isBuy && amount > (wallet['balance'] as num).toDouble()) {
-                          AppNotification.error(context, "Saldo dompet tidak mencukupi!");
-                          return;
-                        }
-                        if (!isBuy && amount > inv.currentValue) {
-                          AppNotification.error(context, "Nominal penarikan melebihi nilai aset saat ini!");
-                          return;
-                        }
 
                         try {
-                          final userId = _supabase.auth.currentUser!.id;
-                          final catId = isBuy ? await _getOrCreateCategory('Investasi', true) : await _getOrCreateCategory('Hasil Jual Investasi', false);
-                          
-                          // Update Investment
-                          final newCapital = isBuy ? inv.capitalAmount + amount : (inv.capitalAmount - amount < 0 ? 0 : inv.capitalAmount - amount);
-                          final newValue = isBuy ? inv.currentValue + amount : (inv.currentValue - amount < 0 ? 0 : inv.currentValue - amount);
-                          
-                          await _supabase.from('investments').update({
-                            'capital_amount': newCapital,
-                            'current_value': newValue,
-                          }).eq('id', inv.id);
+                          await ref.read(investmentProvider.notifier).buySellInvestment(
+                                inv: inv,
+                                isBuy: isBuy,
+                                amount: amount,
+                                walletId: selectedWalletId!,
+                              );
 
-                          // Insert Transaction
-                          await _supabase.from('transactions').insert({
-                            'user_id': userId,
-                            'wallet_id': selectedWalletId,
-                            'category_id': catId,
-                            'amount': amount,
-                            'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-                            'note': isBuy ? 'Top Up Aset: ${inv.name}' : ' Jual Aset: ${inv.name}'
-                          });
-
-                          // Update Wallet
-                          final newBalance = isBuy ? (wallet['balance'] as num).toDouble() - amount : (wallet['balance'] as num).toDouble() + amount;
-                          await _supabase.from('wallets').update({'balance': newBalance}).eq('id', selectedWalletId!);
-
-                          if (mounted) {
+                          if (context.mounted) {
                             Navigator.pop(context);
-                            _fetchData();
                             AppNotification.success(context, isBuy ? "Top up berhasil!" : "Penjualan berhasil!");
                           }
                         } catch (e) {
-                          if (mounted) AppNotification.error(context, "Error: $e");
+                          if (context.mounted) {
+                            AppNotification.error(context, e.toString().replaceFirst('Exception: ', ''));
+                          }
                         }
                       },
                       child: Text(isBuy ? "Proses Pembelian" : "Proses Penjualan", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -455,7 +334,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     );
   }
 
-  void _showUpdateValueSheet(InvestmentModel inv) {
+  void _showUpdateValueSheet(BuildContext context, WidgetRef ref, InvestmentModel inv) {
     final amountController = TextEditingController(text: _inputFormat.format(inv.currentValue));
 
     showAppBottomSheet(
@@ -525,19 +404,18 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                       onPressed: () async {
                         if (amountController.text.isEmpty) return;
                         final amount = double.parse(amountController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-                        
-                        try {
-                          await _supabase.from('investments').update({
-                            'current_value': amount,
-                          }).eq('id', inv.id);
 
-                          if (mounted) {
+                        try {
+                          await ref.read(investmentProvider.notifier).updateInvestmentValue(inv.id, amount);
+
+                          if (context.mounted) {
                             Navigator.pop(context);
-                            _fetchData();
                             AppNotification.success(context, "Nilai berhasil diperbarui!");
                           }
                         } catch (e) {
-                          if (mounted) AppNotification.error(context, "Error: $e");
+                          if (context.mounted) {
+                            AppNotification.error(context, "Error: $e");
+                          }
                         }
                       },
                       child: Text("Simpan Pembaruan", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -552,9 +430,14 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    double totalReturn = _totalCapital > 0 ? ((_totalValue - _totalCapital) / _totalCapital) * 100 : 0;
-    bool isProfit = _totalValue >= _totalCapital;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final invState = ref.watch(investmentProvider);
+    final totalCapital = invState.totalCapital;
+    final totalValue = invState.totalValue;
+    final investments = invState.investments;
+
+    double totalReturn = totalCapital > 0 ? ((totalValue - totalCapital) / totalCapital) * 100 : 0;
+    bool isProfit = totalValue >= totalCapital;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -565,10 +448,10 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: _isLoading
+      body: invState.isLoading
         ? const Center(child: CircularProgressIndicator())
         : RefreshIndicator(
-            onRefresh: _fetchData,
+            onRefresh: () => ref.read(investmentProvider.notifier).fetchData(),
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
@@ -589,7 +472,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                     children: [
                       Text("Total Nilai Investasi", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14)),
                       const SizedBox(height: 5),
-                      Text(_currencyFormat.format(_totalValue), style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                      Text(_currencyFormat.format(totalValue), style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -598,7 +481,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text("Total Modal", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
-                              Text(_currencyFormat.format(_totalCapital), style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                              Text(_currencyFormat.format(totalCapital), style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Container(
@@ -618,11 +501,11 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                
+
                 Text("Daftar Portofolio", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
                 const SizedBox(height: 15),
 
-                if (_investments.isEmpty)
+                if (investments.isEmpty)
                   Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 50),
@@ -636,11 +519,11 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                     ),
                   )
                 else
-                  ..._investments.map((inv) {
+                  ...investments.map((inv) {
                     double ret = inv.capitalAmount > 0 ? ((inv.currentValue - inv.capitalAmount) / inv.capitalAmount) * 100 : 0;
                     bool profit = inv.currentValue >= inv.capitalAmount;
                     return GestureDetector(
-                      onTap: () => _showActionSheet(inv),
+                      onTap: () => _showActionSheet(context, ref, inv),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 15),
                         padding: const EdgeInsets.all(20),
@@ -662,13 +545,13 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    inv.name, 
+                                    inv.name,
                                     style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    inv.type, 
+                                    inv.type,
                                     style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -695,7 +578,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
             ),
           ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddInvestmentSheet,
+        onPressed: () => _showAddInvestmentSheet(context, ref),
         backgroundColor: AppColors.primary,
         shape: const CircleBorder(),
         child: const Icon(PhosphorIconsBold.plus, color: Colors.white),
