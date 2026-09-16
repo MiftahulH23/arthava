@@ -1,241 +1,48 @@
 import 'package:catat_uang_app/core/app_notification.dart'; // [NEW] Tambah import notifikasi
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
-import 'package:catat_uang_app/screens/input_transaction_screen.dart';
+import 'package:catat_uang_app/providers/transaction_history_provider.dart';
+import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:catat_uang_app/widgets/app_tab_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-class TransactionHistoryScreen extends StatefulWidget {
+class TransactionHistoryScreen extends ConsumerStatefulWidget {
   final bool isExpense;
   const TransactionHistoryScreen({super.key, required this.isExpense});
 
   @override
-  State<TransactionHistoryScreen> createState() =>
+  ConsumerState<TransactionHistoryScreen> createState() =>
       _TransactionHistoryScreenState();
 }
 
-class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isLoading = true;
-  List<TransactionModel> _transactions = [];
-  double _totalAmount = 0;
-  List<Map<String, dynamic>> _categories = [];
-  List<int> _selectedCategoryIds = [];
-  List<int> _selectedWalletIds = [];
+class _TransactionHistoryScreenState
+    extends ConsumerState<TransactionHistoryScreen> {
+  TransactionHistoryNotifier get _notifier =>
+      ref.read(transactionHistoryProvider(widget.isExpense).notifier);
 
-  String _filterType = 'Bulanan';
-  DateTime _selectedDate = DateTime.now();
-  DateTimeRange? _selectedDateRange;
-
-  Map<int, String> _walletNames = {};
-  Map<int, Color> _walletColors = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedDateRange = DateTimeRange(
-      start: DateTime.now().subtract(const Duration(days: 7)),
-      end: DateTime.now(),
-    );
-    _fetchCategories();
-    _fetchWallets();
-    _fetchTransactions();
-  }
-
-  Future<void> _fetchWallets() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('wallets')
-          .select()
-          .eq('user_id', userId);
-      if (mounted) {
-        setState(() {
-          for (var w in res as List) {
-            _walletNames[w['id']] = w['name'].toString();
-            final colorHex = w['color']?.toString() ?? '#1E3A8A';
-            _walletColors[w['id']] = Color(
-              int.parse(colorHex.replaceFirst('#', '0xFF')),
-            );
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint("Error wallets: $e");
-    }
-  }
-
-  Future<void> _fetchCategories() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final response = await _supabase
-          .from('categories')
-          .select()
-          .eq('is_expense', widget.isExpense)
-          .or('user_id.is.null,user_id.eq.$userId');
-
-      if (mounted) {
-        setState(() {
-          _categories = List<Map<String, dynamic>>.from(response);
-        });
-      }
-    } catch (e) {
-      debugPrint("Error categories: $e");
-    }
-  }
-
-  Future<void> _fetchTransactions() async {
-    setState(() => _isLoading = true);
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      DateTime startDate;
-      DateTime endDate;
-
-      if (_filterType == 'Harian') {
-        startDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-        );
-        endDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-          23,
-          59,
-          59,
-        );
-      } else if (_filterType == 'Tahunan') {
-        startDate = DateTime(_selectedDate.year, 1, 1);
-        endDate = DateTime(_selectedDate.year, 12, 31, 23, 59, 59);
-      } else if (_filterType == 'Periode' && _selectedDateRange != null) {
-        startDate = _selectedDateRange!.start;
-        endDate = DateTime(
-          _selectedDateRange!.end.year,
-          _selectedDateRange!.end.month,
-          _selectedDateRange!.end.day,
-          23,
-          59,
-          59,
-        );
-      } else {
-        startDate = DateTime(_selectedDate.year, _selectedDate.month, 1);
-        endDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month + 1,
-          0,
-          23,
-          59,
-          59,
-        );
-      }
-
-      var query = _supabase
-          .from('transactions')
-          .select('*, categories(*)')
-          .eq('user_id', userId)
-          .eq('categories.is_expense', widget.isExpense)
-          .gte('date', DateFormat('yyyy-MM-dd').format(startDate))
-          .lte('date', DateFormat('yyyy-MM-dd').format(endDate));
-
-      if (_selectedCategoryIds.isNotEmpty) {
-        query = query.inFilter('category_id', _selectedCategoryIds);
-      }
-
-      if (_selectedWalletIds.isNotEmpty) {
-        query = query.inFilter('wallet_id', _selectedWalletIds);
-      }
-
-      final response = await query
-          .order('date', ascending: false)
-          .order('id', ascending: false);
-
-      double total = 0;
-      List<TransactionModel> loaded = [];
-
-      for (var item in response as List) {
-        if (item['categories'] == null) continue;
-
-        final trx = TransactionModel.fromJson(item);
-        final note = trx.note?.toString() ?? '';
-        final catName = trx.category?.name.toLowerCase() ?? '';
-        final isPureMutation =
-            note.contains('[SAVING_ID:') &&
-            (catName.contains('tabung') || catName.contains('cair'));
-
-        loaded.add(trx);
-
-        if (!isPureMutation) {
-          total += trx.amount;
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _transactions = loaded;
-          _totalAmount = total;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
- // ==============================================================
-  // [BUG FIX] FUNGSI DELETE SEKARANG NGEMBALIIN SALDO DOMPET
-  // ==============================================================
   Future<void> _deleteTransaction(TransactionModel trx) async {
     try {
-      // [FIX] Tampung di variabel lokal biar Dart nggak rewel soal Null Safety
-      final walletId = trx.walletId; 
-
-      // 1. Cek apakah transaksi ini pakai dompet
-      if (walletId != null) {
-        // Ambil saldo dompet saat ini
-        final walletRes = await _supabase.from('wallets').select('balance').eq('id', walletId).single();
-        double currentBal = (walletRes['balance'] as num).toDouble();
-        
-        // Logika Revert (Kembalikan Saldo)
-        // Kalau Pengeluaran (Expense): Saldo dompet harus ditambahin karena transaksinya batal
-        // Kalau Pemasukan (!Expense): Saldo dompet harus dikurangin karena transaksinya batal
-        double newBalance = widget.isExpense 
-            ? currentBal + trx.amount 
-            : currentBal - trx.amount;
-            
-        // Update saldo dompet di database
-        await _supabase.from('wallets').update({'balance': newBalance}).eq('id', walletId);
-      }
-
-      // 2. Hapus transaksinya dari database
-      await _supabase.from('transactions').delete().eq('id', trx.id);
-      
-      // 3. Refresh Data
-      _fetchWallets();
-      _fetchTransactions();
-      
+      final message = await _notifier.deleteTransaction(trx);
       if (mounted) {
-        AppNotification.success(context, "Data dihapus & saldo dompet disesuaikan!");
+        AppNotification.success(context, message);
       }
     } catch (e) {
-      debugPrint("Delete error: $e");
       if (mounted) {
         AppNotification.error(context, "Gagal menghapus transaksi.");
       }
     }
   }
 
-  void _pickDate() async {
-    if (_filterType == 'Harian') {
+  void _pickDate(TransactionHistoryState state) async {
+    if (state.filterType == 'Harian') {
       final picked = await showDatePicker(
         context: context,
-        initialDate: _selectedDate,
+        initialDate: state.selectedDate,
         firstDate: DateTime(2020),
         lastDate: DateTime(2030),
         builder: (context, child) => Theme(
@@ -246,10 +53,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         ),
       );
       if (picked != null) {
-        setState(() => _selectedDate = picked);
-        _fetchTransactions();
+        _notifier.setSelectedDate(picked);
       }
-    } else if (_filterType == 'Tahunan') {
+    } else if (state.filterType == 'Tahunan') {
       showDialog(
         context: context,
         builder: (context) {
@@ -266,21 +72,20 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               child: YearPicker(
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2030),
-                selectedDate: _selectedDate,
+                selectedDate: state.selectedDate,
                 onChanged: (DateTime val) {
-                  setState(() => _selectedDate = val);
                   Navigator.pop(context);
-                  _fetchTransactions();
+                  _notifier.setSelectedDate(val);
                 },
               ),
             ),
           );
         },
       );
-    } else if (_filterType == 'Periode') {
+    } else if (state.filterType == 'Periode') {
       final DateTimeRange? picked = await showDateRangePicker(
         context: context,
-        initialDateRange: _selectedDateRange,
+        initialDateRange: state.selectedDateRange,
         firstDate: DateTime(2020),
         lastDate: DateTime(2030),
         builder: (context, child) => Theme(
@@ -291,13 +96,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         ),
       );
       if (picked != null) {
-        setState(() => _selectedDateRange = picked);
-        _fetchTransactions();
+        _notifier.setSelectedDateRange(picked);
       }
     } else {
       final currentYear = DateTime.now().year;
       final years = List.generate(11, (i) => (currentYear - 5) + i);
-      int tempYear = _selectedDate.year;
+      int tempYear = state.selectedDate.year;
 
       showDialog(
         context: context,
@@ -380,18 +184,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           itemBuilder: (context, index) {
                             final int monthIndex = index + 1;
                             final bool isSelected =
-                                _selectedDate.month == monthIndex &&
-                                _selectedDate.year == tempYear;
+                                state.selectedDate.month == monthIndex &&
+                                state.selectedDate.year == tempYear;
                             return InkWell(
                               onTap: () {
-                                setState(
-                                  () => _selectedDate = DateTime(
-                                    tempYear,
-                                    monthIndex,
-                                  ),
-                                );
                                 Navigator.pop(context);
-                                _fetchTransactions();
+                                _notifier.setSelectedDate(
+                                  DateTime(tempYear, monthIndex),
+                                );
                               },
                               child: Container(
                                 alignment: Alignment.center,
@@ -442,6 +242,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final state = ref.read(transactionHistoryProvider(widget.isExpense));
             return Container(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
@@ -478,11 +279,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          setSheetState(() {
-                            _selectedCategoryIds.clear();
-                            _selectedWalletIds.clear();
-                          });
-                          setState(() {});
+                          _notifier.resetFilters();
+                          setSheetState(() {});
                         },
                         child: Text(
                           "Reset",
@@ -511,35 +309,36 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: _categories.map((c) {
+                            children: state.categories.map((c) {
                               final id = c['id'] as int;
-                              final isSelected = _selectedCategoryIds.contains(id);
-                              final color = widget.isExpense ? AppColors.expense : AppColors.income;
+                              final isSelected =
+                                  state.selectedCategoryIds.contains(id);
+                              final color = widget.isExpense
+                                  ? AppColors.expense
+                                  : AppColors.income;
                               return FilterChip(
                                 label: Text(c['name']),
                                 selected: isSelected,
                                 onSelected: (val) {
-                                  setSheetState(() {
-                                    if (val) {
-                                      _selectedCategoryIds.add(id);
-                                    } else {
-                                      _selectedCategoryIds.remove(id);
-                                    }
-                                  });
-                                  setState(() {});
+                                  _notifier.toggleCategoryFilter(id, val);
+                                  setSheetState(() {});
                                 },
                                 selectedColor: color.withOpacity(0.2),
                                 checkmarkColor: color,
                                 labelStyle: GoogleFonts.poppins(
                                   fontSize: 12,
                                   color: isSelected ? color : Colors.black87,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                                 backgroundColor: Colors.grey.shade50,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
-                                    color: isSelected ? color : Colors.grey.shade200,
+                                    color: isSelected
+                                        ? color
+                                        : Colors.grey.shade200,
                                   ),
                                 ),
                                 showCheckmark: false,
@@ -558,35 +357,36 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: _walletNames.entries.map((e) {
+                            children: state.walletNames.entries.map((e) {
                               final id = e.key;
-                              final isSelected = _selectedWalletIds.contains(id);
-                              final color = widget.isExpense ? AppColors.expense : AppColors.income;
+                              final isSelected =
+                                  state.selectedWalletIds.contains(id);
+                              final color = widget.isExpense
+                                  ? AppColors.expense
+                                  : AppColors.income;
                               return FilterChip(
                                 label: Text(e.value),
                                 selected: isSelected,
                                 onSelected: (val) {
-                                  setSheetState(() {
-                                    if (val) {
-                                      _selectedWalletIds.add(id);
-                                    } else {
-                                      _selectedWalletIds.remove(id);
-                                    }
-                                  });
-                                  setState(() {});
+                                  _notifier.toggleWalletFilter(id, val);
+                                  setSheetState(() {});
                                 },
                                 selectedColor: color.withOpacity(0.2),
                                 checkmarkColor: color,
                                 labelStyle: GoogleFonts.poppins(
                                   fontSize: 12,
                                   color: isSelected ? color : Colors.black87,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                                 backgroundColor: Colors.grey.shade50,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
-                                    color: isSelected ? color : Colors.grey.shade200,
+                                    color: isSelected
+                                        ? color
+                                        : Colors.grey.shade200,
                                   ),
                                 ),
                                 showCheckmark: false,
@@ -603,12 +403,16 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                     height: 50,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: widget.isExpense ? AppColors.expense : AppColors.income,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: widget.isExpense
+                            ? AppColors.expense
+                            : AppColors.income,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () {
                         Navigator.pop(context);
-                        _fetchTransactions();
+                        _notifier.applyFilters();
                       },
                       child: Text(
                         "Terapkan Filter",
@@ -630,6 +434,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(transactionHistoryProvider(widget.isExpense));
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -638,16 +443,16 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final color = widget.isExpense ? AppColors.expense : AppColors.income;
 
     String dateLabel = '';
-    if (_filterType == 'Harian') {
-      dateLabel = DateFormat('dd MMM yyyy', 'id_ID').format(_selectedDate);
-    } else if (_filterType == 'Tahunan') {
-      dateLabel = DateFormat('yyyy', 'id_ID').format(_selectedDate);
-    } else if (_filterType == 'Periode') {
-      dateLabel = _selectedDateRange != null
-          ? "${DateFormat('dd MMM', 'id_ID').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM yy', 'id_ID').format(_selectedDateRange!.end)}"
+    if (state.filterType == 'Harian') {
+      dateLabel = DateFormat('dd MMM yyyy', 'id_ID').format(state.selectedDate);
+    } else if (state.filterType == 'Tahunan') {
+      dateLabel = DateFormat('yyyy', 'id_ID').format(state.selectedDate);
+    } else if (state.filterType == 'Periode') {
+      dateLabel = state.selectedDateRange != null
+          ? "${DateFormat('dd MMM', 'id_ID').format(state.selectedDateRange!.start)} - ${DateFormat('dd MMM yy', 'id_ID').format(state.selectedDateRange!.end)}"
           : "Pilih Periode";
     } else {
-      dateLabel = DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate);
+      dateLabel = DateFormat('MMMM yyyy', 'id_ID').format(state.selectedDate);
     }
 
     return SafeArea(
@@ -676,14 +481,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 AppTabSelector(
                   labels: const ['Harian', 'Bulanan', 'Tahunan', 'Periode'],
                   initialIndex: ['Harian', 'Bulanan', 'Tahunan', 'Periode']
-                      .indexOf(_filterType),
+                      .indexOf(state.filterType),
                   activeColor: color,
                   onChanged: (index) {
                     final type = ['Harian', 'Bulanan', 'Tahunan', 'Periode'][index];
-                    if (_filterType != type) {
-                      setState(() => _filterType = type);
-                      _fetchTransactions();
-                    }
+                    _notifier.setFilterType(type);
                   },
                 ),
                 const SizedBox(height: 15),
@@ -694,7 +496,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                     // Tombol Tanggal
                     Expanded(
                       child: GestureDetector(
-                        onTap: _pickDate,
+                        onTap: () => _pickDate(state),
                         child: Container(
                           height: 45,
                           padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -752,7 +554,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                               Icon(
                                 PhosphorIconsRegular.funnel,
                                 size: 16,
-                                color: (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty) ? color : Colors.grey,
+                                color: (state.selectedCategoryIds.isNotEmpty ||
+                                        state.selectedWalletIds.isNotEmpty)
+                                    ? color
+                                    : Colors.grey,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -760,10 +565,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty) ? color : Colors.black87,
+                                  color: (state.selectedCategoryIds.isNotEmpty ||
+                                          state.selectedWalletIds.isNotEmpty)
+                                      ? color
+                                      : Colors.black87,
                                 ),
                               ),
-                              if (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty)
+                              if (state.selectedCategoryIds.isNotEmpty ||
+                                  state.selectedWalletIds.isNotEmpty)
                                 Container(
                                   margin: const EdgeInsets.only(left: 6),
                                   padding: const EdgeInsets.all(4),
@@ -772,7 +581,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                     shape: BoxShape.circle,
                                   ),
                                   child: Text(
-                                    '${_selectedCategoryIds.length + _selectedWalletIds.length}',
+                                    '${state.selectedCategoryIds.length + state.selectedWalletIds.length}',
                                     style: GoogleFonts.poppins(
                                       fontSize: 10,
                                       color: Colors.white,
@@ -833,7 +642,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                               ),
                             ),
                             Text(
-                              currencyFormat.format(_totalAmount),
+                              currencyFormat.format(state.totalAmount),
                               style: GoogleFonts.poppins(
                                 color: color,
                                 fontSize: 18,
@@ -854,9 +663,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
           // LIST TRANSAKSI
           Expanded(
-            child: _isLoading
+            child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _transactions.isEmpty
+                : state.transactions.isEmpty
                 ? Center(
                     child: Text(
                       "Tidak ada transaksi",
@@ -865,9 +674,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(20),
-                    itemCount: _transactions.length,
+                    itemCount: state.transactions.length,
                     itemBuilder: (context, index) {
-                      final trx = _transactions[index];
+                      final trx = state.transactions[index];
                       final noteStr = trx.note?.toString() ?? '';
                       final catStr = trx.category?.name.toLowerCase() ?? '';
                       final isSystemCat =
@@ -876,9 +685,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                           noteStr.contains('[SAVING_ID:') && isSystemCat;
 
                       final walletId = trx.walletId;
-                      final walletName = _walletNames[walletId];
+                      final walletName = state.walletNames[walletId];
                       final walletColor =
-                          _walletColors[walletId] ?? Colors.grey;
+                          state.walletColors[walletId] ?? Colors.grey;
 
                       Widget transactionCard = GestureDetector(
                         onTap: () async {
@@ -892,8 +701,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                             ),
                           );
                           if (result == true) {
-                            _fetchWallets();
-                            _fetchTransactions();
+                            _notifier.fetchWallets();
+                            _notifier.fetchTransactions();
                           }
                         },
                         child: Container(

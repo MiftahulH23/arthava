@@ -1,10 +1,10 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/input_transaction_screen.dart';
+import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
 import 'package:catat_uang_app/screens/manage_category/manage_category_screen.dart';
 import 'package:catat_uang_app/screens/settings/settings_screen.dart';
-import 'package:catat_uang_app/screens/stats_screen.dart';
-import 'package:catat_uang_app/screens/transaction_history_screen.dart';
+import 'package:catat_uang_app/screens/stats/stats_screen.dart';
+import 'package:catat_uang_app/screens/transaction_history/transaction_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';

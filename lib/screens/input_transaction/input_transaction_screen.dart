@@ -1,17 +1,18 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
+import 'package:catat_uang_app/providers/input_transaction_provider.dart';
 import 'package:catat_uang_app/services/gemini_service.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 
-class InputTransactionScreen extends StatefulWidget {
+class InputTransactionScreen extends ConsumerStatefulWidget {
   final TransactionModel? transactionToEdit;
   final bool initialIsExpense;
 
@@ -22,13 +23,14 @@ class InputTransactionScreen extends StatefulWidget {
   });
 
   @override
-  State<InputTransactionScreen> createState() => _InputTransactionScreenState();
+  ConsumerState<InputTransactionScreen> createState() =>
+      _InputTransactionScreenState();
 }
 
-class _InputTransactionScreenState extends State<InputTransactionScreen> {
+class _InputTransactionScreenState
+    extends ConsumerState<InputTransactionScreen> {
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  final SupabaseClient _supabase = Supabase.instance.client;
   final ImagePicker _picker = ImagePicker();
 
   final _currencyFormat = NumberFormat.currency(
@@ -39,19 +41,13 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
 
   DateTime _selectedDate = DateTime.now();
   int? _selectedCategoryId;
-  bool _isLoading = false;
-  List<Map<String, dynamic>> _categories = [];
   late bool _isExpense;
 
-  int? _tabunganCategoryId;
   bool _isReadOnly = false;
   String? _hiddenSavingMarker;
 
-  List<Map<String, dynamic>> _wallets = [];
   int? _selectedWalletId;
 
-  Map<String, double> _savingsBalances = {};
-  List<String> _savingNamesList = [];
   bool _isFromSaving = false;
   String? _selectedSavingName;
 
@@ -59,9 +55,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
   void initState() {
     super.initState();
     _isExpense = widget.initialIsExpense;
-    _fetchCategories();
-    _fetchSavingsBalances();
-    _fetchWallets();
 
     if (widget.transactionToEdit != null) {
       final trx = widget.transactionToEdit!;
@@ -83,30 +76,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     }
   }
 
-  Future<void> _fetchWallets() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('wallets')
-          .select()
-          .eq('user_id', userId)
-          .order('name');
-
-      if (mounted) {
-        setState(() {
-          _wallets = List<Map<String, dynamic>>.from(res);
-          if (_wallets.isNotEmpty &&
-              _selectedWalletId == null &&
-              !_isFromSaving) {
-            _selectedWalletId = _wallets.first['id'];
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetch wallets: $e");
-    }
-  }
-
   Future<void> _processScanReceipts(List<XFile> images) async {
     if (images.isEmpty) return;
     showDialog(
@@ -120,6 +89,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     if (mounted) Navigator.pop(context);
 
     if (result != null) {
+      final categories = ref.read(inputTransactionProvider).categories;
       setState(() {
         double total = (result['total'] as num?)?.toDouble() ?? 0;
         if (total > 0) {
@@ -131,7 +101,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
           );
         }
         String aiCategory = result['kategori'].toString().toLowerCase();
-        var matchedCat = _categories.where((c) {
+        var matchedCat = categories.where((c) {
           String dbCat = c['name'].toString().toLowerCase();
           return dbCat.contains(aiCategory) || aiCategory.contains(dbCat);
         }).firstOrNull;
@@ -259,53 +229,6 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     );
   }
 
-  Future<void> _fetchSavingsBalances() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('savings')
-          .select('name, amount')
-          .eq('user_id', userId);
-      Map<String, double> balances = {};
-      for (var item in res) {
-        String name = item['name'].toString().trim();
-        balances[name] =
-            (balances[name] ?? 0) + (item['amount'] as num).toDouble();
-      }
-      if (mounted) {
-        setState(() {
-          _savingsBalances = balances;
-          for (var key in balances.keys) {
-            if (balances[key]! > 0) _savingNamesList.add(key);
-          }
-        });
-      }
-    } catch (e) {}
-  }
-
-  Future<int> _getOrCreateWithdrawCategory() async {
-    final userId = _supabase.auth.currentUser!.id;
-    final checkRes = await _supabase
-        .from('categories')
-        .select('id')
-        .eq('is_expense', false)
-        .ilike('name', '%Cair%')
-        .eq('user_id', userId)
-        .maybeSingle();
-    if (checkRes != null) return checkRes['id'] as int;
-    final insertRes = await _supabase
-        .from('categories')
-        .insert({
-          'user_id': userId,
-          'name': 'Pencairan Tabungan',
-          'is_expense': false,
-          'icon_name': 'bank',
-        })
-        .select('id')
-        .single();
-    return insertRes['id'] as int;
-  }
-
   IconData _getCategoryIcon(String categoryName) {
     final name = categoryName.toLowerCase();
     if (name.contains('makan'))
@@ -333,224 +256,28 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
     return PhosphorIcons.tag(PhosphorIconsStyle.fill);
   }
 
-  Future<void> _fetchCategories() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final response = await _supabase
-          .from('categories')
-          .select()
-          .or('user_id.eq.$userId,user_id.is.null');
-
-      if (mounted) {
-        setState(() {
-          _categories = List<Map<String, dynamic>>.from(response);
-          try {
-            final tabungCat = _categories.firstWhere(
-              (c) => c['name'].toString().toLowerCase().contains('tabung'),
-            );
-            _tabunganCategoryId = tabungCat['id'];
-          } catch (e) {
-            _tabunganCategoryId = null;
-          }
-
-          if (widget.transactionToEdit != null && _selectedCategoryId != null) {
-            final selectedCat = _categories.firstWhere(
-              (e) => e['id'] == _selectedCategoryId,
-              orElse: () => {},
-            );
-            if (selectedCat.isNotEmpty) _isExpense = selectedCat['is_expense'];
-          }
-        });
-      }
-    } catch (e) {}
-  }
-
   Future<void> _saveTransaction() async {
-    if (_amountController.text.isEmpty || _selectedCategoryId == null) {
-      AppNotification.error(context, "Jumlah dan Kategori wajib diisi!");
-      return;
-    }
-    if (_wallets.isEmpty && !_isFromSaving) {
-      AppNotification.error(
-        context,
-        "Kamu belum membuat dompet. Silakan buat di Beranda > Dompet.",
-      );
-      return;
-    }
-    if (!_isFromSaving && _selectedWalletId == null) {
-      AppNotification.error(context, "Pilih dompet sumber dana!");
-      return;
-    }
-    if (_isExpense &&
-        _isFromSaving &&
-        _selectedSavingName == null &&
-        widget.transactionToEdit == null) {
-      AppNotification.error(context, "Pilih tabungan yang ingin digunakan!");
-      return;
-    }
-    if (_selectedCategoryId == _tabunganCategoryId && !_isReadOnly) {
-      AppNotification.error(
-        context,
-        "Untuk nabung, silakan gunakan menu Tabungan di Beranda.",
-      );
-      return;
-    }
-
-    final cleanAmount = _amountController.text.replaceAll(
-      RegExp(r'[^0-9]'),
-      '',
+    final notifier = ref.read(inputTransactionProvider.notifier);
+    final result = await notifier.saveTransaction(
+      amountText: _amountController.text,
+      noteText: _noteController.text,
+      selectedCategoryId: _selectedCategoryId,
+      selectedWalletId: _selectedWalletId,
+      isExpense: _isExpense,
+      isFromSaving: _isFromSaving,
+      selectedSavingName: _selectedSavingName,
+      selectedDate: _selectedDate,
+      hiddenSavingMarker: _hiddenSavingMarker,
+      isReadOnly: _isReadOnly,
+      transactionToEdit: widget.transactionToEdit,
+      initialIsExpense: widget.initialIsExpense,
     );
-    final amount = int.parse(cleanAmount);
-    final userId = _supabase.auth.currentUser!.id;
-
-    if (_isExpense && _isFromSaving && widget.transactionToEdit == null) {
-      double currentBal = _savingsBalances[_selectedSavingName] ?? 0;
-      if (amount > currentBal) {
-        final limitRp = NumberFormat.currency(
-          locale: 'id_ID',
-          symbol: 'Rp ',
-          decimalDigits: 0,
-        ).format(currentBal);
-        AppNotification.error(
-          context,
-          "Saldo tabungan tidak cukup! Sisa: $limitRp",
-        );
-        return;
-      }
-      setState(() => _isLoading = true);
-      try {
-        final insertedSaving = await _supabase
-            .from('savings')
-            .insert({
-              'user_id': userId,
-              'name': _selectedSavingName,
-              'amount': -amount,
-              'notes': _noteController.text.trim().isNotEmpty
-                  ? _noteController.text.trim()
-                  : 'Dipakai untuk pengeluaran',
-            })
-            .select('id')
-            .single();
-
-        final savingId = insertedSaving['id'];
-        final noteMarker = "[SAVING_ID:$savingId]";
-        final incomeCatId = await _getOrCreateWithdrawCategory();
-
-        await _supabase.from('transactions').insert({
-          'user_id': userId,
-          'category_id': incomeCatId,
-          'amount': amount,
-          'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-          'note': 'Pencairan otomatis $noteMarker',
-        });
-
-        String finalNote = _noteController.text.trim();
-        finalNote = finalNote.isEmpty ? noteMarker : '$finalNote $noteMarker';
-
-        await _supabase.from('transactions').insert({
-          'user_id': userId,
-          'category_id': _selectedCategoryId,
-          'amount': amount,
-          'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-          'note': finalNote,
-        });
-
-        if (mounted) {
-          AppNotification.success(
-            context,
-            "Berhasil! Uang dipotong dari tabungan.",
-          );
-          Navigator.pop(context, true);
-        }
-      } catch (e) {
-        if (mounted) AppNotification.error(context, "Gagal memproses data.");
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
-      }
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      String finalNote = _noteController.text.trim();
-      if (_hiddenSavingMarker != null) {
-        finalNote = finalNote.isEmpty
-            ? _hiddenSavingMarker!
-            : '$finalNote $_hiddenSavingMarker';
-      }
-
-      final data = {
-        'user_id': userId,
-        'category_id': _selectedCategoryId,
-        'amount': amount,
-        'date': DateFormat('yyyy-MM-dd').format(_selectedDate),
-        'note': finalNote,
-        'wallet_id': _selectedWalletId,
-      };
-
-      double balanceChange = _isExpense
-          ? -(amount.toDouble())
-          : amount.toDouble();
-
-      if (widget.transactionToEdit == null) {
-        await _supabase.from('transactions').insert(data);
-        final currentWalletRes = await _supabase
-            .from('wallets')
-            .select('balance')
-            .eq('id', _selectedWalletId!)
-            .single();
-        final currentBalance = (currentWalletRes['balance'] as num).toDouble();
-        await _supabase
-            .from('wallets')
-            .update({'balance': currentBalance + balanceChange})
-            .eq('id', _selectedWalletId!);
-
-        if (mounted) {
-          AppNotification.success(
-            context,
-            "Transaksi berhasil & Saldo dompet terupdate!",
-          );
-          Navigator.pop(context, true);
-        }
-      } else {
-        final oldTrx = widget.transactionToEdit!;
-        final oldWalletRes = await _supabase
-            .from('wallets')
-            .select('balance')
-            .eq('id', oldTrx.walletId!)
-            .single();
-        final oldBalance = (oldWalletRes['balance'] as num).toDouble();
-
-        double reverseChange = widget.initialIsExpense
-            ? oldTrx.amount.toDouble()
-            : -(oldTrx.amount.toDouble());
-        await _supabase
-            .from('wallets')
-            .update({'balance': oldBalance + reverseChange})
-            .eq('id', oldTrx.walletId!);
-
-        await _supabase.from('transactions').update(data).eq('id', oldTrx.id);
-
-        final newWalletRes = await _supabase
-            .from('wallets')
-            .select('balance')
-            .eq('id', _selectedWalletId!)
-            .single();
-        final newBalance = (newWalletRes['balance'] as num).toDouble();
-        await _supabase
-            .from('wallets')
-            .update({'balance': newBalance + balanceChange})
-            .eq('id', _selectedWalletId!);
-
-        if (mounted) {
-          AppNotification.success(context, "Transaksi berhasil diperbarui!");
-          Navigator.pop(context, true);
-        }
-      }
-    } catch (e) {
-      if (mounted) AppNotification.error(context, "Gagal: ${e.toString()}");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    if (!mounted) return;
+    if (result.success) {
+      AppNotification.success(context, result.message);
+      Navigator.pop(context, true);
+    } else {
+      AppNotification.error(context, result.message);
     }
   }
 
@@ -568,7 +295,35 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredCategories = _categories
+    final state = ref.watch(inputTransactionProvider);
+
+    // Sama seperti efek samping di dalam `setState` pada `_fetchWallets` dan
+    // `_fetchCategories` aslinya: begitu daftar dompet/kategori pertama kali
+    // terisi, isi field lokal yang belum dipilih pengguna.
+    ref.listen<InputTransactionState>(inputTransactionProvider, (previous, next) {
+      final walletsJustArrived =
+          (previous == null || previous.wallets.isEmpty) && next.wallets.isNotEmpty;
+      if (walletsJustArrived && _selectedWalletId == null && !_isFromSaving) {
+        setState(() => _selectedWalletId = next.wallets.first['id']);
+      }
+
+      final categoriesJustArrived =
+          (previous == null || previous.categories.isEmpty) &&
+          next.categories.isNotEmpty;
+      if (categoriesJustArrived &&
+          widget.transactionToEdit != null &&
+          _selectedCategoryId != null) {
+        final selectedCat = next.categories.firstWhere(
+          (e) => e['id'] == _selectedCategoryId,
+          orElse: () => {},
+        );
+        if (selectedCat.isNotEmpty) {
+          setState(() => _isExpense = selectedCat['is_expense']);
+        }
+      }
+    });
+
+    final filteredCategories = state.categories
         .where((c) => c['is_expense'] == _isExpense)
         .toList();
 
@@ -666,8 +421,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                           onTap: () => setState(() {
                             _isFromSaving = false;
                             _selectedSavingName = null;
-                            if (_wallets.isNotEmpty)
-                              _selectedWalletId = _wallets.first['id'];
+                            if (state.wallets.isNotEmpty)
+                              _selectedWalletId = state.wallets.first['id'];
                           }),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -718,9 +473,9 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                           onTap: () => setState(() {
                             _isFromSaving = true;
                             _selectedWalletId = null;
-                            if (_savingNamesList.isNotEmpty &&
+                            if (state.savingNamesList.isNotEmpty &&
                                 _selectedSavingName == null)
-                              _selectedSavingName = _savingNamesList.first;
+                              _selectedSavingName = state.savingNamesList.first;
                           }),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -785,11 +540,11 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                   child: _isFromSaving
                       ? DropdownButton<String>(
                           dropdownColor: Colors.white,
-                          value: _savingNamesList.contains(_selectedSavingName)
+                          value: state.savingNamesList.contains(_selectedSavingName)
                               ? _selectedSavingName
                               : null,
                           hint: Text(
-                            _savingNamesList.isEmpty
+                            state.savingNamesList.isEmpty
                                 ? "Belum ada tabungan"
                                 : "Pilih Tabungan...",
                             style: GoogleFonts.poppins(color: Colors.grey),
@@ -799,8 +554,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                             Icons.arrow_drop_down,
                             color: Colors.grey,
                           ),
-                          items: _savingNamesList.map((savingName) {
-                            final balance = _savingsBalances[savingName] ?? 0;
+                          items: state.savingNamesList.map((savingName) {
+                            final balance = state.savingsBalances[savingName] ?? 0;
                             return DropdownMenuItem<String>(
                               value: savingName,
                               child: Row(
@@ -822,7 +577,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                               ),
                             );
                           }).toList(),
-                          onChanged: _savingNamesList.isEmpty
+                          onChanged: state.savingNamesList.isEmpty
                               ? null
                               : (val) {
                                   setState(() {
@@ -833,11 +588,11 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                       : DropdownButton<int>(
                           dropdownColor: Colors.white,
                           value:
-                              _wallets.any((w) => w['id'] == _selectedWalletId)
+                              state.wallets.any((w) => w['id'] == _selectedWalletId)
                               ? _selectedWalletId
                               : null,
                           hint: Text(
-                            _wallets.isEmpty
+                            state.wallets.isEmpty
                                 ? "Buat dompet di menu utama!"
                                 : "Pilih Dompet...",
                             style: GoogleFonts.poppins(color: Colors.grey),
@@ -847,7 +602,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                             Icons.arrow_drop_down,
                             color: Colors.grey,
                           ),
-                          items: _wallets.map((wallet) {
+                          items: state.wallets.map((wallet) {
                             final colorHex = wallet['color'] ?? '#1E3A8A';
                             final walletColor = Color(
                               int.parse(colorHex.replaceFirst('#', '0xFF')),
@@ -873,7 +628,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                               ),
                             );
                           }).toList(),
-                          onChanged: _wallets.isEmpty
+                          onChanged: state.wallets.isEmpty
                               ? null
                               : (val) {
                                   setState(() {
@@ -892,8 +647,8 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
               Builder(
                 builder: (context) {
                   String wName = "Memuat...";
-                  if (_wallets.isNotEmpty) {
-                    final w = _wallets.firstWhere(
+                  if (state.wallets.isNotEmpty) {
+                    final w = state.wallets.firstWhere(
                       (e) => e['id'] == _selectedWalletId,
                       orElse: () => {},
                     );
@@ -1062,7 +817,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
                       ? _selectedCategoryId
                       : null,
                   hint: Text(
-                    _categories.isEmpty ? "Memuat..." : "Pilih Kategori",
+                    state.categories.isEmpty ? "Memuat..." : "Pilih Kategori",
                     style: GoogleFonts.poppins(color: Colors.grey),
                   ),
                   isExpanded: true,
@@ -1196,7 +951,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
           child: ElevatedButton(
             onPressed: _isReadOnly
                 ? () => Navigator.pop(context)
-                : (_isLoading ? null : _saveTransaction),
+                : (state.isSaving ? null : _saveTransaction),
             style: ElevatedButton.styleFrom(
               backgroundColor: _isReadOnly
                   ? Colors.grey.shade300
@@ -1206,7 +961,7 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
               ),
               elevation: 0,
             ),
-            child: _isLoading
+            child: state.isSaving
                 ? const SizedBox(
                     height: 24,
                     width: 24,
@@ -1236,14 +991,15 @@ class _InputTransactionScreenState extends State<InputTransactionScreen> {
         onTap: _isReadOnly
             ? null
             : () {
+                final wallets = ref.read(inputTransactionProvider).wallets;
                 setState(() {
                   _isExpense = isExpenseBtn;
                   _selectedCategoryId = null;
                   if (!isExpenseBtn) {
                     _isFromSaving = false;
                     _selectedSavingName = null;
-                    if (_wallets.isNotEmpty)
-                      _selectedWalletId = _wallets.first['id'];
+                    if (wallets.isNotEmpty)
+                      _selectedWalletId = wallets.first['id'];
                   }
                 });
               },

@@ -1,40 +1,22 @@
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/providers/stats_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:catat_uang_app/widgets/app_tab_selector.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-class StatsScreen extends StatefulWidget {
+class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
 
   @override
-  State<StatsScreen> createState() => _StatsScreenState();
+  ConsumerState<StatsScreen> createState() => _StatsScreenState();
 }
 
-class _StatsScreenState extends State<StatsScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isLoading = true;
-  bool _isExpense = true;
-
-  String _filterType = 'Bulanan';
-  DateTime _selectedDate = DateTime.now();
-  DateTimeRange? _selectedDateRange;
-
-  double _totalAmount = 0;
-  double _dailyAverage = 0;
-  Map<String, dynamic>? _highestTransaction;
-  List<Map<String, dynamic>> _categoryData = [];
-  List<Map<String, dynamic>> _categories = [];
-  List<int> _selectedCategoryIds = [];
-  List<int> _selectedWalletIds = [];
-
-  Map<int, String> _walletNames = {};
-  Map<int, Color> _walletColors = {};
-
+class _StatsScreenState extends ConsumerState<StatsScreen> {
   final List<Color> _chartColors = [
     Colors.blue,
     Colors.red,
@@ -45,208 +27,16 @@ class _StatsScreenState extends State<StatsScreen> {
     Colors.pink,
     Colors.amber,
   ];
-  
+
   int _touchedIndex = -1;
 
-  @override
-  void initState() {
-    super.initState();
-    _selectedDateRange = DateTimeRange(
-      start: DateTime.now().subtract(const Duration(days: 7)),
-      end: DateTime.now(),
-    );
-    _fetchWallets();
-    _fetchCategories();
-    _fetchStats();
-  }
+  StatsNotifier get _notifier => ref.read(statsProvider.notifier);
 
-  Future<void> _fetchWallets() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('wallets')
-          .select()
-          .eq('user_id', userId);
-      if (mounted) {
-        setState(() {
-          for (var w in res as List) {
-            _walletNames[w['id']] = w['name'].toString();
-            final colorHex = w['color']?.toString() ?? '#1E3A8A';
-            _walletColors[w['id']] = Color(
-              int.parse(colorHex.replaceFirst('#', '0xFF')),
-            );
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint("Error wallets: $e");
-    }
-  }
-
-  Future<void> _fetchCategories() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final response = await _supabase
-          .from('categories')
-          .select()
-          .eq('is_expense', _isExpense)
-          .or('user_id.is.null,user_id.eq.$userId');
-
-      if (mounted) {
-        setState(() {
-          _categories = List<Map<String, dynamic>>.from(response);
-        });
-      }
-    } catch (e) {
-      debugPrint("Error categories: $e");
-    }
-  }
-
-  Future<void> _fetchStats() async {
-    setState(() => _isLoading = true);
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      DateTime startDate;
-      DateTime endDate;
-
-      if (_filterType == 'Harian') {
-        startDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-        );
-        endDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-          23,
-          59,
-          59,
-        );
-      } else if (_filterType == 'Tahunan') {
-        startDate = DateTime(_selectedDate.year, 1, 1);
-        endDate = DateTime(_selectedDate.year, 12, 31, 23, 59, 59);
-      } else if (_filterType == 'Periode' && _selectedDateRange != null) {
-        startDate = _selectedDateRange!.start;
-        endDate = DateTime(
-          _selectedDateRange!.end.year,
-          _selectedDateRange!.end.month,
-          _selectedDateRange!.end.day,
-          23,
-          59,
-          59,
-        );
-      } else {
-        startDate = DateTime(_selectedDate.year, _selectedDate.month, 1);
-        endDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month + 1,
-          0,
-          23,
-          59,
-          59,
-        );
-      }
-
-      var query = _supabase
-          .from('transactions')
-          .select('*, categories(*)')
-          .eq('user_id', userId)
-          .eq('categories.is_expense', _isExpense)
-          .gte('date', DateFormat('yyyy-MM-dd').format(startDate))
-          .lte('date', DateFormat('yyyy-MM-dd').format(endDate));
-
-      if (_selectedCategoryIds.isNotEmpty) {
-        query = query.inFilter('category_id', _selectedCategoryIds);
-      }
-      if (_selectedWalletIds.isNotEmpty) {
-        query = query.inFilter('wallet_id', _selectedWalletIds);
-      }
-
-      final response = await query;
-
-      double total = 0;
-      Map<String, Map<String, dynamic>> grouped = {};
-      double maxAmount = 0;
-      Map<String, dynamic>? maxTransaction;
-
-      for (var item in response as List) {
-        if (item['categories'] == null) continue;
-
-        final note = item['note']?.toString() ?? '';
-        final catName =
-            item['categories']['name']?.toString().toLowerCase() ?? '';
-        final isPureMutation =
-            note.contains('[SAVING_ID:') &&
-            (catName.contains('tabung') || catName.contains('cair'));
-
-        if (isPureMutation) continue;
-
-        final amount = (item['amount'] as num).toDouble();
-        final catId = item['category_id'].toString();
-        final cName = item['categories']['name'];
-
-        total += amount;
-        
-        if (amount > maxAmount) {
-           maxAmount = amount;
-           maxTransaction = {
-              'amount': amount,
-              'name': cName,
-              'note': note.isNotEmpty ? note : cName,
-              'date': item['date'],
-           };
-        }
-
-        if (grouped.containsKey(catId)) {
-          grouped[catId]!['amount'] += amount;
-          grouped[catId]!['count'] += 1;
-          grouped[catId]!['transactions'].add(item);
-        } else {
-          grouped[catId] = {
-            'name': cName,
-            'amount': amount,
-            'count': 1,
-            'transactions': [item],
-          };
-        }
-      }
-
-      final sortedList = grouped.values.toList()
-        ..sort(
-          (a, b) => (b['amount'] as double).compareTo(a['amount'] as double),
-        );
-
-      DateTime calculationEndDate = endDate;
-      final now = DateTime.now();
-      if (calculationEndDate.isAfter(now)) {
-        calculationEndDate = now;
-      }
-      
-      int days = calculationEndDate.difference(startDate).inDays + 1;
-      if (days < 1) days = 1;
-      final avg = total / days;
-
-      if (mounted) {
-        setState(() {
-          _totalAmount = total;
-          _dailyAverage = avg;
-          _highestTransaction = maxTransaction;
-          _categoryData = sortedList;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _pickDate() async {
-    if (_filterType == 'Harian') {
+  void _pickDate(StatsState state) async {
+    if (state.filterType == 'Harian') {
       final picked = await showDatePicker(
         context: context,
-        initialDate: _selectedDate,
+        initialDate: state.selectedDate,
         firstDate: DateTime(2020),
         lastDate: DateTime(2030),
         builder: (context, child) => Theme(
@@ -257,10 +47,9 @@ class _StatsScreenState extends State<StatsScreen> {
         ),
       );
       if (picked != null) {
-        setState(() => _selectedDate = picked);
-        _fetchStats();
+        _notifier.setSelectedDate(picked);
       }
-    } else if (_filterType == 'Tahunan') {
+    } else if (state.filterType == 'Tahunan') {
       showDialog(
         context: context,
         builder: (context) {
@@ -277,21 +66,20 @@ class _StatsScreenState extends State<StatsScreen> {
               child: YearPicker(
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2030),
-                selectedDate: _selectedDate,
+                selectedDate: state.selectedDate,
                 onChanged: (DateTime val) {
-                  setState(() => _selectedDate = val);
                   Navigator.pop(context);
-                  _fetchStats();
+                  _notifier.setSelectedDate(val);
                 },
               ),
             ),
           );
         },
       );
-    } else if (_filterType == 'Periode') {
+    } else if (state.filterType == 'Periode') {
       final DateTimeRange? picked = await showDateRangePicker(
         context: context,
-        initialDateRange: _selectedDateRange,
+        initialDateRange: state.selectedDateRange,
         firstDate: DateTime(2020),
         lastDate: DateTime(2030),
         builder: (context, child) => Theme(
@@ -302,13 +90,12 @@ class _StatsScreenState extends State<StatsScreen> {
         ),
       );
       if (picked != null) {
-        setState(() => _selectedDateRange = picked);
-        _fetchStats();
+        _notifier.setSelectedDateRange(picked);
       }
     } else {
       final currentYear = DateTime.now().year;
       final years = List.generate(11, (i) => (currentYear - 5) + i);
-      int tempYear = _selectedDate.year;
+      int tempYear = state.selectedDate.year;
 
       showDialog(
         context: context,
@@ -391,18 +178,14 @@ class _StatsScreenState extends State<StatsScreen> {
                           itemBuilder: (context, index) {
                             final int monthIndex = index + 1;
                             final bool isSelected =
-                                _selectedDate.month == monthIndex &&
-                                _selectedDate.year == tempYear;
+                                state.selectedDate.month == monthIndex &&
+                                state.selectedDate.year == tempYear;
                             return InkWell(
                               onTap: () {
-                                setState(
-                                  () => _selectedDate = DateTime(
-                                    tempYear,
-                                    monthIndex,
-                                  ),
-                                );
                                 Navigator.pop(context);
-                                _fetchStats();
+                                _notifier.setSelectedDate(
+                                  DateTime(tempYear, monthIndex),
+                                );
                               },
                               child: Container(
                                 alignment: Alignment.center,
@@ -453,6 +236,7 @@ class _StatsScreenState extends State<StatsScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final state = ref.read(statsProvider);
             return Container(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
@@ -489,11 +273,8 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          setSheetState(() {
-                            _selectedCategoryIds.clear();
-                            _selectedWalletIds.clear();
-                          });
-                          setState(() {});
+                          _notifier.resetFilters();
+                          setSheetState(() {});
                         },
                         child: Text(
                           "Reset",
@@ -522,35 +303,36 @@ class _StatsScreenState extends State<StatsScreen> {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: _categories.map((c) {
+                            children: state.categories.map((c) {
                               final id = c['id'] as int;
-                              final isSelected = _selectedCategoryIds.contains(id);
-                              final color = _isExpense ? AppColors.expense : AppColors.income;
+                              final isSelected =
+                                  state.selectedCategoryIds.contains(id);
+                              final color = state.isExpense
+                                  ? AppColors.expense
+                                  : AppColors.income;
                               return FilterChip(
                                 label: Text(c['name']),
                                 selected: isSelected,
                                 onSelected: (val) {
-                                  setSheetState(() {
-                                    if (val) {
-                                      _selectedCategoryIds.add(id);
-                                    } else {
-                                      _selectedCategoryIds.remove(id);
-                                    }
-                                  });
-                                  setState(() {});
+                                  _notifier.toggleCategoryFilter(id, val);
+                                  setSheetState(() {});
                                 },
                                 selectedColor: color.withOpacity(0.2),
                                 checkmarkColor: color,
                                 labelStyle: GoogleFonts.poppins(
                                   fontSize: 12,
                                   color: isSelected ? color : Colors.black87,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                                 backgroundColor: Colors.grey.shade50,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
-                                    color: isSelected ? color : Colors.grey.shade200,
+                                    color: isSelected
+                                        ? color
+                                        : Colors.grey.shade200,
                                   ),
                                 ),
                                 showCheckmark: false,
@@ -569,35 +351,36 @@ class _StatsScreenState extends State<StatsScreen> {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: _walletNames.entries.map((e) {
+                            children: state.walletNames.entries.map((e) {
                               final id = e.key;
-                              final isSelected = _selectedWalletIds.contains(id);
-                              final color = _isExpense ? AppColors.expense : AppColors.income;
+                              final isSelected =
+                                  state.selectedWalletIds.contains(id);
+                              final color = state.isExpense
+                                  ? AppColors.expense
+                                  : AppColors.income;
                               return FilterChip(
                                 label: Text(e.value),
                                 selected: isSelected,
                                 onSelected: (val) {
-                                  setSheetState(() {
-                                    if (val) {
-                                      _selectedWalletIds.add(id);
-                                    } else {
-                                      _selectedWalletIds.remove(id);
-                                    }
-                                  });
-                                  setState(() {});
+                                  _notifier.toggleWalletFilter(id, val);
+                                  setSheetState(() {});
                                 },
                                 selectedColor: color.withOpacity(0.2),
                                 checkmarkColor: color,
                                 labelStyle: GoogleFonts.poppins(
                                   fontSize: 12,
                                   color: isSelected ? color : Colors.black87,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                                 backgroundColor: Colors.grey.shade50,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   side: BorderSide(
-                                    color: isSelected ? color : Colors.grey.shade200,
+                                    color: isSelected
+                                        ? color
+                                        : Colors.grey.shade200,
                                   ),
                                 ),
                                 showCheckmark: false,
@@ -614,12 +397,16 @@ class _StatsScreenState extends State<StatsScreen> {
                     height: 50,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isExpense ? AppColors.expense : AppColors.income,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: state.isExpense
+                            ? AppColors.expense
+                            : AppColors.income,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () {
                         Navigator.pop(context);
-                        _fetchStats();
+                        _notifier.applyFilters();
                       },
                       child: Text(
                         "Terapkan Filter",
@@ -641,24 +428,25 @@ class _StatsScreenState extends State<StatsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(statsProvider);
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-    final activeColor = _isExpense ? AppColors.expense : AppColors.income;
+    final activeColor = state.isExpense ? AppColors.expense : AppColors.income;
 
     String dateLabel = '';
-    if (_filterType == 'Harian')
-      dateLabel = DateFormat('dd MMM yyyy', 'id_ID').format(_selectedDate);
-    else if (_filterType == 'Tahunan')
-      dateLabel = DateFormat('yyyy', 'id_ID').format(_selectedDate);
-    else if (_filterType == 'Periode')
-      dateLabel = _selectedDateRange != null
-          ? "${DateFormat('dd MMM', 'id_ID').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM yy', 'id_ID').format(_selectedDateRange!.end)}"
+    if (state.filterType == 'Harian')
+      dateLabel = DateFormat('dd MMM yyyy', 'id_ID').format(state.selectedDate);
+    else if (state.filterType == 'Tahunan')
+      dateLabel = DateFormat('yyyy', 'id_ID').format(state.selectedDate);
+    else if (state.filterType == 'Periode')
+      dateLabel = state.selectedDateRange != null
+          ? "${DateFormat('dd MMM', 'id_ID').format(state.selectedDateRange!.start)} - ${DateFormat('dd MMM yy', 'id_ID').format(state.selectedDateRange!.end)}"
           : "Pilih Periode";
     else
-      dateLabel = DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate);
+      dateLabel = DateFormat('MMMM yyyy', 'id_ID').format(state.selectedDate);
 
     return SafeArea(
       child: Column(
@@ -688,22 +476,15 @@ class _StatsScreenState extends State<StatsScreen> {
                     children: [
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _isExpense = false;
-                              _selectedCategoryIds.clear();
-                            });
-                            _fetchCategories();
-                            _fetchStats();
-                          },
+                          onTap: () => _notifier.setIsExpense(false),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: !_isExpense
+                              color: !state.isExpense
                                   ? Colors.white
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: !_isExpense
+                              boxShadow: !state.isExpense
                                   ? [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.05),
@@ -717,7 +498,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               "Pemasukan",
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.bold,
-                                color: !_isExpense
+                                color: !state.isExpense
                                     ? AppColors.income
                                     : Colors.grey,
                               ),
@@ -727,22 +508,15 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _isExpense = true;
-                              _selectedCategoryIds.clear();
-                            });
-                            _fetchCategories();
-                            _fetchStats();
-                          },
+                          onTap: () => _notifier.setIsExpense(true),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: _isExpense
+                              color: state.isExpense
                                   ? Colors.white
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: _isExpense
+                              boxShadow: state.isExpense
                                   ? [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.05),
@@ -756,7 +530,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               "Pengeluaran",
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.bold,
-                                color: _isExpense
+                                color: state.isExpense
                                     ? AppColors.expense
                                     : Colors.grey,
                               ),
@@ -772,14 +546,11 @@ class _StatsScreenState extends State<StatsScreen> {
                 AppTabSelector(
                   labels: const ['Harian', 'Bulanan', 'Tahunan', 'Periode'],
                   initialIndex: ['Harian', 'Bulanan', 'Tahunan', 'Periode']
-                      .indexOf(_filterType),
+                      .indexOf(state.filterType),
                   activeColor: activeColor,
                   onChanged: (index) {
                     final type = ['Harian', 'Bulanan', 'Tahunan', 'Periode'][index];
-                    if (_filterType != type) {
-                      setState(() => _filterType = type);
-                      _fetchStats();
-                    }
+                    _notifier.setFilterType(type);
                   },
                 ),
                 const SizedBox(height: 15),
@@ -788,7 +559,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: _pickDate,
+                        onTap: () => _pickDate(state),
                         child: Container(
                           height: 45,
                           padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -845,7 +616,10 @@ class _StatsScreenState extends State<StatsScreen> {
                               Icon(
                                 PhosphorIconsRegular.funnel,
                                 size: 16,
-                                color: (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty) ? activeColor : Colors.grey,
+                                color: (state.selectedCategoryIds.isNotEmpty ||
+                                        state.selectedWalletIds.isNotEmpty)
+                                    ? activeColor
+                                    : Colors.grey,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -853,10 +627,14 @@ class _StatsScreenState extends State<StatsScreen> {
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty) ? activeColor : Colors.black87,
+                                  color: (state.selectedCategoryIds.isNotEmpty ||
+                                          state.selectedWalletIds.isNotEmpty)
+                                      ? activeColor
+                                      : Colors.black87,
                                 ),
                               ),
-                              if (_selectedCategoryIds.isNotEmpty || _selectedWalletIds.isNotEmpty)
+                              if (state.selectedCategoryIds.isNotEmpty ||
+                                  state.selectedWalletIds.isNotEmpty)
                                 Container(
                                   margin: const EdgeInsets.only(left: 6),
                                   padding: const EdgeInsets.all(4),
@@ -865,7 +643,7 @@ class _StatsScreenState extends State<StatsScreen> {
                                     shape: BoxShape.circle,
                                   ),
                                   child: Text(
-                                    '${_selectedCategoryIds.length + _selectedWalletIds.length}',
+                                    '${state.selectedCategoryIds.length + state.selectedWalletIds.length}',
                                     style: GoogleFonts.poppins(
                                       fontSize: 10,
                                       color: Colors.white,
@@ -886,9 +664,9 @@ class _StatsScreenState extends State<StatsScreen> {
           ),
 
           Expanded(
-            child: _isLoading
+            child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _categoryData.isEmpty
+                : state.categoryData.isEmpty
                 ? Center(
                     child: Text(
                       "Tidak ada data",
@@ -931,10 +709,10 @@ class _StatsScreenState extends State<StatsScreen> {
                                     List<PieChartSectionData> sections = [];
                                     double otherAmount = 0;
                                     int currentIndex = 0;
-                                    for (int i = 0; i < _categoryData.length; i++) {
-                                      final item = _categoryData[i];
-                                      final percentage = (item['amount'] / _totalAmount) * 100;
-                                      
+                                    for (int i = 0; i < state.categoryData.length; i++) {
+                                      final item = state.categoryData[i];
+                                      final percentage = (item['amount'] / state.totalAmount) * 100;
+
                                       if (i < 5 && percentage >= 2) {
                                         final isTouched = currentIndex == _touchedIndex;
                                         sections.add(PieChartSectionData(
@@ -954,11 +732,11 @@ class _StatsScreenState extends State<StatsScreen> {
                                         otherAmount += (item['amount'] as num).toDouble();
                                       }
                                     }
-                                    
+
                                     if (otherAmount > 0) {
-                                      final otherPercentage = (otherAmount / _totalAmount) * 100;
+                                      final otherPercentage = (otherAmount / state.totalAmount) * 100;
                                       final isTouched = currentIndex == _touchedIndex;
-                                      final remainingCount = _categoryData.length - currentIndex;
+                                      final remainingCount = state.categoryData.length - currentIndex;
                                       final labelText = "Gabungan\n($remainingCount)";
                                       sections.add(PieChartSectionData(
                                         color: Colors.grey.shade400,
@@ -989,7 +767,7 @@ class _StatsScreenState extends State<StatsScreen> {
                                       ),
                                     ),
                                     Text(
-                                      currencyFormat.format(_totalAmount),
+                                      currencyFormat.format(state.totalAmount),
                                       style: GoogleFonts.poppins(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
@@ -1006,12 +784,12 @@ class _StatsScreenState extends State<StatsScreen> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: _isExpense
+                            color: state.isExpense
                                 ? AppColors.expense.withOpacity(0.05)
                                 : AppColors.income.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(15),
                             border: Border.all(
-                              color: _isExpense
+                              color: state.isExpense
                                   ? AppColors.expense.withOpacity(0.2)
                                   : AppColors.income.withOpacity(0.2),
                             ),
@@ -1021,17 +799,17 @@ class _StatsScreenState extends State<StatsScreen> {
                               Row(
                                 children: [
                                   Icon(
-                                    _isExpense
+                                    state.isExpense
                                         ? PhosphorIconsBold.trendDown
                                         : PhosphorIconsBold.trendUp,
-                                    color: _isExpense
+                                    color: state.isExpense
                                         ? AppColors.expense
                                         : AppColors.income,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      "Total ${_isExpense ? 'Pengeluaran' : 'Pemasukan'}",
+                                      "Total ${state.isExpense ? 'Pengeluaran' : 'Pemasukan'}",
                                       style: GoogleFonts.poppins(
                                         color: Colors.grey.shade700,
                                       ),
@@ -1041,9 +819,9 @@ class _StatsScreenState extends State<StatsScreen> {
                                   ),
                                   const SizedBox(width: 10),
                                   Text(
-                                    currencyFormat.format(_totalAmount),
+                                    currencyFormat.format(state.totalAmount),
                                     style: GoogleFonts.poppins(
-                                      color: _isExpense
+                                      color: state.isExpense
                                           ? AppColors.expense
                                           : AppColors.income,
                                       fontSize: 18,
@@ -1052,7 +830,7 @@ class _StatsScreenState extends State<StatsScreen> {
                                   ),
                                 ],
                               ),
-                              if (_totalAmount > 0) ...[
+                              if (state.totalAmount > 0) ...[
                                 const SizedBox(height: 15),
                                 Divider(color: Colors.grey.shade300, height: 1),
                                 const SizedBox(height: 15),
@@ -1064,12 +842,12 @@ class _StatsScreenState extends State<StatsScreen> {
                                       style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
                                     ),
                                     Text(
-                                      currencyFormat.format(_dailyAverage),
+                                      currencyFormat.format(state.dailyAverage),
                                       style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
-                                if (_highestTransaction != null) ...[
+                                if (state.highestTransaction != null) ...[
                                   const SizedBox(height: 8),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1077,7 +855,7 @@ class _StatsScreenState extends State<StatsScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          "Terbesar (${_highestTransaction!['note']})",
+                                          "Terbesar (${state.highestTransaction!['note']})",
                                           style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -1085,11 +863,11 @@ class _StatsScreenState extends State<StatsScreen> {
                                       ),
                                       const SizedBox(width: 10),
                                       Text(
-                                        currencyFormat.format(_highestTransaction!['amount']),
+                                        currencyFormat.format(state.highestTransaction!['amount']),
                                         style: GoogleFonts.poppins(
-                                          fontSize: 12, 
-                                          fontWeight: FontWeight.bold, 
-                                          color: _isExpense ? AppColors.expense : AppColors.income
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: state.isExpense ? AppColors.expense : AppColors.income
                                         ),
                                       ),
                                     ],
@@ -1101,10 +879,10 @@ class _StatsScreenState extends State<StatsScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        ...List.generate(_categoryData.length, (index) {
-                          final item = _categoryData[index];
+                        ...List.generate(state.categoryData.length, (index) {
+                          final item = state.categoryData[index];
                           final percentage =
-                              (item['amount'] / _totalAmount) * 100;
+                              (item['amount'] / state.totalAmount) * 100;
                           final color =
                               _chartColors[index % _chartColors.length];
 
@@ -1253,9 +1031,9 @@ class _StatsScreenState extends State<StatsScreen> {
                                       ) {
                                         final wId = t['wallet_id'];
                                         final wName =
-                                            _walletNames[wId] ?? 'Kas Utama';
+                                            state.walletNames[wId] ?? 'Kas Utama';
                                         final wColor =
-                                            _walletColors[wId] ?? Colors.grey;
+                                            state.walletColors[wId] ?? Colors.grey;
 
                                         // [FIX] Kita hajar string `[SAVING_ID:]` pakai mesin cuci regex!
                                         final rawNote =
