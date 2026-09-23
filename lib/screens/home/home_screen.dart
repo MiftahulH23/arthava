@@ -1050,42 +1050,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: pages[_selectedIndex],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          bool isPengeluaran = _selectedIndex == 1 && _transactionsIsExpense;
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  InputTransactionScreen(initialIsExpense: isPengeluaran),
-            ),
-          );
-          ref.read(homeProvider.notifier).refreshData();
-          _bumpRefreshCounter();
-        },
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: AppBottomNav(
-        items: [
-          const AppBottomNavItem(
-            icon: PhosphorIconsRegular.house,
-            activeIcon: PhosphorIconsFill.house,
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppBottomNav(
+                items: [
+                  const AppBottomNavItem(
+                    icon: PhosphorIconsRegular.house,
+                    activeIcon: PhosphorIconsFill.house,
+                  ),
+                  AppBottomNavItem(
+                    icon: PhosphorIconsRegular.receipt,
+                    activeIcon: PhosphorIconsFill.receipt,
+                    activeColor: AppColors.primary,
+                  ),
+                  const AppBottomNavItem(
+                    icon: PhosphorIconsRegular.chartPieSlice,
+                    activeIcon: PhosphorIconsFill.chartPieSlice,
+                  ),
+                ],
+                selectedIndex: _selectedIndex,
+                onChanged: (index) => setState(() => _selectedIndex = index),
+              ),
+              const SizedBox(width: 14),
+              GestureDetector(
+                onTap: () async {
+                  bool isPengeluaran = _selectedIndex == 1 && _transactionsIsExpense;
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          InputTransactionScreen(initialIsExpense: isPengeluaran),
+                    ),
+                  );
+                  ref.read(homeProvider.notifier).refreshData();
+                  _bumpRefreshCounter();
+                },
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 28),
+                ),
+              ),
+            ],
           ),
-          AppBottomNavItem(
-            icon: PhosphorIconsRegular.receipt,
-            activeIcon: PhosphorIconsFill.receipt,
-            activeColor: AppColors.primary,
-          ),
-          const AppBottomNavItem(
-            icon: PhosphorIconsRegular.chartPieSlice,
-            activeIcon: PhosphorIconsFill.chartPieSlice,
-          ),
-        ],
-        selectedIndex: _selectedIndex,
-        onChanged: (index) => setState(() => _selectedIndex = index),
+        ),
       ),
     );
   }
