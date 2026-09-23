@@ -24,6 +24,7 @@ import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
 import 'package:catat_uang_app/screens/debt/debt_screen.dart';
 import 'package:catat_uang_app/screens/zakat_sedekah/zakat_sedekah_screen.dart';
 import 'package:catat_uang_app/screens/investment/investment_screen.dart';
+import 'package:catat_uang_app/widgets/app_bottom_nav.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -122,16 +123,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               height: 60,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
+                    color: AppColors.primary.withOpacity(0.06),
+                    blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: color, size: 26),
             ),
             const SizedBox(height: 8),
             Text(
@@ -231,13 +232,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2C3E50),
-                    borderRadius: BorderRadius.circular(25),
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF2C3E50).withOpacity(0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
+                        color: AppColors.primary.withOpacity(0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
@@ -419,7 +420,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
                             color: walletColor,
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
                                 color: walletColor.withOpacity(0.3),
@@ -1034,8 +1035,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildMobileLayout() {
-    final activeColor = AppColors.primary;
-    final inactiveColor = Colors.grey;
     final List<Widget> pages = [
       _buildMobileHomeContent(),
       TransactionHistoryScreen(
@@ -1052,76 +1051,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: pages[_selectedIndex],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          bool isPengeluaran = _selectedIndex == 2;
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  InputTransactionScreen(initialIsExpense: isPengeluaran),
-            ),
-          );
-          ref.read(homeProvider.notifier).refreshData();
-          _bumpRefreshCounter();
-        },
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 10.0,
-        color: Colors.white,
-        elevation: 10,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              IconButton(
-                icon: Icon(
-                  _selectedIndex == 0
-                      ? PhosphorIcons.house(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.house(),
-                  color: _selectedIndex == 0 ? activeColor : inactiveColor,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 0),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 70),
+        child: FloatingActionButton(
+          onPressed: () async {
+            bool isPengeluaran = _selectedIndex == 2;
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    InputTransactionScreen(initialIsExpense: isPengeluaran),
               ),
-              IconButton(
-                icon: Icon(
-                  _selectedIndex == 1
-                      ? PhosphorIcons.wallet(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.wallet(),
-                  color: _selectedIndex == 1 ? AppColors.income : inactiveColor,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 1),
-              ),
-              const SizedBox(width: 40),
-              IconButton(
-                icon: Icon(
-                  _selectedIndex == 2
-                      ? PhosphorIcons.receipt(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.receipt(),
-                  color: _selectedIndex == 2
-                      ? AppColors.expense
-                      : inactiveColor,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 2),
-              ),
-              IconButton(
-                icon: Icon(
-                  _selectedIndex == 3
-                      ? PhosphorIcons.chartPieSlice(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.chartPieSlice(),
-                  color: _selectedIndex == 3 ? activeColor : inactiveColor,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 3),
-              ),
-            ],
-          ),
+            );
+            ref.read(homeProvider.notifier).refreshData();
+            _bumpRefreshCounter();
+          },
+          backgroundColor: AppColors.primary,
+          shape: const CircleBorder(),
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
         ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      bottomNavigationBar: AppBottomNav(
+        items: [
+          const AppBottomNavItem(
+            icon: PhosphorIconsRegular.house,
+            activeIcon: PhosphorIconsFill.house,
+          ),
+          AppBottomNavItem(
+            icon: PhosphorIconsRegular.wallet,
+            activeIcon: PhosphorIconsFill.wallet,
+            activeColor: AppColors.income,
+          ),
+          AppBottomNavItem(
+            icon: PhosphorIconsRegular.receipt,
+            activeIcon: PhosphorIconsFill.receipt,
+            activeColor: AppColors.expense,
+          ),
+          const AppBottomNavItem(
+            icon: PhosphorIconsRegular.chartPieSlice,
+            activeIcon: PhosphorIconsFill.chartPieSlice,
+          ),
+        ],
+        selectedIndex: _selectedIndex,
+        onChanged: (index) => setState(() => _selectedIndex = index),
       ),
     );
   }
