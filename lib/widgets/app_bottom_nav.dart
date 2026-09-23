@@ -1,15 +1,12 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 /// Satu item navigasi di [AppBottomNav].
 ///
-/// [icon] adalah path data hugeicons ([List<List<dynamic>>]), dirender
-/// lewat widget [HugeIcon] — bukan [IconData]/[Icon] biasa. Paket
-/// hugeicons hanya menyediakan satu gaya (`strokeRounded`), jadi tidak
-/// ada lagi pasangan Fill/Regular seperti PhosphorIcons dulu: status
-/// aktif/tidak aktif kini murni dibedakan lewat warna (dan opsional
-/// stroke yang lebih tebal saat aktif), bukan bentuk ikon yang berbeda.
+/// [activeIcon] opsional — dipakai saat item ini aktif, biasanya varian
+/// "fill" dari [icon] (mengikuti pola PhosphorIcons regular/fill yang
+/// sudah dipakai di project ini). Kalau tidak diberikan, [icon] dipakai
+/// terus baik aktif maupun tidak.
 ///
 /// [activeColor] opsional — override warna saat item ini aktif. Dipakai
 /// untuk mempertahankan pewarnaan semantik per-tab yang sudah ada di
@@ -17,10 +14,11 @@ import 'package:hugeicons/hugeicons.dart';
 /// "Pengeluaran" berwarna merah/expense), bukan warna primary yang sama
 /// untuk semua tab.
 class AppBottomNavItem {
-  final List<List<dynamic>> icon;
+  final IconData icon;
+  final IconData? activeIcon;
   final Color? activeColor;
 
-  const AppBottomNavItem({required this.icon, this.activeColor});
+  const AppBottomNavItem({required this.icon, this.activeIcon, this.activeColor});
 }
 
 /// Floating pill bottom navigation standar aplikasi.
@@ -87,11 +85,10 @@ class AppBottomNav extends StatelessWidget {
           color: isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
           shape: BoxShape.circle,
         ),
-        child: HugeIcon(
-          icon: item.icon,
+        child: Icon(
+          isSelected ? (item.activeIcon ?? item.icon) : item.icon,
           color: isSelected ? activeColor : AppColors.textSecondary,
           size: 24,
-          strokeWidth: isSelected ? 2.2 : 1.8,
         ),
       ),
     );

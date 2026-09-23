@@ -51,7 +51,6 @@ dependencies:
   table_calendar: ^3.2.0
   forui: ^0.17.0
   flutter_riverpod: ^2.6.1
-  hugeicons: ^1.2.0
 
 dev_dependencies:
   flutter_test:
