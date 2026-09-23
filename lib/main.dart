@@ -58,7 +58,7 @@ class MyApp extends StatelessWidget {
               brightness: Brightness.light,
               surface: Colors.white, // [FIX] Ini bikin Card jadi Putih (Gak perlu CardTheme)
             ),
-            textTheme: GoogleFonts.poppinsTextTheme(
+            textTheme: GoogleFonts.plusJakartaSansTextTheme(
               ThemeData.light().textTheme,
             ),
             appBarTheme: const AppBarTheme(
@@ -81,7 +81,7 @@ class MyApp extends StatelessWidget {
               surface: const Color(0xFF1E1E1E), // [FIX] Ini bikin Card jadi Abu Gelap
             ),
             // Sesuaikan Text agar warna putih di dark mode
-            textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
+            textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme),
             appBarTheme: const AppBarTheme(
               backgroundColor: Color(0xFF1E1E1E),
               foregroundColor: Colors.white,

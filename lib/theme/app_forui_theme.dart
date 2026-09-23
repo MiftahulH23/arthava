@@ -41,7 +41,7 @@ final FThemeData appForuiTheme = FThemeData(
   // bawaan forui.
   typography: FTypography.inherit(
     colors: _appColors,
-    defaultFontFamily: GoogleFonts.poppins().fontFamily!,
+    defaultFontFamily: GoogleFonts.plusJakartaSans().fontFamily!,
   ),
   style: FThemes.zinc.light.style.copyWith(
     borderRadius: BorderRadius.circular(16),

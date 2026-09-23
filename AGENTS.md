@@ -41,8 +41,10 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
 - **Colors:** all named colors come from `AppColors` in `lib/core/colors.dart`.
   Don't hardcode hex colors in screens/widgets — add a new named constant
   to `AppColors` instead.
-- **Font:** `google_fonts` Poppins (`GoogleFonts.poppinsTextTheme(...)`),
-  applied once in `main.dart`'s `ThemeData.textTheme`.
+- **Font:** `google_fonts` Plus Jakarta Sans
+  (`GoogleFonts.plusJakartaSansTextTheme(...)`), applied once in
+  `main.dart`'s `ThemeData.textTheme` (light & dark), and mapped into
+  `appForuiTheme`'s typography for forui widgets.
 - **Icons:** `phosphor_flutter`.
 - **Locale:** Indonesian (`id_ID`) date/number formatting via `intl` and
   `initializeDateFormatting('id_ID', null)` in `main.dart`.
