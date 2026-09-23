@@ -670,16 +670,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               height: 70,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: AppColors.primary.withOpacity(0.06),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
-              child: Icon(icon, color: color, size: 32),
+              child: Icon(icon, color: color, size: 30),
             ),
             const SizedBox(height: 12),
             Text(
@@ -770,13 +770,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(30),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2C3E50),
-                          borderRadius: BorderRadius.circular(30),
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2C3E50).withOpacity(0.4),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              color: AppColors.primary.withOpacity(0.35),
+                              blurRadius: 24,
+                              offset: const Offset(0, 12),
                             ),
                           ],
                         ),
