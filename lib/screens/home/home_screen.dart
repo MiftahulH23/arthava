@@ -7,7 +7,7 @@ import 'package:catat_uang_app/screens/input_transaction/input_transaction_scree
 import 'package:catat_uang_app/screens/manage_category/manage_category_screen.dart';
 import 'package:catat_uang_app/screens/settings/settings_screen.dart';
 import 'package:catat_uang_app/screens/stats/stats_screen.dart';
-import 'package:catat_uang_app/screens/transaction_history/transaction_history_screen.dart';
+import 'package:catat_uang_app/screens/transaction_history/transactions_tab_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,6 +35,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
+  bool _transactionsIsExpense = false;
 
   // [FIX] Setelah migrasi TransactionHistoryScreen/StatsScreen ke provider
   // autoDispose, mengganti ValueKey saja tidak lagi cukup untuk memaksa
@@ -1037,13 +1038,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildMobileLayout() {
     final List<Widget> pages = [
       _buildMobileHomeContent(),
-      TransactionHistoryScreen(
-        key: ValueKey('pemasukan_$_refreshCounter'),
-        isExpense: false,
-      ),
-      TransactionHistoryScreen(
-        key: ValueKey('pengeluaran_$_refreshCounter'),
-        isExpense: true,
+      TransactionsTabScreen(
+        key: ValueKey('transactions_$_refreshCounter'),
+        refreshCounter: _refreshCounter,
+        initialIsExpense: _transactionsIsExpense,
+        onActiveTabChanged: (v) => _transactionsIsExpense = v,
       ),
       StatsScreen(key: ValueKey('stats_$_refreshCounter')),
     ];
@@ -1053,7 +1052,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: pages[_selectedIndex],
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          bool isPengeluaran = _selectedIndex == 2;
+          bool isPengeluaran = _selectedIndex == 1 && _transactionsIsExpense;
           await Navigator.push(
             context,
             MaterialPageRoute(
@@ -1076,14 +1075,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             activeIcon: PhosphorIconsFill.house,
           ),
           AppBottomNavItem(
-            icon: PhosphorIconsRegular.wallet,
-            activeIcon: PhosphorIconsFill.wallet,
-            activeColor: AppColors.income,
-          ),
-          AppBottomNavItem(
             icon: PhosphorIconsRegular.receipt,
             activeIcon: PhosphorIconsFill.receipt,
-            activeColor: AppColors.expense,
+            activeColor: AppColors.primary,
           ),
           const AppBottomNavItem(
             icon: PhosphorIconsRegular.chartPieSlice,
@@ -1101,13 +1095,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final inactiveColor = Colors.grey;
     final List<Widget> pages = [
       _buildWebHomeContent(),
-      TransactionHistoryScreen(
-        key: ValueKey('pemasukan_$_refreshCounter'),
-        isExpense: false,
-      ),
-      TransactionHistoryScreen(
-        key: ValueKey('pengeluaran_$_refreshCounter'),
-        isExpense: true,
+      TransactionsTabScreen(
+        key: ValueKey('transactions_$_refreshCounter'),
+        refreshCounter: _refreshCounter,
+        initialIsExpense: _transactionsIsExpense,
+        onActiveTabChanged: (v) => _transactionsIsExpense = v,
       ),
       StatsScreen(key: ValueKey('stats_$_refreshCounter')),
     ];
@@ -1144,14 +1136,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 label: const Text('Beranda'),
               ),
               NavigationRailDestination(
-                icon: Icon(PhosphorIcons.wallet()),
-                selectedIcon: Icon(PhosphorIcons.wallet(PhosphorIconsStyle.fill), color: AppColors.income),
-                label: const Text('Pemasukan'),
-              ),
-              NavigationRailDestination(
                 icon: Icon(PhosphorIcons.receipt()),
-                selectedIcon: Icon(PhosphorIcons.receipt(PhosphorIconsStyle.fill), color: AppColors.expense),
-                label: const Text('Pengeluaran'),
+                selectedIcon: Icon(PhosphorIcons.receipt(PhosphorIconsStyle.fill), color: AppColors.primary),
+                label: const Text('Transaksi'),
               ),
               NavigationRailDestination(
                 icon: Icon(PhosphorIcons.chartPieSlice()),
@@ -1174,7 +1161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          bool isPengeluaran = _selectedIndex == 2;
+          bool isPengeluaran = _selectedIndex == 1 && _transactionsIsExpense;
           await Navigator.push(
             context,
             MaterialPageRoute(
