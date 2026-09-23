@@ -1,6 +1,6 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/core/theme_mode_manager.dart';
-import 'package:catat_uang_app/screens/home_screen.dart';
+import 'package:catat_uang_app/screens/home/home_screen.dart';
 import 'package:catat_uang_app/screens/login/login_screen.dart';
 import 'package:catat_uang_app/screens/lock/lock_screen.dart'; // [NEW] Import Halaman Gembok
 import 'package:catat_uang_app/theme/app_forui_theme.dart';

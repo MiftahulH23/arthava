@@ -1,15 +1,18 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/providers/home_provider.dart';
+import 'package:catat_uang_app/providers/stats_provider.dart';
+import 'package:catat_uang_app/providers/transaction_history_provider.dart';
 import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
 import 'package:catat_uang_app/screens/manage_category/manage_category_screen.dart';
 import 'package:catat_uang_app/screens/settings/settings_screen.dart';
 import 'package:catat_uang_app/screens/stats/stats_screen.dart';
 import 'package:catat_uang_app/screens/transaction_history/transaction_history_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:catat_uang_app/screens/export/export_screen.dart';
 import 'package:catat_uang_app/screens/budget/budget_screen.dart';
 import 'package:catat_uang_app/screens/target_screen.dart';
@@ -22,212 +25,33 @@ import 'package:catat_uang_app/screens/debt/debt_screen.dart';
 import 'package:catat_uang_app/screens/zakat_sedekah/zakat_sedekah_screen.dart';
 import 'package:catat_uang_app/screens/investment/investment_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
-  final SupabaseClient _supabase = Supabase.instance.client;
 
-  String _userName = "Memuat...";
+  // [FIX] Setelah migrasi TransactionHistoryScreen/StatsScreen ke provider
+  // autoDispose, mengganti ValueKey saja tidak lagi cukup untuk memaksa
+  // refetch: Flutter membangun child baru sebelum subscription provider
+  // child lama benar-benar ditutup (baru selesai di finalizeTree()),
+  // sehingga autoDispose tidak sempat trigger dan build() tidak rerun.
+  // Setiap tempat yang menaikkan _refreshCounter sekarang juga meng-
+  // invalidate ketiga provider terkait secara eksplisit; ValueKey
+  // dipertahankan sebagai mekanisme lama tapi sudah tidak jadi satu-
+  // satunya jalur refresh.
+  void _bumpRefreshCounter() {
+    setState(() => _refreshCounter++);
+    ref.invalidate(transactionHistoryProvider(true));
+    ref.invalidate(transactionHistoryProvider(false));
+    ref.invalidate(statsProvider);
+  }
 
-  double _monthlyIncome = 0;
-  double _monthlyExpense = 0;
-  double _totalSavings = 0;
-  double _totalInvestments = 0;
-
-  List<Map<String, dynamic>> _wallets = [];
-  double _totalWalletBalance = 0;
-
-  bool _isLoading = true;
   int _refreshCounter = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshData();
-  }
-
-  Future<void> _refreshData() async {
-    await _checkRecurringTransactions();
-    await Future.wait([_getUserProfile(), _fetchHomeData()]);
-  }
-
-  Future<void> _checkRecurringTransactions() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final today = DateTime.now();
-      final todayStr = DateFormat('yyyy-MM-dd').format(today);
-
-      final response = await _supabase
-          .from('recurring_transactions')
-          .select('*, categories(is_expense)')
-          .eq('user_id', userId)
-          .eq('is_active', true)
-          .lte('next_run_date', todayStr);
-
-      final List<dynamic> dueTransactions = response;
-
-      for (var item in dueTransactions) {
-        DateTime nextRun = DateTime.parse(item['next_run_date']);
-        String freq = item['frequency'];
-        final walletId = item['wallet_id'];
-        final isExpense = item['categories']?['is_expense'] ?? true;
-        final amount = (item['amount'] as num).toDouble();
-        int executionCount = 0;
-
-        while (nextRun.isBefore(today) ||
-            nextRun.isAtSameMomentAs(
-              DateTime(today.year, today.month, today.day),
-            )) {
-          await _supabase.from('transactions').insert({
-            'user_id': item['user_id'],
-            'category_id': item['category_id'],
-            'wallet_id': walletId,
-            'amount': amount,
-            'date': DateFormat('yyyy-MM-dd').format(nextRun),
-            'note': '${item['note'] ?? ''} (Otomatis: $freq)'.trim(),
-          });
-          executionCount++;
-          if (freq == 'Harian') {
-            nextRun = nextRun.add(const Duration(days: 1));
-          } else if (freq == 'Mingguan') {
-            nextRun = nextRun.add(const Duration(days: 7));
-          } else if (freq == 'Bulanan') {
-            nextRun = DateTime(nextRun.year, nextRun.month + 1, nextRun.day);
-          } else if (freq == 'Tahunan') {
-            nextRun = DateTime(nextRun.year + 1, nextRun.month, nextRun.day);
-          }
-        }
-
-        if (executionCount > 0 && walletId != null) {
-          final walletRes = await _supabase
-              .from('wallets')
-              .select('balance')
-              .eq('id', walletId)
-              .single();
-          double currentBal = (walletRes['balance'] as num).toDouble();
-          double totalAmountToProcess = amount * executionCount;
-          double newBalance = isExpense
-              ? currentBal - totalAmountToProcess
-              : currentBal + totalAmountToProcess;
-          await _supabase
-              .from('wallets')
-              .update({'balance': newBalance})
-              .eq('id', walletId);
-        }
-
-        await _supabase
-            .from('recurring_transactions')
-            .update({'next_run_date': DateFormat('yyyy-MM-dd').format(nextRun)})
-            .eq('id', item['id']);
-      }
-    } catch (e) {
-      debugPrint("Error Recurring Executor: $e");
-    }
-  }
-
-  Future<void> _getUserProfile() async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) return;
-      final data = await _supabase
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-      if (mounted) {
-        setState(
-          () => _userName = data != null
-              ? data['name']
-              : (user.userMetadata?['name'] ?? "User"),
-        );
-      }
-    } catch (e) {
-      debugPrint("Error user: $e");
-    }
-  }
-
-  Future<void> _fetchHomeData() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final now = DateTime.now();
-
-      final allTrxResponse = await _supabase
-          .from('transactions')
-          .select('amount, date, note, categories(name, is_expense)')
-          .eq('user_id', userId);
-      final savingsResponse = await _supabase
-          .from('savings')
-          .select('amount')
-          .eq('user_id', userId);
-      final invResponse = await _supabase
-          .from('investments')
-          .select('current_value')
-          .eq('user_id', userId);
-      final walletsResponse = await _supabase
-          .from('wallets')
-          .select()
-          .eq('user_id', userId)
-          .order('created_at');
-
-      double tempTotalSavings = 0;
-      for (var row in savingsResponse as List) {
-        tempTotalSavings += (row['amount'] as num).toDouble();
-      }
-
-      double tempTotalInv = 0;
-      for (var row in invResponse as List) {
-        tempTotalInv += (row['current_value'] as num).toDouble();
-      }
-
-      double tempTotalWallet = 0;
-      for (var w in walletsResponse as List) {
-        tempTotalWallet += (w['balance'] as num).toDouble();
-      }
-
-      double displayIncome = 0;
-      double displayExpense = 0;
-
-      for (var item in allTrxResponse) {
-        final amount = (item['amount'] as num).toDouble();
-        final date = DateTime.parse(item['date']);
-        final isExpense = item['categories']['is_expense'] as bool;
-        final note = item['note']?.toString() ?? '';
-        final catName = item['categories']['name'].toString().toLowerCase();
-
-        final isPureMutation =
-            note.contains('[SAVING_ID:') &&
-            (catName.contains('tabung') || catName.contains('cair'));
-
-        if (date.year == now.year && date.month == now.month) {
-          if (isExpense) {
-            if (!isPureMutation) displayExpense += amount;
-          } else {
-            if (!isPureMutation) displayIncome += amount;
-          }
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _monthlyIncome = displayIncome;
-          _monthlyExpense = displayExpense;
-          _totalSavings = tempTotalSavings;
-          _totalInvestments = tempTotalInv;
-          _wallets = List<Map<String, dynamic>>.from(walletsResponse);
-          _totalWalletBalance = tempTotalWallet;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   // Tombol Coming Soon
   void _showComingSoon(BuildContext context, String feature) {
@@ -328,19 +152,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMobileHomeContent() {
+    final homeState = ref.watch(homeProvider);
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
 
-    if (_isLoading) {
+    if (homeState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: _refreshData,
+        onRefresh: () => ref.read(homeProvider.notifier).refreshData(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
@@ -366,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         Text(
-                          _userName,
+                          homeState.userName,
                           style: GoogleFonts.poppins(
                             color: Colors.black,
                             fontSize: 20,
@@ -383,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             builder: (context) => const SettingsScreen(),
                           ),
                         );
-                        _getUserProfile();
+                        ref.read(homeProvider.notifier).getUserProfile();
                       },
                       child: Container(
                         padding: const EdgeInsets.all(10),
@@ -438,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        currencyFormat.format(_totalWalletBalance),
+                        currencyFormat.format(homeState.totalWalletBalance),
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 28,
@@ -463,14 +288,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   icon: PhosphorIconsFill.arrowDown,
                                   color: AppColors.income,
                                   title: "Masuk",
-                                  amount: _monthlyIncome,
+                                  amount: homeState.monthlyIncome,
                                   currencyFormat: currencyFormat,
                                 ),
                                 _buildCardStatItem(
                                   icon: PhosphorIconsFill.arrowUp,
                                   color: AppColors.expense,
                                   title: "Keluar",
-                                  amount: _monthlyExpense,
+                                  amount: homeState.monthlyExpense,
                                   currencyFormat: currencyFormat,
                                 ),
                               ],
@@ -482,14 +307,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   icon: PhosphorIconsFill.piggyBank,
                                   color: Colors.tealAccent,
                                   title: "Tabungan",
-                                  amount: _totalSavings,
+                                  amount: homeState.totalSavings,
                                   currencyFormat: currencyFormat,
                                 ),
                                 _buildCardStatItem(
                                   icon: PhosphorIconsFill.chartLineUp,
                                   color: Colors.orangeAccent,
                                   title: "Investasi",
-                                  amount: _totalInvestments,
+                                  amount: homeState.totalInvestments,
                                   currencyFormat: currencyFormat,
                                 ),
                               ],
@@ -522,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             builder: (context) => const WalletScreen(),
                           ),
                         );
-                        _refreshData();
+                        ref.read(homeProvider.notifier).refreshData();
                       },
                       child: Text(
                         "Kelola",
@@ -536,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 15),
-                if (_wallets.isEmpty)
+                if (homeState.wallets.isEmpty)
                   GestureDetector(
                     onTap: () async {
                       await Navigator.push(
@@ -545,7 +370,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           builder: (context) => const WalletScreen(),
                         ),
                       );
-                      _refreshData();
+                      ref.read(homeProvider.notifier).refreshData();
                     },
                     child: Container(
                       width: double.infinity,
@@ -581,9 +406,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 100,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: _wallets.length,
+                      itemCount: homeState.wallets.length,
                       itemBuilder: (context, index) {
-                        final wallet = _wallets[index];
+                        final wallet = homeState.wallets[index];
                         final colorHex = wallet['color'] ?? '#1E3A8A';
                         final walletColor = Color(
                           int.parse(colorHex.replaceFirst('#', '0xFF')),
@@ -667,8 +492,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 builder: (context) => const RecurringScreen(),
                               ),
                             );
-                            _refreshData();
-                            setState(() => _refreshCounter++);
+                            ref.read(homeProvider.notifier).refreshData();
+                            _bumpRefreshCounter();
                           },
                         ),
                         _buildFeatureButton(
@@ -682,8 +507,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 builder: (context) => const SavingsScreen(),
                               ),
                             );
-                            _refreshData();
-                            setState(() => _refreshCounter++);
+                            ref.read(homeProvider.notifier).refreshData();
+                            _bumpRefreshCounter();
                           },
                         ),
                         _buildFeatureButton(
@@ -776,7 +601,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 builder: (context) => const WalletScreen(),
                               ),
                             );
-                            _refreshData();
+                            ref.read(homeProvider.notifier).refreshData();
                           },
                         ),
                         _buildFeatureButton(
@@ -800,7 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               MaterialPageRoute(
                                 builder: (context) => const InvestmentScreen(),
                               ),
-                            ).then((_) => _refreshData());
+                            ).then((_) => ref.read(homeProvider.notifier).refreshData());
                           },
                         ),
                         _buildFeatureButton(
@@ -812,7 +637,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             MaterialPageRoute(
                               builder: (context) => const ZakatSedekahScreen(),
                             ),
-                          ).then((_) => _refreshData()),
+                          ).then((_) => ref.read(homeProvider.notifier).refreshData()),
                         ),
                       ],
                     ),
@@ -874,19 +699,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildWebHomeContent() {
+    final homeState = ref.watch(homeProvider);
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
 
-    if (_isLoading) {
+    if (homeState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: _refreshData,
+        onRefresh: () => ref.read(homeProvider.notifier).refreshData(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
@@ -906,7 +732,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16),
                         ),
                         Text(
-                          _userName,
+                          homeState.userName,
                           style: GoogleFonts.poppins(
                             color: Colors.black,
                             fontSize: 28,
@@ -918,7 +744,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     GestureDetector(
                       onTap: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-                        _getUserProfile();
+                        ref.read(homeProvider.notifier).getUserProfile();
                       },
                       child: Container(
                         padding: const EdgeInsets.all(12),
@@ -968,7 +794,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 15),
                             Text(
-                              currencyFormat.format(_totalWalletBalance),
+                              currencyFormat.format(homeState.totalWalletBalance),
                               style: GoogleFonts.poppins(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 30),
@@ -982,10 +808,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Row(
                                     children: [
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.arrowDown, color: AppColors.income, title: "Masuk", amount: _monthlyIncome, currencyFormat: currencyFormat,
+                                        icon: PhosphorIconsFill.arrowDown, color: AppColors.income, title: "Masuk", amount: homeState.monthlyIncome, currencyFormat: currencyFormat,
                                       ),
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.arrowUp, color: AppColors.expense, title: "Keluar", amount: _monthlyExpense, currencyFormat: currencyFormat,
+                                        icon: PhosphorIconsFill.arrowUp, color: AppColors.expense, title: "Keluar", amount: homeState.monthlyExpense, currencyFormat: currencyFormat,
                                       ),
                                     ],
                                   ),
@@ -993,10 +819,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Row(
                                     children: [
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.piggyBank, color: Colors.tealAccent, title: "Tabungan", amount: _totalSavings, currencyFormat: currencyFormat,
+                                        icon: PhosphorIconsFill.piggyBank, color: Colors.tealAccent, title: "Tabungan", amount: homeState.totalSavings, currencyFormat: currencyFormat,
                                       ),
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.chartLineUp, color: Colors.orangeAccent, title: "Investasi", amount: _totalInvestments, currencyFormat: currencyFormat,
+                                        icon: PhosphorIconsFill.chartLineUp, color: Colors.orangeAccent, title: "Investasi", amount: homeState.totalInvestments, currencyFormat: currencyFormat,
                                       ),
                                     ],
                                   ),
@@ -1024,7 +850,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               GestureDetector(
                                 onTap: () async {
                                   await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen()));
-                                  _refreshData();
+                                  ref.read(homeProvider.notifier).refreshData();
                                 },
                                 child: Text(
                                   "Kelola",
@@ -1034,11 +860,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                           const SizedBox(height: 20),
-                          if (_wallets.isEmpty)
+                          if (homeState.wallets.isEmpty)
                             GestureDetector(
                               onTap: () async {
                                 await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen()));
-                                _refreshData();
+                                ref.read(homeProvider.notifier).refreshData();
                               },
                               child: Container(
                                 width: double.infinity,
@@ -1070,9 +896,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisSpacing: 15,
                                 mainAxisSpacing: 15,
                               ),
-                              itemCount: _wallets.length > 4 ? 4 : _wallets.length,
+                              itemCount: homeState.wallets.length > 4 ? 4 : homeState.wallets.length,
                               itemBuilder: (context, index) {
-                                final wallet = _wallets[index];
+                                final wallet = homeState.wallets[index];
                                 final colorHex = wallet['color'] ?? '#1E3A8A';
                                 final walletColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
                                 return Container(
@@ -1136,11 +962,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.calendarPlus, label: "Tagihan", color: Colors.redAccent,
-                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const RecurringScreen())); _refreshData(); setState(() => _refreshCounter++); },
+                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const RecurringScreen())); ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
                     ),
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.piggyBank, label: "Tabungan", color: const Color(0xFF009688),
-                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const SavingsScreen())); _refreshData(); setState(() => _refreshCounter++); },
+                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const SavingsScreen())); ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
                     ),
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.chartDonut, label: "Anggaran", color: Colors.purple,
@@ -1168,7 +994,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.wallet, label: "Dompet", color: Colors.brown,
-                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen())); _refreshData(); },
+                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen())); ref.read(homeProvider.notifier).refreshData(); },
                     ),
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.handCoins, label: "Utang", color: Colors.teal,
@@ -1184,7 +1010,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           MaterialPageRoute(
                             builder: (context) => const InvestmentScreen(),
                           ),
-                        ).then((_) => _refreshData());
+                        ).then((_) => ref.read(homeProvider.notifier).refreshData());
                       },
                     ),
                     _buildWebFeatureButton(
@@ -1194,7 +1020,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             MaterialPageRoute(
                               builder: (context) => const ZakatSedekahScreen(),
                             ),
-                          ).then((_) => _refreshData()),
+                          ).then((_) => ref.read(homeProvider.notifier).refreshData()),
                     ),
                   ],
                 ),
@@ -1236,8 +1062,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   InputTransactionScreen(initialIsExpense: isPengeluaran),
             ),
           );
-          _refreshData();
-          setState(() => _refreshCounter++);
+          ref.read(homeProvider.notifier).refreshData();
+          _bumpRefreshCounter();
         },
         backgroundColor: AppColors.primary,
         shape: const CircleBorder(),
@@ -1385,8 +1211,8 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context) => InputTransactionScreen(initialIsExpense: isPengeluaran),
             ),
           );
-          _refreshData();
-          setState(() => _refreshCounter++);
+          ref.read(homeProvider.notifier).refreshData();
+          _bumpRefreshCounter();
         },
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),

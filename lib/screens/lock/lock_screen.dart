@@ -1,6 +1,6 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/home_screen.dart';
+import 'package:catat_uang_app/screens/home/home_screen.dart';
 import 'package:catat_uang_app/widgets/app_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

@@ -1,5 +1,5 @@
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/home_screen.dart';
+import 'package:catat_uang_app/screens/home/home_screen.dart';
 import 'package:catat_uang_app/screens/register/register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
