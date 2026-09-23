@@ -1,123 +1,24 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/target_model.dart';
+import 'package:catat_uang_app/providers/target_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
+import 'package:catat_uang_app/widgets/app_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-class TargetScreen extends StatefulWidget {
+class TargetScreen extends ConsumerStatefulWidget {
   const TargetScreen({super.key});
 
   @override
-  State<TargetScreen> createState() => _TargetScreenState();
+  ConsumerState<TargetScreen> createState() => _TargetScreenState();
 }
 
-class _TargetScreenState extends State<TargetScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isLoading = true;
-  List<TargetModel> _targets = [];
-  double _totalSavings = 0;
-
-  List<Map<String, dynamic>> _wallets = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchWallets();
-    _fetchTargets();
-  }
-
-  Future<void> _fetchWallets() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('wallets')
-          .select()
-          .eq('user_id', userId)
-          .order('name');
-      if (mounted)
-        setState(() => _wallets = List<Map<String, dynamic>>.from(res));
-    } catch (e) {
-      debugPrint("Error fetch wallets: $e");
-    }
-  }
-
-  List<String> _savingNames = [];
-
-  Future<void> _fetchTargets() async {
-    try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      // 1. Fetch Tabungan (Savings) to sync balances automatically
-      final savingRes = await _supabase.from('savings').select('name, amount').eq('user_id', userId);
-      Map<String, double> savingBalances = {};
-      for (var item in savingRes) {
-        String name = item['name'].toString().trim();
-        double amt = (item['amount'] as num).toDouble();
-        savingBalances[name] = (savingBalances[name] ?? 0) + amt;
-      }
-
-      // 2. Fetch Targets
-      final res = await _supabase
-          .from('targets')
-          .select()
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
-
-      final List<TargetModel> data = (res as List)
-          .map((e) => TargetModel.fromJson(e))
-          .toList();
-
-      double total = 0;
-      for (var t in data) {
-        if (t.storageLocation != null && savingBalances.containsKey(t.storageLocation!.trim())) {
-           // Overwrite manual savedAmount with synced Tabungan balance
-           t.savedAmount = savingBalances[t.storageLocation!.trim()]!;
-        }
-        total += t.savedAmount;
-      }
-
-      if (mounted) {
-        setState(() {
-          _savingNames = savingBalances.keys.toList();
-          _targets = data;
-          _totalSavings = total;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error Target: $e");
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<int> _getOrCreateSavingCategory() async {
-    final userId = _supabase.auth.currentUser!.id;
-    final checkRes = await _supabase
-        .from('categories')
-        .select('id')
-        .eq('is_expense', true)
-        .ilike('name', '%Tabung%')
-        .eq('user_id', userId)
-        .maybeSingle();
-    if (checkRes != null) return checkRes['id'] as int;
-    final insertRes = await _supabase
-        .from('categories')
-        .insert({
-          'user_id': userId,
-          'name': 'Tabungan Target',
-          'is_expense': true,
-          'icon_name': 'bank',
-        })
-        .select('id')
-        .single();
-    return insertRes['id'] as int;
-  }
-
+class _TargetScreenState extends ConsumerState<TargetScreen> {
   String _getRecommendation(TargetModel target) {
     if (target.savedAmount >= target.targetAmount)
       return "Target tercapai! Mantap! 🎉";
@@ -162,6 +63,7 @@ class _TargetScreenState extends State<TargetScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final savingNames = ref.read(targetProvider).savingNames;
             return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: const BoxDecoration(
@@ -335,9 +237,9 @@ class _TargetScreenState extends State<TargetScreen> {
                             Autocomplete<String>(
                               optionsBuilder: (TextEditingValue textEditingValue) {
                                 if (textEditingValue.text.isEmpty) {
-                                  return _savingNames;
+                                  return savingNames;
                                 }
-                                return _savingNames.where((String option) {
+                                return savingNames.where((String option) {
                                   return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
                                 });
                               },
@@ -466,37 +368,29 @@ class _TargetScreenState extends State<TargetScreen> {
                     SizedBox(
                       width: double.infinity,
                       height: 55,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF009688),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                      child: AppButton(
+                        label: "Simpan Target",
                         onPressed: () async {
                           if (nameController.text.isEmpty ||
                               targetController.text.isEmpty)
                             return;
                           try {
-                            await _supabase.from('targets').insert({
-                              'user_id': _supabase.auth.currentUser!.id,
-                              'name': nameController.text,
-                              'target_amount': double.parse(
-                                targetController.text.replaceAll(
-                                  RegExp(r'[^0-9]'),
-                                  '',
-                                ),
-                              ),
-                              'storage_location':
-                                  locationController.text.isNotEmpty
-                                  ? locationController.text
-                                  : null,
-                              'deadline': selectedDate?.toIso8601String(),
-                            });
+                            await ref.read(targetProvider.notifier).addTarget(
+                                  name: nameController.text,
+                                  targetAmount: double.parse(
+                                    targetController.text.replaceAll(
+                                      RegExp(r'[^0-9]'),
+                                      '',
+                                    ),
+                                  ),
+                                  storageLocation:
+                                      locationController.text.isNotEmpty
+                                      ? locationController.text
+                                      : null,
+                                  deadline: selectedDate,
+                                );
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _fetchTargets();
                               AppNotification.success(
                                 context,
                                 "Target berhasil dibuat!",
@@ -506,13 +400,6 @@ class _TargetScreenState extends State<TargetScreen> {
                             debugPrint(e.toString());
                           }
                         },
-                        child: Text(
-                          "Simpan Target",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
                       ),
                     ),
                   ],
@@ -547,6 +434,7 @@ class _TargetScreenState extends State<TargetScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final savingNames = ref.read(targetProvider).savingNames;
             return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: const BoxDecoration(
@@ -821,9 +709,9 @@ class _TargetScreenState extends State<TargetScreen> {
                               initialValue: TextEditingValue(text: locationController.text),
                               optionsBuilder: (TextEditingValue textEditingValue) {
                                 if (textEditingValue.text.isEmpty) {
-                                  return _savingNames;
+                                  return savingNames;
                                 }
-                                return _savingNames.where((String option) {
+                                return savingNames.where((String option) {
                                   return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
                                 });
                               },
@@ -952,46 +840,37 @@ class _TargetScreenState extends State<TargetScreen> {
                     SizedBox(
                       width: double.infinity,
                       height: 55,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                      child: AppButton(
+                        label: "Simpan Perubahan",
                         onPressed: () async {
                           if (nameController.text.isEmpty ||
                               targetController.text.isEmpty)
                             return;
                           try {
-                            await _supabase
-                                .from('targets')
-                                .update({
-                                  'name': nameController.text,
-                                  'target_amount': double.parse(
+                            await ref.read(targetProvider.notifier).editTarget(
+                                  id: target.id,
+                                  name: nameController.text,
+                                  targetAmount: double.parse(
                                     targetController.text.replaceAll(
                                       RegExp(r'[^0-9]'),
                                       '',
                                     ),
                                   ),
-                                  'saved_amount': double.parse(
+                                  savedAmount: double.parse(
                                     savedController.text.replaceAll(
                                       RegExp(r'[^0-9]'),
                                       '',
                                     ),
                                   ),
-                                  'storage_location':
+                                  storageLocation:
                                       locationController.text.isNotEmpty
                                       ? locationController.text
                                       : null,
-                                  'deadline': selectedDate?.toIso8601String(),
-                                })
-                                .eq('id', target.id);
+                                  deadline: selectedDate,
+                                );
 
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _fetchTargets();
                               AppNotification.success(
                                 context,
                                 "Target berhasil diupdate!",
@@ -1001,13 +880,6 @@ class _TargetScreenState extends State<TargetScreen> {
                             debugPrint(e.toString());
                           }
                         },
-                        child: Text(
-                          "Simpan Perubahan",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
                       ),
                     ),
                   ],
@@ -1021,8 +893,9 @@ class _TargetScreenState extends State<TargetScreen> {
 
   void _showDepositSheet(TargetModel target) {
     final amountController = TextEditingController();
-    int? selectedWalletId = _wallets.isNotEmpty
-        ? _wallets.first['id'] as int
+    final wallets = ref.read(targetProvider).wallets;
+    int? selectedWalletId = wallets.isNotEmpty
+        ? wallets.first['id'] as int
         : null;
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
@@ -1134,7 +1007,7 @@ class _TargetScreenState extends State<TargetScreen> {
                           isExpanded: true,
                           dropdownColor: Colors.white,
                           hint: Text(
-                            _wallets.isEmpty
+                            wallets.isEmpty
                                 ? "Belum ada dompet"
                                 : "Pilih Dompet",
                             style: GoogleFonts.poppins(color: Colors.grey),
@@ -1143,7 +1016,7 @@ class _TargetScreenState extends State<TargetScreen> {
                             PhosphorIconsRegular.caretDown,
                             color: Colors.grey,
                           ),
-                          items: _wallets.map((w) {
+                          items: wallets.map((w) {
                             return DropdownMenuItem<int>(
                               value: w['id'] as int,
                               child: Text(
@@ -1251,62 +1124,23 @@ class _TargetScreenState extends State<TargetScreen> {
                               ),
                             );
 
-                            final selectedWalletData = _wallets.firstWhere(
-                              (w) => w['id'] == selectedWalletId,
-                            );
-                            final currentWalletBal =
-                                (selectedWalletData['balance'] as num)
-                                    .toDouble();
-                            if (rawAmount > currentWalletBal) {
-                              AppNotification.error(
-                                context,
-                                "Saldo dompet ${selectedWalletData['name']} tidak cukup!",
-                              );
+                            final result = await ref
+                                .read(targetProvider.notifier)
+                                .depositToTarget(
+                                  target: target,
+                                  rawAmount: rawAmount,
+                                  walletId: selectedWalletId!,
+                                );
+
+                            if (result != null) {
+                              if (context.mounted) {
+                                AppNotification.error(context, result);
+                              }
                               return;
-                            }
-                            await _supabase
-                                .from('wallets')
-                                .update({
-                                  'balance': currentWalletBal - rawAmount,
-                                })
-                                .eq('id', selectedWalletId!);
-
-                            final catId = await _getOrCreateSavingCategory();
-                            final userId = _supabase.auth.currentUser!.id;
-                            await _supabase.from('transactions').insert({
-                              'user_id': userId,
-                              'category_id': catId,
-                              'wallet_id': selectedWalletId,
-                              'amount': rawAmount,
-                              'date': DateFormat(
-                                'yyyy-MM-dd',
-                              ).format(DateTime.now()),
-                              'note':
-                                  "Nabung Target: ${target.name} [SAVING_ID:T-${target.id}]",
-                            });
-
-                            bool isLinked = target.storageLocation != null && _savingNames.contains(target.storageLocation!.trim());
-                            
-                            if (isLinked) {
-                              await _supabase.from('savings').insert({
-                                'user_id': userId,
-                                'name': target.storageLocation!.trim(),
-                                'amount': rawAmount,
-                                'location': null,
-                                'notes': 'Dari Target: ${target.name}',
-                              });
-                            } else {
-                              final newTotal = target.savedAmount + rawAmount;
-                              await _supabase
-                                  .from('targets')
-                                  .update({'saved_amount': newTotal})
-                                  .eq('id', target.id);
                             }
 
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _fetchWallets();
-                              _fetchTargets();
                               AppNotification.success(
                                 context,
                                 "Berhasil nabung Rp ${amountController.text}!",
@@ -1353,8 +1187,7 @@ class _TargetScreenState extends State<TargetScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await _supabase.from('targets').delete().eq('id', id);
-              _fetchTargets();
+              await ref.read(targetProvider.notifier).deleteTarget(id);
               if (context.mounted)
                 AppNotification.success(context, "Target dihapus");
             },
@@ -1375,6 +1208,11 @@ class _TargetScreenState extends State<TargetScreen> {
       symbol: 'Rp ',
       decimalDigits: 0,
     );
+
+    final targetState = ref.watch(targetProvider);
+    final isLoading = targetState.isLoading;
+    final targets = targetState.targets;
+    final totalSavings = targetState.totalSavings;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -1418,7 +1256,7 @@ class _TargetScreenState extends State<TargetScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currency.format(_totalSavings),
+                      currency.format(totalSavings),
                       style: GoogleFonts.poppins(
                         color: const Color(0xFF009688),
                         fontSize: 26,
@@ -1444,9 +1282,9 @@ class _TargetScreenState extends State<TargetScreen> {
           ),
 
           Expanded(
-            child: _isLoading
+            child: isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _targets.isEmpty
+                : targets.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1467,9 +1305,9 @@ class _TargetScreenState extends State<TargetScreen> {
                 : ListView.builder(
                     padding: const EdgeInsets.all(20),
                     physics: const BouncingScrollPhysics(),
-                    itemCount: _targets.length,
+                    itemCount: targets.length,
                     itemBuilder: (context, index) {
-                      final item = _targets[index];
+                      final item = targets[index];
                       final progress = item.targetAmount == 0
                           ? 0.0
                           : item.savedAmount / item.targetAmount;

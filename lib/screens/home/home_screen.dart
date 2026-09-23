@@ -15,7 +15,7 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:catat_uang_app/screens/export/export_screen.dart';
 import 'package:catat_uang_app/screens/budget/budget_screen.dart';
-import 'package:catat_uang_app/screens/target_screen.dart';
+import 'package:catat_uang_app/screens/target/target_screen.dart';
 import 'package:catat_uang_app/screens/savings/savings_screen.dart';
 import 'package:catat_uang_app/screens/recurring/recurring_screen.dart';
 import 'package:catat_uang_app/screens/ai_advisor/ai_advisor_screen.dart';
