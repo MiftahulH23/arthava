@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:catat_uang_app/screens/export/export_screen.dart';
 import 'package:catat_uang_app/screens/budget/budget_screen.dart';
 import 'package:catat_uang_app/screens/target/target_screen.dart';
@@ -60,7 +61,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildCardStatItem({
-    required IconData icon,
+    required List<List<dynamic>> icon,
     required Color color,
     required String title,
     required double amount,
@@ -76,7 +77,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               color: Colors.white.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 18),
+            child: HugeIcon(icon: icon, color: color, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -108,7 +109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildFeatureButton({
-    required IconData icon,
+    required List<List<dynamic>> icon,
     required String label,
     required Color color,
     required VoidCallback onTap,
@@ -132,7 +133,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ],
               ),
-              child: Icon(icon, color: color, size: 26),
+              child: HugeIcon(icon: icon, color: color, size: 26),
             ),
             const SizedBox(height: 8),
             Text(
@@ -286,14 +287,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             Row(
                               children: [
                                 _buildCardStatItem(
-                                  icon: PhosphorIconsFill.arrowDown,
+                                  icon: HugeIcons.strokeRoundedArrowDown01,
                                   color: AppColors.income,
                                   title: "Masuk",
                                   amount: homeState.monthlyIncome,
                                   currencyFormat: currencyFormat,
                                 ),
                                 _buildCardStatItem(
-                                  icon: PhosphorIconsFill.arrowUp,
+                                  icon: HugeIcons.strokeRoundedArrowUp01,
                                   color: AppColors.expense,
                                   title: "Keluar",
                                   amount: homeState.monthlyExpense,
@@ -305,14 +306,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             Row(
                               children: [
                                 _buildCardStatItem(
-                                  icon: PhosphorIconsFill.piggyBank,
+                                  icon: HugeIcons.strokeRoundedPiggyBank,
                                   color: Colors.tealAccent,
                                   title: "Tabungan",
                                   amount: homeState.totalSavings,
                                   currencyFormat: currencyFormat,
                                 ),
                                 _buildCardStatItem(
-                                  icon: PhosphorIconsFill.chartLineUp,
+                                  icon: HugeIcons.strokeRoundedTradeUp,
                                   color: Colors.orangeAccent,
                                   title: "Investasi",
                                   amount: homeState.totalInvestments,
@@ -483,7 +484,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Row(
                       children: [
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.calendarPlus,
+                          icon: HugeIcons.strokeRoundedCalendarAdd01,
                           label: "Tagihan",
                           color: Colors.redAccent,
                           onTap: () async {
@@ -498,7 +499,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.piggyBank,
+                          icon: HugeIcons.strokeRoundedPiggyBank,
                           label: "Tabungan",
                           color: const Color(0xFF009688),
                           onTap: () async {
@@ -513,7 +514,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.chartDonut,
+                          icon: HugeIcons.strokeRoundedPieChart02,
                           label: "Anggaran",
                           color: Colors.purple,
                           onTap: () => Navigator.push(
@@ -524,7 +525,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.target,
+                          icon: HugeIcons.strokeRoundedTarget01,
                           label: "Target",
                           color: Colors.green,
                           onTap: () => Navigator.push(
@@ -541,7 +542,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Row(
                       children: [
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.squaresFour,
+                          icon: HugeIcons.strokeRoundedGridView,
                           label: "Kategori",
                           color: Colors.orange,
                           onTap: () => Navigator.push(
@@ -553,7 +554,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.filePdf,
+                          icon: HugeIcons.strokeRoundedPdf01,
                           label: "Export",
                           color: Colors.blue,
                           onTap: () => Navigator.push(
@@ -564,7 +565,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.robot,
+                          icon: HugeIcons.strokeRoundedRobot01,
                           label: "AI Advisor",
                           color: Colors.indigo,
                           onTap: () => Navigator.push(
@@ -575,7 +576,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.calendar,
+                          icon: HugeIcons.strokeRoundedCalendar01,
                           label: "Kalender",
                           color: Colors.pinkAccent,
                           onTap: () => Navigator.push(
@@ -592,7 +593,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Row(
                       children: [
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.wallet,
+                          icon: HugeIcons.strokeRoundedWallet02,
                           label: "Dompet",
                           color: Colors.brown,
                           onTap: () async {
@@ -606,7 +607,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.handCoins,
+                          icon: HugeIcons.strokeRoundedHandCoins,
                           label: "Utang",
                           color: Colors.teal,
                           onTap: () => Navigator.push(
@@ -617,7 +618,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.chartLineUp,
+                          icon: HugeIcons.strokeRoundedTradeUp,
                           label: "Investasi",
                           color: Colors.orangeAccent,
                           onTap: () {
@@ -630,7 +631,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                         ),
                         _buildFeatureButton(
-                          icon: PhosphorIconsDuotone.handHeart,
+                          icon: HugeIcons.strokeRoundedHandHeart,
                           label: "Zakat",
                           color: Colors.green.shade700,
                           onTap: () => Navigator.push(
@@ -654,7 +655,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildWebFeatureButton({
-    required IconData icon,
+    required List<List<dynamic>> icon,
     required String label,
     required Color color,
     required VoidCallback onTap,
@@ -679,7 +680,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ],
               ),
-              child: Icon(icon, color: color, size: 30),
+              child: HugeIcon(icon: icon, color: color, size: 30),
             ),
             const SizedBox(height: 12),
             Text(
@@ -809,10 +810,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   Row(
                                     children: [
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.arrowDown, color: AppColors.income, title: "Masuk", amount: homeState.monthlyIncome, currencyFormat: currencyFormat,
+                                        icon: HugeIcons.strokeRoundedArrowDown01, color: AppColors.income, title: "Masuk", amount: homeState.monthlyIncome, currencyFormat: currencyFormat,
                                       ),
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.arrowUp, color: AppColors.expense, title: "Keluar", amount: homeState.monthlyExpense, currencyFormat: currencyFormat,
+                                        icon: HugeIcons.strokeRoundedArrowUp01, color: AppColors.expense, title: "Keluar", amount: homeState.monthlyExpense, currencyFormat: currencyFormat,
                                       ),
                                     ],
                                   ),
@@ -820,10 +821,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   Row(
                                     children: [
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.piggyBank, color: Colors.tealAccent, title: "Tabungan", amount: homeState.totalSavings, currencyFormat: currencyFormat,
+                                        icon: HugeIcons.strokeRoundedPiggyBank, color: Colors.tealAccent, title: "Tabungan", amount: homeState.totalSavings, currencyFormat: currencyFormat,
                                       ),
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.chartLineUp, color: Colors.orangeAccent, title: "Investasi", amount: homeState.totalInvestments, currencyFormat: currencyFormat,
+                                        icon: HugeIcons.strokeRoundedTradeUp, color: Colors.orangeAccent, title: "Investasi", amount: homeState.totalInvestments, currencyFormat: currencyFormat,
                                       ),
                                     ],
                                   ),
@@ -962,47 +963,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   runSpacing: 25,
                   children: [
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.calendarPlus, label: "Tagihan", color: Colors.redAccent,
+                      icon: HugeIcons.strokeRoundedCalendarAdd01, label: "Tagihan", color: Colors.redAccent,
                       onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const RecurringScreen())); ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.piggyBank, label: "Tabungan", color: const Color(0xFF009688),
+                      icon: HugeIcons.strokeRoundedPiggyBank, label: "Tabungan", color: const Color(0xFF009688),
                       onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const SavingsScreen())); ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.chartDonut, label: "Anggaran", color: Colors.purple,
+                      icon: HugeIcons.strokeRoundedPieChart02, label: "Anggaran", color: Colors.purple,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BudgetScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.target, label: "Target", color: Colors.green,
+                      icon: HugeIcons.strokeRoundedTarget01, label: "Target", color: Colors.green,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TargetScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.squaresFour, label: "Kategori", color: Colors.orange,
+                      icon: HugeIcons.strokeRoundedGridView, label: "Kategori", color: Colors.orange,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageCategoryScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.filePdf, label: "Export", color: Colors.blue,
+                      icon: HugeIcons.strokeRoundedPdf01, label: "Export", color: Colors.blue,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ExportScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.robot, label: "AI Advisor", color: Colors.indigo,
+                      icon: HugeIcons.strokeRoundedRobot01, label: "AI Advisor", color: Colors.indigo,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AiAdvisorScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.calendar, label: "Kalender", color: Colors.pinkAccent,
+                      icon: HugeIcons.strokeRoundedCalendar01, label: "Kalender", color: Colors.pinkAccent,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.wallet, label: "Dompet", color: Colors.brown,
+                      icon: HugeIcons.strokeRoundedWallet02, label: "Dompet", color: Colors.brown,
                       onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen())); ref.read(homeProvider.notifier).refreshData(); },
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.handCoins, label: "Utang", color: Colors.teal,
+                      icon: HugeIcons.strokeRoundedHandCoins, label: "Utang", color: Colors.teal,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DebtScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.chartLineUp,
+                      icon: HugeIcons.strokeRoundedTradeUp,
                       label: "Investasi",
                       color: Colors.orangeAccent,
                       onTap: () {
@@ -1015,7 +1016,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsDuotone.handHeart, label: "Zakat", color: Colors.green.shade700,
+                      icon: HugeIcons.strokeRoundedHandHeart, label: "Zakat", color: Colors.green.shade700,
                       onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -1051,46 +1052,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: pages[_selectedIndex],
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 70),
-        child: FloatingActionButton(
-          onPressed: () async {
-            bool isPengeluaran = _selectedIndex == 2;
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    InputTransactionScreen(initialIsExpense: isPengeluaran),
-              ),
-            );
-            ref.read(homeProvider.notifier).refreshData();
-            _bumpRefreshCounter();
-          },
-          backgroundColor: AppColors.primary,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          bool isPengeluaran = _selectedIndex == 2;
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  InputTransactionScreen(initialIsExpense: isPengeluaran),
+            ),
+          );
+          ref.read(homeProvider.notifier).refreshData();
+          _bumpRefreshCounter();
+        },
+        backgroundColor: AppColors.primary,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: AppBottomNav(
         items: [
           const AppBottomNavItem(
-            icon: PhosphorIconsRegular.house,
-            activeIcon: PhosphorIconsFill.house,
+            icon: HugeIcons.strokeRoundedHome01,
           ),
           AppBottomNavItem(
-            icon: PhosphorIconsRegular.wallet,
-            activeIcon: PhosphorIconsFill.wallet,
+            icon: HugeIcons.strokeRoundedWallet01,
             activeColor: AppColors.income,
           ),
           AppBottomNavItem(
-            icon: PhosphorIconsRegular.receipt,
-            activeIcon: PhosphorIconsFill.receipt,
+            icon: HugeIcons.strokeRoundedReceipt,
             activeColor: AppColors.expense,
           ),
           const AppBottomNavItem(
-            icon: PhosphorIconsRegular.chartPieSlice,
-            activeIcon: PhosphorIconsFill.chartPieSlice,
+            icon: HugeIcons.strokeRoundedPieChart01,
           ),
         ],
         selectedIndex: _selectedIndex,

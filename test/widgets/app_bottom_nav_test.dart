@@ -3,12 +3,12 @@ import 'package:catat_uang_app/widgets/app_bottom_nav.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 void main() {
   final items = const [
-    AppBottomNavItem(icon: PhosphorIconsRegular.house, activeIcon: PhosphorIconsFill.house),
-    AppBottomNavItem(icon: PhosphorIconsRegular.wallet, activeIcon: PhosphorIconsFill.wallet),
+    AppBottomNavItem(icon: HugeIcons.strokeRoundedHome01),
+    AppBottomNavItem(icon: HugeIcons.strokeRoundedWallet01),
   ];
 
   testWidgets('AppBottomNav menampilkan semua item', (tester) async {
@@ -22,8 +22,7 @@ void main() {
     );
 
     expect(find.byType(AppBottomNav), findsOneWidget);
-    expect(find.byIcon(PhosphorIconsFill.house), findsOneWidget); // item aktif pakai activeIcon
-    expect(find.byIcon(PhosphorIconsRegular.wallet), findsOneWidget); // item tidak aktif pakai icon biasa
+    expect(find.byType(HugeIcon), findsNWidgets(2));
   });
 
   testWidgets('AppBottomNav memanggil onChanged dengan index yang benar saat item ditap', (tester) async {
@@ -42,7 +41,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byIcon(PhosphorIconsRegular.wallet));
+    final icons = tester.widgetList<HugeIcon>(find.byType(HugeIcon)).toList();
+    final walletIndex = icons.indexWhere((i) => i.icon == HugeIcons.strokeRoundedWallet01);
+    await tester.tap(find.byType(HugeIcon).at(walletIndex));
     await tester.pump();
 
     expect(tappedIndex, 1);
@@ -50,8 +51,8 @@ void main() {
 
   testWidgets('AppBottomNav memakai activeColor kustom untuk item aktif jika diberikan', (tester) async {
     final coloredItems = const [
-      AppBottomNavItem(icon: PhosphorIconsRegular.house),
-      AppBottomNavItem(icon: PhosphorIconsRegular.wallet, activeColor: Colors.red),
+      AppBottomNavItem(icon: HugeIcons.strokeRoundedHome01),
+      AppBottomNavItem(icon: HugeIcons.strokeRoundedWallet01, activeColor: Colors.red),
     ];
 
     await tester.pumpWidget(
@@ -63,7 +64,8 @@ void main() {
       ),
     );
 
-    final icon = tester.widget<Icon>(find.byIcon(PhosphorIconsRegular.wallet));
-    expect(icon.color, Colors.red);
+    final icons = tester.widgetList<HugeIcon>(find.byType(HugeIcon)).toList();
+    final activeIcon = icons.firstWhere((i) => i.icon == HugeIcons.strokeRoundedWallet01);
+    expect(activeIcon.color, Colors.red);
   });
 }
