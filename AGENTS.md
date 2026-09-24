@@ -122,6 +122,11 @@ machine/clone.
   policies are correctly scoped server-side — it is not a bug to
   silently "fix" by moving it to an env file; leave it unless
   explicitly asked to change it.
+- The UI redesign (Phase B) is specified in
+  `docs/superpowers/specs/2026-09-24-redesign-phase-b-design.md` (design
+  rules, tokens, shared component API, decisions) with the approved
+  mockup at `docs/design/dompetku-redesign-mockup.html`. Its plans are
+  `docs/superpowers/plans/2026-09-24-phase-b*.md`, executed in order B1 → B7.
 - There is no CI pipeline currently. `flutter analyze` and `flutter
   test` are the local verification bar before reporting work as done.
 

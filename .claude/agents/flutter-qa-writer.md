@@ -22,6 +22,13 @@ Rules specific to your role:
 - Prefer testing pure logic (model parsing, calculations like totals/
   budgets) over widget trees when a screen has heavy direct Supabase
   coupling, since that yields more reliable, faster tests.
+- For screens, use `pumpApp` from `test/helpers/pump_app.dart` and
+  override the screen's Riverpod provider with a fake notifier whose
+  `build()` returns fixed state. See spec §6 in
+  `docs/superpowers/specs/2026-09-24-redesign-phase-b-design.md`. This
+  tests rendering without touching Supabase.
+- Font download errors in tests are swallowed globally by
+  `test/flutter_test_config.dart`. Don't add per-test workarounds.
 - Run `flutter test <path>` after writing a test and report actual
   pass/fail output — never claim a test passes without running it.
 - Do not modify application code in `lib/` to make a test pass unless

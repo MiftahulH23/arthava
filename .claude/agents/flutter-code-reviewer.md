@@ -24,6 +24,26 @@ Review focus, in priority order:
    codebase favors direct, explicit code over abstraction; don't push
    for a repository layer or state management package that doesn't
    exist here.
+5. **Redesign (Phase B) conformance**, when the diff touches a screen:
+   - Uses the shared components from spec §6
+     (`docs/superpowers/specs/2026-09-24-redesign-phase-b-design.md`)
+     instead of hand-rolled equivalents.
+   - Colors come only from `AppColors`, with no new hex or `Colors.purple`
+     style colors.
+   - `grep -c "GoogleFonts.poppins"` on the screen is 0.
+   - Every original `onTap`, navigation, refresh call, validation, and toast
+     is still present (compare against `git show main:<file>`).
+   - Layout order matches the screen's entry in
+     `docs/design/dompetku-redesign-mockup.html`.
+6. **Known bug classes in this repo**, check each explicitly:
+   - `Notifier.build()` touching `state` synchronously.
+   - Refresh relying on a `ValueKey` change instead of `ref.invalidate`.
+   - A missing `mounted` check after `await Navigator.push`.
+   - An unbounded `Center`/`Align` in `bottomNavigationBar`.
+   - Parallel fetches accidentally serialized.
+   - Money math on stale client-side wallet balances.
+   - Double-submit on save buttons.
+   - Whole-file reformatting that bloats the diff.
 
 Run `flutter analyze` as part of your review and include any new
 warnings/errors it surfaces on the changed files.

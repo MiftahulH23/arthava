@@ -1,0 +1,581 @@
+<title>DompetKu Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+  :root {
+    --page: #F4F4F2; --ink: #1E1F24; --ink-2: #686A73; --panel: #FFFFFF; --line: #E2E2DE; --chipbg: #ECECE9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #141518; --ink: #ECECEF; --ink-2: #9A9CA6; --panel: #1D1E22; --line: #2D2E34; --chipbg: #26272C; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #141518; --ink: #ECECEF; --ink-2: #9A9CA6; --panel: #1D1E22; --line: #2D2E34; --chipbg: #26272C; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--page); color: var(--ink); font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif; padding-inline: 16px; padding-block: 0 64px; margin: 0; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+
+  .intro { padding-block: 36px 20px; display: flex; flex-direction: column; gap: 10px; max-width: 68ch; }
+  .intro h1 { margin: 0; font-size: clamp(26px, 4vw, 36px); font-weight: 800; letter-spacing: -0.025em; text-wrap: balance; }
+  .intro p { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.6; }
+
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); padding-block: 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+  .bar-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+  .pals { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pal { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 6px 13px 6px 6px; font: 600 13px/1 inherit; font-family: inherit; cursor: pointer; }
+  .pal:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .pal .dots { display: inline-flex; }
+  .pal .dots i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--panel); margin-left: -6px; }
+  .pal .dots i:first-child { margin-left: 0; }
+  .pal[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+  .pal[aria-pressed="true"] .dots i { border-color: var(--ink); }
+  .pal-note { font-size: 13px; color: var(--ink-2); min-height: 1.4em; }
+
+  section.group { padding-top: 36px; display: flex; flex-direction: column; gap: 18px; }
+  section.group > header h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+  section.group > header p { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-2); max-width: 70ch; line-height: 1.55; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 28px 22px; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  figcaption { display: flex; flex-direction: column; gap: 3px; padding-inline: 4px; }
+  figcaption b { font-size: 14px; font-weight: 700; }
+  figcaption span { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+
+  .notes { margin-top: 44px; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+  .notes h3 { margin: 0 0 6px; font-size: 14px; }
+  .notes p, .notes li { margin: 0; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+  .notes ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+  .notes b { color: var(--ink); }
+
+  /* ================= Phone + app UI (palette via custom props on .phones) ================= */
+  .phones { --inc: #2E9E68; --exp: #E0564F;
+    --p10: color-mix(in srgb, var(--p) 11%, #fff);
+    --track: color-mix(in srgb, var(--tx) 8%, var(--bg));
+    --sep: color-mix(in srgb, var(--tx) 11%, transparent);
+  }
+  .phone { width: 100%; max-width: 258px; margin: 0 auto; aspect-ratio: 9 / 19.5; border-radius: 38px; padding: 7px; background: #0D0D0F; box-shadow: 0 20px 44px rgba(0,0,0,0.16); }
+  .scr { position: relative; height: 100%; border-radius: 31px; overflow: hidden; background: var(--bg); color: var(--tx); font-size: 10px; line-height: 1.35; display: flex; flex-direction: column; }
+  .scr .body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; display: flex; flex-direction: column; gap: 9px; padding: 0 11px 12px; }
+  .scr .body::-webkit-scrollbar, .sheet::-webkit-scrollbar { display: none; }
+  .scr .body > *, .sheet > * { flex-shrink: 0; }
+  .scr:has(.fnav) .body { padding-bottom: 68px; }
+  .i { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; display: block; }
+  .sb { display: flex; justify-content: space-between; align-items: center; padding: 9px 20px 3px; font-size: 9.5px; font-weight: 700; }
+  .sb .sig { display: flex; gap: 2px; align-items: flex-end; }
+  .sb .sig i { width: 2.5px; background: currentColor; border-radius: 1px; }
+  .sb .sig i:nth-child(1) { height: 4px } .sb .sig i:nth-child(2) { height: 6px } .sb .sig i:nth-child(3) { height: 8px }
+  .sb .bat { width: 16px; height: 8px; border: 1.2px solid currentColor; border-radius: 2.5px; margin-left: 4px; position: relative; }
+  .sb .bat::after { content: ""; position: absolute; inset: 1px 4px 1px 1px; background: currentColor; border-radius: 1px; }
+  .nb { display: flex; justify-content: space-between; align-items: center; min-height: 24px; padding: 2px 11px 0 6px; color: var(--p); font-size: 10.5px; font-weight: 600; }
+  .nb .bk { display: inline-flex; align-items: center; gap: 1px; }
+  .nb .act { display: inline-flex; gap: 10px; align-items: center; }
+  .lt { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; padding: 0 3px 2px; line-height: 1.15; }
+  .lt.sm { font-size: 17px; }
+  .muted { color: var(--tx2); }
+  .card { background: #fff; border-radius: 15px; padding: 11px; }
+  .hero { background: var(--hero, var(--p)); color: #fff; border-radius: 18px; padding: 13px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 8px 18px color-mix(in srgb, var(--p) 30%, transparent); }
+  .hero small { font-size: 8px; opacity: 0.88; }
+  .big { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .num { font-variant-numeric: tabular-nums; }
+  .gh { font-size: 8px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tx2); padding: 3px 4px 0; margin-bottom: -5px; }
+  .grp { background: #fff; border-radius: 13px; overflow: hidden; }
+  .r { display: flex; align-items: center; gap: 8px; padding: 7px 9px; position: relative; min-height: 34px; }
+  .r + .r::before { content: ""; position: absolute; top: 0; left: 42px; right: 0; border-top: 0.6px solid var(--sep); }
+  .grp.flat .r + .r::before { left: 9px; }
+  .rt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .rt b { font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rt small { font-size: 8px; color: var(--tx2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 4px; align-items: center; }
+  .rv { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .rv small { font-size: 7.5px; font-weight: 500; color: var(--tx2); }
+  .val { color: var(--tx2); font-size: 9.5px; display: inline-flex; align-items: center; gap: 2px; }
+  .chev { color: color-mix(in srgb, var(--tx2) 70%, transparent); }
+  .tile { width: 25px; height: 25px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 14%, #fff); color: var(--c); flex: none; }
+  .tile.round { border-radius: 50%; }
+  .seg { display: flex; background: var(--track); border-radius: 9px; padding: 2px; }
+  .seg span { flex: 1; text-align: center; padding: 5px 0; font-size: 9.5px; font-weight: 600; border-radius: 7px; color: var(--tx); }
+  .seg .on { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.10); }
+  .seg.inc .on { color: var(--inc); } .seg.exp .on { color: var(--exp); }
+  .tabs { display: flex; gap: 4px; }
+  .tabs span { padding: 4px 8px; border-radius: 999px; font-size: 8.5px; font-weight: 600; color: var(--tx2); }
+  .tabs .on { background: var(--tx); color: #fff; }
+  .pills { display: flex; gap: 6px; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; background: #fff; border-radius: 999px; padding: 5px 9px; font-size: 9px; font-weight: 600; }
+  .pill.grow { flex: 1; }
+  .badge { background: var(--exp); color: #fff; border-radius: 999px; font-size: 7px; padding: 1px 4px; font-weight: 700; }
+  .chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px; border-radius: 5px; font-size: 7px; font-weight: 700; background: color-mix(in srgb, var(--c, var(--tx2)) 13%, #fff); color: var(--c, var(--tx2)); }
+  .btn { display: flex; justify-content: center; align-items: center; gap: 5px; background: var(--p); color: #fff; border-radius: 12px; padding: 9px; font-size: 10.5px; font-weight: 700; }
+  .btn.soft { background: var(--p10); color: var(--p); }
+  .btn.sm { padding: 5px 9px; font-size: 9px; border-radius: 9px; }
+  .prog { height: 5px; border-radius: 99px; background: var(--track); overflow: hidden; }
+  .prog.w { background: rgba(255,255,255,0.22); }
+  .prog i { display: block; height: 100%; border-radius: inherit; }
+  .tog { width: 25px; height: 15px; border-radius: 99px; background: var(--track); position: relative; flex: none; }
+  .tog::after { content: ""; position: absolute; top: 1.5px; left: 1.5px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+  .tog.on { background: var(--inc); } .tog.on::after { left: 11.5px; }
+  .callout { display: flex; gap: 7px; align-items: flex-start; background: var(--p10); color: var(--tx); border-radius: 12px; padding: 8px 9px; font-size: 8.5px; line-height: 1.45; }
+  .callout .i { color: var(--p); margin-top: 1px; }
+  .callout.acc { background: color-mix(in srgb, var(--acc) 22%, #fff); }
+  .callout.acc .i { color: color-mix(in srgb, var(--acc) 70%, var(--tx)); }
+  .row2 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .fnav { position: absolute; left: 0; right: 0; bottom: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; }
+  .fnav .pil { display: flex; gap: 2px; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-radius: 999px; padding: 4px 7px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+  .fnav .pil span { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--tx2); }
+  .fnav .pil span.on { background: var(--p10); color: var(--p); }
+  .fnav .plus { width: 40px; height: 40px; border-radius: 50%; background: var(--p); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 16px color-mix(in srgb, var(--p) 40%, transparent); }
+  .dim { position: absolute; inset: 0; background: rgba(10,10,14,0.38); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 56px; background: var(--bg); border-radius: 18px 18px 0 0; display: flex; flex-direction: column; gap: 9px; padding: 6px 11px 14px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  .grab { width: 30px; height: 4px; border-radius: 9px; background: var(--track); margin: 0 auto 2px; }
+  .sheethead { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; }
+  .sheethead b { font-size: 11px; }
+  .sheethead span { color: var(--p); font-weight: 600; min-width: 34px; }
+  .amtbig { text-align: center; padding: 6px 0 2px; }
+  .amtbig small { display: block; font-size: 8px; color: var(--tx2); font-weight: 600; }
+  .amtbig b { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .field { background: #fff; border-radius: 11px; padding: 8px 10px; display: flex; align-items: center; gap: 7px; font-size: 9.5px; color: var(--tx2); }
+  .qa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px 4px; }
+  .qa div { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .qa .tile { width: 34px; height: 34px; border-radius: 11px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .qa span { font-size: 7px; font-weight: 600; }
+  .wcard { border-radius: 15px; padding: 10px 11px; color: #fff; display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden; }
+  .wcard::after { content: ""; position: absolute; width: 90px; height: 90px; border-radius: 50%; background: rgba(255,255,255,0.10); right: -26px; top: -30px; }
+  .wcard small { font-size: 7px; opacity: 0.75; letter-spacing: 0.08em; }
+  .wcard b.nm { font-size: 9px; letter-spacing: 0.1em; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px 0; text-align: center; font-size: 8.5px; font-variant-numeric: tabular-nums; }
+  .cal .h { color: var(--tx2); font-size: 7px; font-weight: 700; }
+  .cal span { height: 19px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+  .cal span.off { color: color-mix(in srgb, var(--tx2) 50%, transparent); }
+  .cal span.we { color: var(--exp); }
+  .cal span.sel { color: #fff; }
+  .cal span.sel::before { content: ""; position: absolute; width: 19px; height: 19px; border-radius: 50%; background: var(--p); z-index: 0; }
+  .cal span.today::before { content: ""; position: absolute; width: 19px; height: 19px; border-radius: 50%; background: var(--p10); z-index: 0; }
+  .cal span em { position: relative; z-index: 1; font-style: normal; }
+  .cal span u { position: absolute; bottom: -1px; display: flex; gap: 1.5px; text-decoration: none; }
+  .cal span u i { width: 3px; height: 3px; border-radius: 50%; }
+  .bubble { max-width: 84%; padding: 7px 9px; border-radius: 14px; font-size: 9px; line-height: 1.45; }
+  .bubble.me { align-self: flex-end; background: var(--p); color: #fff; border-bottom-right-radius: 4px; }
+  .bubble.ai { align-self: flex-start; background: #fff; border-bottom-left-radius: 4px; }
+  .bubble ul { margin: 3px 0 0; padding-left: 12px; }
+  .widgets { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .widget { background: #fff; border-radius: 16px; padding: 9px; display: flex; flex-direction: column; gap: 4px; min-height: 76px; }
+  .widget .wh { display: flex; align-items: center; gap: 4px; font-size: 7.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c); }
+  .widget b { font-size: 10px; }
+  .widget .num { font-size: 12px; font-weight: 800; letter-spacing: -0.01em; }
+  .widget small { font-size: 7.5px; color: var(--tx2); }
+  .search { display: flex; align-items: center; gap: 5px; background: var(--track); border-radius: 10px; padding: 6px 8px; font-size: 9.5px; color: var(--tx2); }
+  .swipe .acts { display: flex; }
+  .swipe .acts span { width: 38px; display: grid; place-items: center; color: #fff; }
+  .swipe { display: flex; }
+  .swipe .r { flex: 1; transform: translateX(-38px); margin-right: -38px; background: #fff; }
+  .swipe .del { width: 38px; background: var(--exp); color: #fff; display: grid; place-items: center; font-size: 7.5px; font-weight: 700; }
+  .strike { text-decoration: line-through; color: var(--tx2) !important; }
+  @media (prefers-reduced-motion: no-preference) { .scr { transition: background-color .25s ease; } }
+</style>
+
+<div class="wrap">
+  <div class="intro">
+    <h1>DompetKu Redesign, semua screen</h1>
+    <p>Mockup 24 screen dan contoh form sheet dengan gaya iOS: judul besar di kiri atas, card putih bersudut besar, list berkelompok seperti Settings iPhone, dan form yang muncul dari bawah. Fitur dan data di setiap screen tetap sama dengan aplikasi sekarang. Warna final: iOS Blue. Isi tiap layar bisa di-scroll: arahkan kursor ke layar HP lalu scroll, atau geser dengan jari di HP.</p>
+  </div>
+
+  <div class="bar" hidden>
+    <div class="pals" id="pals"></div>
+    <div class="pal-note" id="palnote"></div>
+  </div>
+
+  <div class="phones" id="phones"></div>
+
+  <div class="notes">
+    <div>
+      <h3>Yang berubah di semua screen</h3>
+      <ul>
+        <li>Tombol tambah (+) pindah ke pojok kanan atas, menggantikan tombol FAB di setiap halaman fitur.</li>
+        <li>Form tambah dan edit tampil sebagai sheet dari bawah, dengan tombol <b>Batal</b> di kiri atas.</li>
+        <li>Pilihan tab memakai segmented control abu-abu ala iOS.</li>
+        <li>Semua screen memakai font Plus Jakarta Sans. Poppins yang masih tertinggal di kode ikut diganti.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Warna yang disatukan</h3>
+      <p>Saat ini Anggaran memakai ungu, Tabungan dan Target teal, Investasi biru, dan Zakat hijau-biru, semuanya ditulis langsung di kode. Di desain ini warna utama semua fitur ikut palet. Hijau dan merah hanya dipakai untuk arti uang masuk dan keluar.</p>
+    </div>
+    <div>
+      <h3>Perlu keputusan kamu</h3>
+      <p>Layar Login saat ini masih bertuliskan <b>CatatUang</b>. Di mockup saya tulis <b>DompetKu</b>. Balas di chat kalau nama lama mau dipertahankan.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const IOS = { bg: "#F2F2F7", tx: "#1C1C1E", tx2: "#8E8E93" };
+  const PALETTES = [
+    { id: "ios-blue", name: "iOS Blue", ...IOS, p: "#007AFF", hero: "linear-gradient(135deg,#0071E3 0%,#0047AB 100%)", acc: "#FF9500", note: "Biru sistem Apple di atas abu netral iOS. Paling mirip aplikasi bawaan iPhone." },
+    { id: "ios-sky", name: "iOS Sky", ...IOS, p: "#0A84FF", hero: "linear-gradient(135deg,#5AC8FA 0%,#0A84FF 100%)", acc: "#FFCC00", note: "Gradasi biru langit ke biru sistem, seperti widget Cuaca iPhone." },
+    { id: "ios-indigo", name: "iOS Indigo", ...IOS, p: "#5856D6", hero: "linear-gradient(135deg,#5E5CE6 0%,#AF52DE 100%)", acc: "#FF9F0A", note: "Indigo sistem dengan gradasi ke ungu, seperti Apple Wallet." },
+    { id: "ios-purple", name: "iOS Purple", ...IOS, p: "#AF52DE", hero: "linear-gradient(135deg,#BF5AF2 0%,#7D3CD6 100%)", acc: "#5AC8FA", note: "Ungu sistem Apple yang cerah dan playful." },
+    { id: "ios-card", name: "iOS Dark Card", ...IOS, p: "#007AFF", hero: "linear-gradient(135deg,#2C2C2E 0%,#000000 100%)", acc: "#FF9500", note: "Kartu saldo hitam seperti Apple Card, tombol dan aksen biru sistem." },
+    { id: "lavender", name: "Lavender Dusk", p: "#5E5CA3", bg: "#F4F3FA", tx: "#23223A", tx2: "#807F9C", acc: "#F2A7B8", note: "Ungu keabuan yang kalem, terasa personal." },
+    { id: "slate", name: "Slate Blue", p: "#3F5D84", bg: "#F2F5F9", tx: "#1D2735", tx2: "#77859B", acc: "#F4B266", note: "Biru batu yang rapi, aksen oranye lembut." },
+    { id: "periwinkle", name: "Periwinkle", p: "#5A6FC4", bg: "#F3F5FD", tx: "#1E2440", tx2: "#8089AD", acc: "#FFB38A", note: "Biru keunguan yang cerah dan ramah." },
+    { id: "navy", name: "Midnight Navy", p: "#1F2A44", bg: "#F3F4F8", tx: "#151B2B", tx2: "#7C8396", acc: "#FF8A7A", note: "Navy gelap yang tegas, aksen coral." },
+    { id: "graphite", name: "Graphite", p: "#2C2C2E", bg: "#F2F2F7", tx: "#1C1C1E", tx2: "#8E8E93", acc: "#FF9F7A", note: "Hitam grafit dan abu sistem iOS, paling mirip referensi navbar." },
+    { id: "mocha", name: "Mocha Sand", p: "#7B5E50", bg: "#F8F4F0", tx: "#2E231E", tx2: "#9C877C", acc: "#E8A87C", note: "Cokelat susu yang hangat seperti dompet kulit." },
+    { id: "rose", name: "Dusty Rose", p: "#9C5B6A", bg: "#FAF4F5", tx: "#2F1F24", tx2: "#A08790", acc: "#E9B872", note: "Merah muda berdebu, lembut dan dewasa." },
+    { id: "plum", name: "Plum Ink", p: "#5C3D62", bg: "#F7F3F7", tx: "#2A1E2C", tx2: "#968598", acc: "#E6A6C0", note: "Ungu plum yang dalam, terasa premium." },
+    { id: "sky", name: "Sky Blue", p: "#3A8FD6", bg: "#F2F8FD", tx: "#16283A", tx2: "#7892AA", acc: "#FFB86B", note: "Biru langit cerah, segar dan ringan." },
+    { id: "baby", name: "Baby Blue", p: "#4F9FDC", bg: "#F4F9FE", tx: "#1A2B3C", tx2: "#7F97AD", acc: "#FF9FB2", note: "Biru langit muda paling soft, aksen pink." },
+    { id: "powder", name: "Powder Blue", p: "#5E8FBA", bg: "#F4F7FA", tx: "#1F2D3A", tx2: "#8398AA", acc: "#F4A7A0", note: "Biru langit berdebu, kalem dan nggak silau." },
+    { id: "ocean", name: "Ocean Sky", p: "#1E74C0", bg: "#EEF5FC", tx: "#122436", tx2: "#6F8AA3", acc: "#FFC857", note: "Biru langit yang lebih pekat, aksen kuning." },
+  ];
+
+  const P = {
+    home: "M4 10.5 12 4l8 6.5V20H4z", receipt: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6", pie: "M21 12A9 9 0 1 1 12 3v9zM15 3.5A9 9 0 0 1 20.5 9H15z",
+    plus: "M12 5v14M5 12h14", gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1",
+    chevL: "M15 5l-7 7 7 7", chevR: "M9 5l7 7-7 7", chevD: "M6 9l6 6 6-6", cal: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+    filter: "M4 5h16l-6 8v6l-4-2v-4z", wallet: "M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H3zM3 7l12-4v4M16 13.5h2",
+    down: "M12 5v14M6 13l6 6 6-6", up: "M12 19V5M6 11l6-6 6 6", trash: "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13", pencil: "M4 20h4L19 9l-4-4L4 16z",
+    lock: "M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3", user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
+    userplus: "M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a8 8 0 0 1 13-6M19 14v6M16 17h6", mail: "M3 6h18v12H3zM3 6l9 7 9-7",
+    eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6", robot: "M6 9h12v10H6zM12 5v4M9.5 13h.01M14.5 13h.01M10 16h4M4 13v3M20 13v3",
+    send: "M4 12l16-8-6 16-3-7z", broom: "M14 4l6 6M12.5 7.5l4 4L11 19H4l1.5-7z", target: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01",
+    piggy: "M5 12a7 5.5 0 0 1 13-3h2v4l-2 1.2V17h-3v2h-3v-2H9v2H6v-3a5 5 0 0 1-1-4zM14.5 9.5h.01", chart: "M4 18l5-6 4 3 7-9M20 6v5M20 6h-5",
+    coins: "M12 9a4 2 0 1 0 0-4 4 2 0 0 0 0 4zM8 7v4c0 1.1 1.8 2 4 2s4-.9 4-2V7M4 14h3l4 2h5a1.5 1.5 0 0 0 0-3h-3M4 21h3",
+    clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2", repeat: "M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4",
+    pdf: "M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h4", tag: "M3 12V4h8l10 10-8 8zM7.5 7.5h.01", info: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01",
+    swap: "M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7", sparkle: "M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z",
+    face: "M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M9 9v1.5M15 9v1.5M12 9v4h-1M9 16c2 1.5 4 1.5 6 0",
+    logout: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10", bank: "M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18",
+    heart: "M12 20s-8-5-8-10a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5-8 10-8 10z", grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+    bulb: "M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z", fork: "M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M16 3c-2.5 2-2.5 6 0 8v10",
+    bus: "M6 4h12v12H6zM6 11h12M8 19v2M16 19v2M8.5 14h.01M15.5 14h.01", bag: "M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2", bolt: "M13 3 5 14h6l-1 7 8-11h-6z",
+    money: "M3 7h18v10H3zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6", gift: "M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-2-4-6-3-5 0M12 7c2-4 6-3 5 0",
+    vault: "M4 4h16v14H4zM7 18v2M17 18v2M13 11a2 2 0 1 0-4 0 2 2 0 0 0 4 0zM16 9v4", pin: "M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4",
+    printer: "M7 8V3h10v5M6 17H4v-7h16v7h-2M7 14h10v7H7z", check: "M5 12l5 5 9-10", hand: "M7 11V6a1.5 1.5 0 0 1 3 0v4M10 10V4.5a1.5 1.5 0 0 1 3 0V10M13 10V5.5a1.5 1.5 0 0 1 3 0V12M16 9.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-3l-3-5a1.5 1.5 0 0 1 2.5-1.6L7 13",
+    dots: "M6 12h.01M12 12h.01M18 12h.01", moon: "M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z",
+  };
+  const I = (n, s = 14) => `<svg class="i" viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true"><path d="${P[n]}"/></svg>`;
+  const C = { red: "#E0564F", orange: "#F0913A", amber: "#D9A21B", teal: "#2FA39A", blue: "#4A7FE0", indigo: "#6A67CE", pink: "#D8578C", brown: "#8A5A44", green: "#2E9E68", sky: "#3AA6D8" };
+
+  const sb = () => `<div class="sb"><span>9:41</span><span style="display:flex;align-items:center"><span class="sig"><i></i><i></i><i></i></span><span class="bat"></span></span></div>`;
+  const nb = (back, right = "") => `<div class="nb"><span class="bk">${back ? I("chevL", 14) + back : ""}</span><span class="act">${right}</span></div>`;
+  const lt = (t, cls = "") => `<div class="lt ${cls}">${t}</div>`;
+  const seg = (arr, on, cls = "") => `<div class="seg ${cls}">${arr.map((a, i) => `<span class="${i === on ? "on" : ""}">${a}</span>`).join("")}</div>`;
+  const tabs = (arr, on) => `<div class="tabs">${arr.map((a, i) => `<span class="${i === on ? "on" : ""}">${a}</span>`).join("")}</div>`;
+  const tile = (ic, c, round = false, s = 13) => `<span class="tile ${round ? "round" : ""}" style="--c:${c}">${I(ic, s)}</span>`;
+  const R = (lead, t, s, trail = "") => `<div class="r">${lead || ""}<div class="rt"><b>${t}</b>${s ? `<small>${s}</small>` : ""}</div>${trail}</div>`;
+  const val = (t) => `<span class="val">${t}<span class="chev">${I("chevR", 11)}</span></span>`;
+  const gh = (t) => `<div class="gh">${t}</div>`;
+  const grp = (rows, cls = "") => `<div class="grp ${cls}">${rows.join("")}</div>`;
+  const prog = (pct, color, w = false) => `<div class="prog ${w ? "w" : ""}"><i style="width:${Math.min(pct, 100)}%;background:${color}"></i></div>`;
+  const chip = (t, c, ic) => `<span class="chip" style="${c ? `--c:${c}` : ""}">${ic ? I(ic, 8) : ""}${t}</span>`;
+  const fnav = (on) => `<div class="fnav"><div class="pil">${["home", "receipt", "pie"].map((n, i) => `<span class="${i === on ? "on" : ""}">${I(n, 15)}</span>`).join("")}</div><span class="plus">${I("plus", 16)}</span></div>`;
+  const addBtn = I("plus", 16);
+  const periodRow = (label) => `<div class="pills"><span class="pill grow">${I("cal", 11)}${label}<span style="margin-left:auto" class="muted">${I("chevD", 10)}</span></span><span class="pill">${I("filter", 11)}Filter<span class="badge">2</span></span></div>`;
+
+  const heroCard = () => `<div class="hero"><small>Total Saldo Keseluruhan</small><div class="big">Rp 12.450.000</div>
+        <div class="split" style="margin-top:4px">${[["down", "Masuk", "8,2 jt", "#9BF0C4"], ["up", "Keluar", "3,1 jt", "#FFB4AE"], ["piggy", "Tabungan", "24,5 jt", "#BFE6FF"], ["chart", "Investasi", "18,7 jt", "#FFD28A"]].map(([ic, l, v, c]) => `<div style="display:flex;gap:5px;align-items:center"><span style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;color:${c}">${I(ic, 11)}</span><div><div style="font-size:7px;opacity:.88">${l}</div><b class="num" style="font-size:8.5px">Rp ${v}</b></div></div>`).join("")}</div></div>`;
+  const widget = (c, ic, label, body) => `<div class="widget" style="--c:${c}"><span class="wh">${I(ic, 9)}${label}</span>${body}</div>`;
+
+  const SCREENS = [
+    { sec: "tabs", name: "Beranda (usulan baru)", note: "Ringkasan dulu, menu belakangan. Dompet jadi list sederhana, empat kartu ringkasan ala widget iPhone, dan 12 menu pindah ke halaman Semua Fitur.", html: () => `${sb()}<div class="body" style="padding-top:6px">
+      <div class="row2"><div><div class="muted" style="font-size:8.5px">Halo, Bos!</div><div style="font-size:15px;font-weight:800">Akun Tes</div></div><span style="width:28px;height:28px;border-radius:50%;background:var(--p);color:#fff;display:grid;place-items:center;font-weight:800;font-size:9.5px">AT</span></div>
+      ${heroCard()}
+      <div class="row2" style="padding:2px 4px 0;margin-bottom:-5px"><span class="gh" style="margin:0;padding:0">Dompet</span><span style="color:var(--p);font-size:9px;font-weight:600">Kelola</span></div>
+      ${grp([["BCA", "9.300.000", "#4A6CF7"], ["GoPay", "1.850.000", "#F0913A"], ["Tunai", "1.300.000", "#2FA39A"]].map(([n, v, c]) => R(`<span class="tile" style="background:${c};color:#fff">${I("wallet", 12)}</span>`, n, "", `<span class="rv">Rp ${v}</span>`)))}
+      ${gh("Ringkasan")}
+      <div class="widgets">
+        ${widget("var(--p)", "pie", "Anggaran", `<b>Rp 3,48 jt</b><small>dari Rp 5 jt bulan ini</small>${prog(70, "var(--p)")}`)}
+        ${widget(C.green, "target", "Target", `<b>Beli iPhone 15</b><small>Rp 6,75 jt / 15 jt</small>${prog(45, C.green)}`)}
+        ${widget(C.orange, "clock", "Tagihan", `<b>Kos</b><small>1 Okt 2026</small><span class="num" style="color:var(--exp)">-Rp 1,5 jt</span>`)}
+        ${widget("var(--exp)", "coins", "Utang", `<b>Budi Santoso</b><small style="color:var(--exp);font-weight:700">Terlambat 2 hari</small><span class="num">Rp 1,2 jt</span>`)}
+      </div>
+      ${grp([R(`<span class="tile" style="background:var(--p);color:#fff">${I("grid", 12)}</span>`, "Semua Fitur", "Anggaran, target, tabungan, dan 9 lainnya", `<span class="chev">${I("chevR", 11)}</span>`)])}
+    </div>${fnav(0)}` },
+
+    { sec: "tabs", name: "Semua Fitur", note: "Dibuka dari baris Semua Fitur di Beranda. Dua belas menu dikelompokkan seperti Settings iPhone, dengan kolom cari di atas.", html: () => { const row = (ic, c, t) => R(`<span class="tile" style="background:${c};color:#fff">${I(ic, 12)}</span>`, t, "", `<span class="chev">${I("chevR", 11)}</span>`); return `${sb()}${nb("Beranda")}<div class="body">
+      ${lt("Semua Fitur")}
+      <div class="search">${I("filter", 10)}Cari fitur</div>
+      ${gh("Harian")}
+      ${grp([row("wallet", C.brown, "Dompet"), row("cal", C.pink, "Kalender"), row("grid", C.orange, "Kategori")])}
+      ${gh("Perencanaan")}
+      ${grp([row("pie", C.indigo, "Anggaran"), row("target", C.green, "Target Keuangan"), row("piggy", C.teal, "Buku Tabungan"), row("repeat", C.red, "Tagihan & Pemasukan Rutin")])}
+      ${gh("Aset & Kewajiban")}
+      ${grp([row("chart", C.amber, "Investasi"), row("coins", C.sky, "Utang & Piutang"), row("heart", C.green, "Zakat & Sedekah")])}
+      ${gh("Alat")}
+      ${grp([row("robot", C.indigo, "AI Advisor"), row("pdf", C.blue, "Export Laporan")])}
+    </div>`; } },
+
+    { sec: "tabs", name: "Beranda (versi sekarang)", note: "Pembanding: layout Beranda yang sekarang, dengan kartu dompet digeser dan 12 menu.", html: () => `${sb()}<div class="body" style="padding-top:6px">
+      <div class="row2"><div><div class="muted" style="font-size:8.5px">Halo, Bos!</div><div style="font-size:15px;font-weight:800">Akun Tes</div></div><span class="tile round" style="--c:var(--tx);background:#fff">${I("gear", 13)}</span></div>
+      <div class="hero"><small>Total Saldo Keseluruhan</small><div class="big">Rp 12.450.000</div>
+        <div class="split" style="margin-top:4px">${[["down", "Masuk", "8,2 jt", "var(--inc)"], ["up", "Keluar", "3,1 jt", "var(--exp)"], ["piggy", "Tabungan", "24,5 jt", "#8FD3FF"], ["chart", "Investasi", "18,7 jt", "var(--acc)"]].map(([ic, l, v, c]) => `<div style="display:flex;gap:5px;align-items:center"><span style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center;color:${c}">${I(ic, 11)}</span><div><div style="font-size:7px;opacity:.88">${l}</div><b class="num" style="font-size:8.5px">Rp ${v}</b></div></div>`).join("")}</div></div>
+      <div class="row2" style="padding:0 2px"><b style="font-size:11px">Dompet Saya</b><span style="color:var(--p);font-weight:700;font-size:9px">Kelola</span></div>
+      <div style="display:flex;gap:7px;margin-right:-11px">${[["BCA", "9.300.000", "#4A6CF7"], ["GOPAY", "1.850.000", "#F0913A"], ["TUNAI", "1.300.000", "#2FA39A"]].map(([n, v, c]) => `<div class="wcard" style="background:${c};min-width:112px"><b class="nm">${n}</b><small>SALDO</small><b class="num" style="font-size:11px">Rp ${v}</b></div>`).join("")}</div>
+      <div class="qa">${[["cal", "Tagihan", C.red], ["piggy", "Tabungan", C.teal], ["pie", "Anggaran", C.indigo], ["target", "Target", C.green], ["grid", "Kategori", C.orange], ["pdf", "Export", C.blue], ["robot", "AI Advisor", C.indigo], ["cal", "Kalender", C.pink], ["wallet", "Dompet", C.brown], ["coins", "Utang", C.teal], ["chart", "Investasi", C.amber], ["heart", "Zakat", C.green]].map(([ic, l, c]) => `<div>${tile(ic, c, false, 15)}<span>${l}</span></div>`).join("")}</div>
+    </div>${fnav(0)}` },
+
+    { sec: "tabs", name: "Transaksi", note: "Pemasukan dan Pengeluaran jadi satu tab. Transaksi dikelompokkan per tanggal, dan digeser ke kiri untuk menghapus.", html: () => `${sb()}<div class="body" style="padding-top:8px">
+      ${lt("Transaksi")}
+      ${seg(["Pemasukan", "Pengeluaran"], 1, "exp")}
+      ${tabs(["Harian", "Bulanan", "Tahunan", "Periode"], 1)}
+      ${periodRow("September 2026")}
+      <div class="card row2"><div><div class="muted" style="font-size:8px;font-weight:600">Total Real</div><div class="big" style="color:var(--exp)">Rp 3.120.000</div></div>${tile("up", "var(--exp)", true, 14)}</div>
+      ${gh("Kamis, 24 Sep")}
+      <div class="grp">
+        ${R(tile("fork", C.orange), "Makan", `Nasi Padang ${chip("BCA", "#4A6CF7", "wallet")}`, `<span class="rv" style="color:var(--exp)">-Rp 45.000</span>`)}
+        <div class="swipe" style="position:relative">${R(tile("bus", C.blue), "Transportasi", `Grab ke kantor ${chip("GoPay", "#F0913A", "wallet")}`, `<span class="rv" style="color:var(--exp)">-Rp 28.000</span>`)}<span class="del">${I("trash", 11)}</span></div>
+      </div>
+      ${gh("Rabu, 23 Sep")}
+      <div class="grp">
+        ${R(tile("bolt", C.amber), "Tagihan Listrik", `Token PLN ${chip("BCA", "#4A6CF7", "wallet")}`, `<span class="rv" style="color:var(--exp)">-Rp 200.000</span>`)}
+        ${R(tile("bank", "#8E8E93"), "Tabungan", `${chip("Mutasi Internal", C.teal)}`, `<span class="rv strike">-Rp 500.000</span>`)}
+      </div>
+    </div>${fnav(1)}` },
+
+    { sec: "tabs", name: "Statistik", note: "Donut chart di dalam card. Kategori diurutkan dengan progress bar tipis dan jumlah transaksi.", html: () => {
+      const segs = [[38, "var(--p)"], [24, "var(--acc)"], [18, "#7FB2E0"], [12, "#E88C8C"], [8, "#B7A6DE"]]; let off = 0; const circ = 2 * Math.PI * 30;
+      const arcs = segs.map(([pct, c]) => { const len = circ * pct / 100; const a = `<circle cx="40" cy="40" r="30" fill="none" stroke="${c}" stroke-width="11" stroke-dasharray="${len - 1.5} ${circ}" stroke-dashoffset="${-off}" transform="rotate(-90 40 40)"/>`; off += len; return a; }).join("");
+      return `${sb()}<div class="body" style="padding-top:8px">
+      ${lt("Statistik")}
+      ${seg(["Pemasukan", "Pengeluaran"], 1, "exp")}
+      ${tabs(["Harian", "Bulanan", "Tahunan", "Periode"], 1)}
+      ${periodRow("September 2026")}
+      <div class="card" style="display:flex;gap:10px;align-items:center">
+        <svg viewBox="0 0 80 80" width="92" height="92" aria-hidden="true">${arcs}<text x="40" y="37" text-anchor="middle" font-size="7" fill="currentColor" opacity=".6">Total</text><text x="40" y="47" text-anchor="middle" font-size="8.5" font-weight="800" fill="currentColor">3,12 jt</text></svg>
+        <div style="display:flex;flex-direction:column;gap:6px;flex:1">
+          <div><div class="muted" style="font-size:7.5px">Rata-rata harian</div><b class="num">Rp 130.000</b></div>
+          <div><div class="muted" style="font-size:7.5px">Terbesar (Bayar kos)</div><b class="num" style="color:var(--exp)">Rp 1.500.000</b></div>
+        </div></div>
+      ${gh("Kategori")}
+      ${grp([["1", "Tempat Tinggal", "1 Transaksi", "48%", "1,5 jt", "var(--p)", 48], ["2", "Makan", "22 Transaksi", "24%", "742 rb", "var(--acc)", 24], ["3", "Transportasi", "15 Transaksi", "18%", "560 rb", "#7FB2E0", 18]].map(([n, t, s, pct, v, c, w]) => `<div class="r"><span class="tile round" style="--c:${c};font-weight:800;font-size:9px">${n}</span><div class="rt"><b>${t}</b><small>${s} · <span style="color:${c};font-weight:700">${pct}</span></small>${prog(w, c)}</div><span class="rv">Rp ${v}</span></div>`))}
+    </div>${fnav(2)}`; } },
+
+    { sec: "money", name: "Tambah Transaksi", note: "Muncul sebagai sheet dari bawah. Nominal besar di tengah, lalu isian dalam list berkelompok.", html: () => `${sb()}<div class="dim"></div><div class="sheet" style="top:30px">
+      <div class="grab"></div>
+      <div class="sheethead"><span>Batal</span><b>Tambah Transaksi</b><span></span></div>
+      ${seg(["Pemasukan", "Pengeluaran"], 1, "exp")}
+      <div class="amtbig"><small>Nominal</small><b>Rp 45.000</b><div style="margin-top:5px"><span class="pill" style="background:var(--p10);color:var(--p)">${I("sparkle", 10)}Scan Struk AI</span></div></div>
+      ${gh("Sumber Dana")}
+      ${seg([`Dompet`, `Tabungan`], 0)}
+      ${grp([R(tile("wallet", "#4A6CF7"), "Dompet", "", val("BCA"))])}
+      ${grp([R(tile("tag", C.orange), "Kategori", "", val("Makan")), R(tile("cal", C.red), "Tanggal", "", val("Kam, 24 Sep 2026"))])}
+      ${gh("Catatan (Opsional)")}
+      <div class="field">Contoh: Beli Nasi Padang / Bayar Bengkel</div>
+      <div style="flex:1"></div><div class="btn">Simpan Transaksi</div>
+    </div>` },
+
+    { sec: "money", name: "Dompet", note: "Kartu dompet ditumpuk seperti Apple Wallet. Transfer dan Tambah ada di pill melayang di bawah.", html: () => `${sb()}${nb("Beranda")}<div class="body">
+      ${lt("Dompet Saya")}
+      <div style="display:flex;flex-direction:column">${[["BCA", "9.300.000", "#4A6CF7"], ["GOPAY", "1.850.000", "#F0913A"], ["TUNAI", "1.300.000", "#2FA39A"], ["JAGO", "750.000", "#D8578C"]].map(([n, v, c], i) => `<div class="wcard" style="background:linear-gradient(135deg,${c},color-mix(in srgb,${c} 75%,#000));height:92px;margin-top:${i ? "-50px" : "0"};box-shadow:0 -4px 12px rgba(0,0,0,.10)"><div class="row2"><span style="display:flex;gap:5px;align-items:center"><span style="width:18px;height:18px;border-radius:6px;background:rgba(255,255,255,.2);display:grid;place-items:center">${I("wallet", 10)}</span><b class="nm">${n}</b></span>${I("dots", 14)}</div><small style="margin-top:6px">TOTAL SALDO</small><b class="num" style="font-size:15px">Rp ${v}</b></div>`).join("")}</div>
+      <div class="muted" style="text-align:center;font-size:8px">Ketuk kartu untuk membuka, tahan untuk edit atau hapus</div>
+    </div><div class="fnav"><div class="pil" style="padding:4px"><span style="width:auto;padding:0 12px;border-radius:999px;color:${C.orange};font-weight:700;font-size:9px;gap:4px;display:flex">${I("swap", 12)}Transfer</span><span style="width:auto;padding:0 12px;border-radius:999px;background:var(--p);color:#fff;font-weight:700;font-size:9px;gap:4px;display:flex">${I("plus", 12)}Tambah</span></div></div>` },
+
+    { sec: "plan", name: "Anggaran", note: "Warna ungu diganti warna palet. Ringkasan bulan ini di card atas, dan tiap kategori punya progress bar dengan warna peringatan.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">
+      ${lt("Anggaran")}
+      <div class="pills" style="justify-content:center"><span class="pill" style="padding:5px 7px">${I("chevL", 11)}</span><span class="pill grow" style="justify-content:center">${I("cal", 11)}September 2026${I("chevD", 10)}</span><span class="pill" style="padding:5px 7px">${I("chevR", 11)}</span></div>
+      <div class="hero"><div class="row2"><div><small>Terpakai Bulan Ini</small><div class="big">Rp 3.480.000</div></div><div style="text-align:right"><small>Total Anggaran</small><div class="num" style="font-weight:700">Rp 5.000.000</div></div></div>${prog(70, "#fff", true)}</div>
+      ${grp([["fork", "Makan", "1.230.000", "1.500.000", 82, C.orange], ["bus", "Transportasi", "560.000", "800.000", 70, "var(--p)"], ["bag", "Belanja", "1.690.000", "1.500.000", 113, "var(--exp)"], ["gift", "Hiburan", "0", "1.200.000", 0, "var(--p)"]].map(([ic, n, s, l, pct, c]) => `<div class="r">${tile(ic, c === "var(--p)" ? "var(--p)" : c)}<div class="rt"><div class="row2"><b>${n}</b><span class="num" style="font-size:8.5px"><b style="color:${c}">Rp ${s}</b><span class="muted"> / ${l}</span></span></div>${prog(pct, c)}</div></div>`))}
+    </div>` },
+
+    { sec: "plan", name: "Detail Anggaran", note: "Ring progress menggantikan kartu gradient. Sisa anggaran langsung terlihat di chip.", html: () => { const circ = 2 * Math.PI * 26; return `${sb()}${nb("Anggaran", "Edit")}<div class="body">
+      ${lt("Makan")}
+      <div class="card" style="display:flex;gap:12px;align-items:center">
+        <svg viewBox="0 0 64 64" width="74" height="74" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="var(--track)" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="${C.orange}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${circ * .82} ${circ}" transform="rotate(-90 32 32)"/><text x="32" y="35" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor">82%</text></svg>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1"><div><div class="muted" style="font-size:7.5px">Terpakai</div><b class="num">Rp 1.230.000</b></div><div><div class="muted" style="font-size:7.5px">Limit Anggaran</div><b class="num">Rp 1.500.000</b></div>${chip("Sisa Anggaran: Rp 270.000", "var(--inc)")}</div>
+      </div>
+      ${gh("Riwayat Pengeluaran")}
+      ${grp([["Nasi Padang", "24 Sep 2026", "BCA", "#4A6CF7", "45.000"], ["Kopi Kenangan", "23 Sep 2026", "GoPay", "#F0913A", "32.000"], ["Tanpa catatan", "22 Sep 2026", "Kas Utama", "#8E8E93", "120.000"], ["Makan malam keluarga", "20 Sep 2026", "BCA", "#4A6CF7", "385.000"]].map(([t, d, w, c, v]) => R(tile("receipt", "var(--p)"), t, `${d} ${chip(w, c, "wallet")}`, `<span class="rv" style="color:var(--exp)">-Rp ${v}</span>`)))}
+    </div>`; } },
+
+    { sec: "plan", name: "Target Keuangan", note: "Kartu target lebih ringkas. Rekomendasi nabung tampil sebagai catatan kecil berwarna aksen.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">
+      ${lt("Target Keuangan")}
+      <div class="card row2"><div><div class="muted" style="font-size:8px;font-weight:600">Total Semua Target</div><div class="big" style="color:var(--p)">Rp 7.300.000</div></div>${tile("target", "var(--p)", true, 15)}</div>
+      <div class="card" style="display:flex;flex-direction:column;gap:6px">
+        <div class="row2"><b style="font-size:11px">Beli iPhone 15</b><span class="muted" style="display:flex;gap:8px">${I("pencil", 11)}${I("trash", 11)}</span></div>
+        <div class="muted" style="font-size:8px;display:flex;gap:8px"><span style="display:flex;gap:3px;align-items:center">${I("wallet", 9)}Dana Darurat</span><span style="display:flex;gap:3px;align-items:center">${I("cal", 9)}Deadline: 31 Des 2026</span></div>
+        ${prog(45, "var(--inc)")}
+        <div class="row2 num" style="font-size:8.5px"><b>Rp 6.750.000 / Rp 15.000.000</b><b style="color:var(--inc)">45%</b></div>
+        <div class="callout acc">${I("bulb", 11)}<span>Nabung <b>Rp 84.000 / hari</b> agar tercapai.</span></div>
+        <div class="row2"><i class="muted" style="font-size:8px">Kurang Rp 8.250.000</i><span class="btn sm">${I("plus", 10)}Nabung</span></div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:6px">
+        <div class="row2"><b style="font-size:11px">Liburan Bali</b><span class="muted" style="display:flex;gap:8px">${I("pencil", 11)}${I("trash", 11)}</span></div>
+        ${prog(100, "var(--inc)")}
+        <div class="row2 num" style="font-size:8.5px"><b>Rp 550.000 / Rp 550.000</b><b style="color:var(--inc)">100%</b></div>
+        <div class="row2"><i style="font-size:8px;color:var(--inc);font-style:normal;font-weight:700">Tercapai! 🎉</i><span class="btn sm soft" style="opacity:.5">${I("plus", 10)}Nabung</span></div>
+      </div>
+    </div>` },
+
+    { sec: "plan", name: "Buku Tabungan", note: "Teal diganti warna palet. Setor dan Tarik jadi dua tombol di bawah tiap tabungan.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">
+      ${lt("Buku Tabungan")}
+      <div class="hero"><div class="row2"><div><small>Total Semua Tabungan</small><div class="big">Rp 24.500.000</div></div><span style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center">${I("piggy", 17)}</span></div></div>
+      ${[["Dana Darurat", "Bank BCA", "18.000.000"], ["Nikah 2027", "Bank Jago", "6.500.000"]].map(([n, loc, v]) => `<div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="row2">${tile("vault", "var(--p)")}<div class="rt" style="margin-left:8px"><b style="font-size:10.5px">${n}</b><small>${I("bank", 9)}${loc}</small></div><span class="muted" style="display:flex;gap:8px">${I("pencil", 11)}${I("trash", 11)}</span></div><div class="big" style="font-size:15px;color:var(--p)">Rp ${v}</div><div class="split"><span class="btn sm soft">${I("down", 10)}Setor</span><span class="btn sm" style="background:color-mix(in srgb,${C.orange} 13%,#fff);color:${C.orange}">${I("up", 10)}Tarik</span></div></div>`).join("")}
+    </div>` },
+
+    { sec: "plan", name: "Detail Tabungan", note: "Riwayat setoran dan penarikan dalam satu list, dengan chip asal dompet dan lokasi.", html: () => `${sb()}${nb("Buku Tabungan")}<div class="body">
+      ${lt("Dana Darurat")}
+      <div class="hero"><div class="row2"><div><small>Total Saldo Tabungan</small><div class="big">Rp 18.000.000</div></div><span style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center">${I("piggy", 17)}</span></div></div>
+      ${gh("Riwayat")}
+      ${grp([["down", "var(--inc)", "Setoran Tabungan", "Dari: BCA", "24 Sep 2026, 09:12", "+Rp 1.000.000"], ["up", "var(--exp)", "Penarikan Dana", "Ke: GoPay", "10 Sep 2026, 19:40", "-Rp 250.000"], ["down", "var(--inc)", "Setoran Tabungan", "Dari: BCA", "25 Agu 2026, 08:03", "+Rp 1.000.000"]].map(([ic, c, t, w, d, v]) => `<div class="r">${tile(ic, c)}<div class="rt"><b>${t}</b><small>${chip(w, "var(--p)", "wallet")}${chip("Bank BCA", "", "pin")}</small><small>${d}</small></div><span class="rv" style="color:${c}">${v}<small style="display:flex;gap:6px;margin-top:3px">${I("pencil", 10)}${I("trash", 10)}</small></span></div>`))}
+    </div>` },
+
+    { sec: "plan", name: "Tagihan & Pemasukan Rutin", note: "Tiap jadwal punya switch aktif/nonaktif ala iOS. Jadwal nonaktif otomatis tampil abu-abu.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">
+      ${lt("Tagihan & Pemasukan Rutin", "sm")}
+      ${[["up", "var(--exp)", "Kos", "Bayar kos bulanan", "BCA", "-Rp 1.500.000", true, "1 Okt 2026"], ["down", "var(--inc)", "Gaji", "Gaji kantor", "BCA", "+Rp 8.000.000", true, "25 Okt 2026"], ["up", "var(--exp)", "Hiburan", "Netflix", "GoPay", "-Rp 186.000", false, "3 Okt 2026"]].map(([ic, c, t, note, w, v, on, next]) => `<div class="card" style="display:flex;flex-direction:column;gap:6px;${on ? "" : "opacity:.55"}"><div class="row2">${tile(ic, on ? c : "#8E8E93")}<div class="rt" style="margin-left:8px"><b style="font-size:10.5px">${t}</b><small>${note}</small><small>${chip("Per Bulanan", C.blue)}${chip(w, "", "wallet")}</small></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><b class="num" style="color:${on ? c : "var(--tx2)"}">${v}</b><span class="tog ${on ? "on" : ""}"></span></div></div><div class="row2" style="border-top:.6px solid var(--sep);padding-top:6px;font-size:8.5px"><span style="display:flex;gap:4px;align-items:center" class="muted">${I("clock", 10)}Lanjut: <b style="color:var(--tx)">${next}</b></span><span class="muted" style="display:flex;gap:8px">${I("pencil", 10)}${I("trash", 10)}</span></div></div>`).join("")}
+    </div>` },
+
+    { sec: "assets", name: "Investasi", note: "Kartu biru diganti warna palet. Portofolio tampil dalam satu list rapi dengan persentase untung/rugi.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">
+      ${lt("Investasi")}
+      <div class="hero"><small>Total Nilai Investasi</small><div class="big" style="font-size:21px">Rp 18.750.000</div><div class="row2"><div><small>Total Modal</small><div class="num" style="font-weight:700">Rp 16.200.000</div></div><span style="background:rgba(255,255,255,.18);border-radius:999px;padding:3px 8px;font-weight:700;display:flex;gap:3px;align-items:center;font-size:9px">${I("chart", 10)}+15,74%</span></div></div>
+      ${gh("Daftar Portofolio")}
+      ${grp([["Saham BBCA", "Saham", "8.000.000", "9.450.000", "+18,13%", "var(--inc)"], ["Emas Antam", "Emas", "5.000.000", "5.920.000", "+18,40%", "var(--inc)"], ["Reksadana PU", "Reksadana", "2.000.000", "2.064.000", "+3,20%", "var(--inc)"], ["Bitcoin", "Kripto", "1.200.000", "1.149.600", "-4,20%", "var(--exp)"]].map(([n, t, m, v, pct, c]) => R(tile("chart", "var(--p)"), n, `${t} · Modal Rp ${m}`, `<span class="rv">Rp ${v}<small style="color:${c};font-weight:700">${pct}</small></span>`)))}
+    </div>` },
+
+    { sec: "assets", name: "Utang & Piutang", note: "Baru: ringkasan total utang dan piutang di atas, label merah Terlambat untuk yang lewat jatuh tempo, tanggal pinjam dan catatan di tiap kartu.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">
+      ${lt("Utang & Piutang")}
+      <div class="split"><div class="card"><div class="muted" style="font-size:7.5px">Total Utang</div><b class="num" style="color:var(--exp)">Rp 1.950.000</b></div><div class="card"><div class="muted" style="font-size:7.5px">Total Piutang</div><b class="num" style="color:var(--inc)">Rp 1.500.000</b></div></div>
+      ${seg(["Utang Saya", "Piutang"], 0)}
+      ${[["Budi Santoso", "Terlambat 2 hari", "var(--exp)", "Dipinjam 1 Agu 2026 · Modal usaha", "2.000.000", "Sisa Tagihan", "1.200.000", 40], ["Rina", "Tempo: 15 Nov 2026", C.orange, "Dipinjam 20 Sep 2026 · Patungan kado", "750.000", "Sisa Tagihan", "750.000", 0], ["Bank Jago", "LUNAS", "var(--inc)", "Dipinjam 3 Jan 2026", "5.000.000", "Sudah lunas", "0", 100]].map(([n, b, bc, meta, tot, sl, sisa, pct]) => `<div class="card" style="display:flex;flex-direction:column;gap:4px"><div class="row2"><span class="muted" style="font-size:8px">Saya berutang ke:</span>${chip(b, bc)}</div><b style="font-size:12px">${n}</b><span class="muted" style="font-size:7.5px">${meta}</span><div class="row2 num" style="font-size:8.5px"><div><div class="muted" style="font-size:7.5px">Total Uang</div><b>Rp ${tot}</b></div><div style="text-align:right"><div class="muted" style="font-size:7.5px">${sl}</div><b style="color:${pct === 100 ? "var(--inc)" : "var(--exp)"}">Rp ${sisa}</b></div></div>${prog(pct, pct === 100 ? "var(--inc)" : "var(--exp)")}</div>`).join("")}
+    </div>` },
+
+    { sec: "assets", name: "Detail Utang", note: "Baru: tombol Edit di kanan atas, info tanggal pinjam dan catatan, dan cicilan bisa digeser ke kiri untuk Edit atau Hapus. Status LUNAS bisa dibuka lagi kalau cicilan dihapus.", html: () => `${sb()}${nb("Utang", `<span>Edit</span><span style="color:var(--exp)">${I("trash", 14)}</span>`)}<div class="body">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0"><span style="width:40px;height:40px;border-radius:50%;background:color-mix(in srgb,var(--exp) 14%,#fff);color:var(--exp);display:grid;place-items:center;font-weight:800;font-size:13px">BS</span><b style="font-size:14px">Budi Santoso</b>${chip("Terlambat 2 hari", "var(--exp)")}</div>
+      <div class="card" style="display:flex;flex-direction:column;gap:5px"><div class="row2 num"><div><div class="muted" style="font-size:7.5px">Total Awal</div><b>Rp 2.000.000</b></div><div style="text-align:right"><div class="muted" style="font-size:7.5px">Sisa Tagihan</div><b style="color:var(--exp)">Rp 1.200.000</b></div></div>${prog(40, "var(--exp)")}<div class="muted" style="font-size:8px;text-align:center">40,0% Terbayar</div></div>
+      ${grp([R("", "Tanggal Pinjam", "", `<span class="val">1 Agu 2026</span>`), R("", "Jatuh Tempo", "", `<span class="val" style="color:var(--exp)">22 Sep 2026</span>`), R("", "Catatan", "", `<span class="val">Modal usaha</span>`)], "flat")}
+      ${gh("Riwayat Cicilan")}
+      <div class="grp"><div class="swipe" style="position:relative">${R(tile("down", "var(--inc)", true), "15 Sep 2026", "BCA", `<span class="rv">Rp 500.000</span>`)}<span class="acts"><span style="background:${C.blue}">${I("pencil", 11)}</span><span style="background:var(--exp)">${I("trash", 11)}</span></span></div>${R(tile("down", "var(--inc)", true), "1 Sep 2026", "Tanpa Dompet", `<span class="rv">Rp 300.000</span>`)}</div>
+      <div style="flex:1"></div><div class="btn" style="background:var(--exp)">${I("money", 12)}Bayar Cicilan</div>
+    </div>` },
+
+    { sec: "tools", name: "Kalender", note: "Kalender di dalam card putih. Titik hijau dan merah menandai hari yang ada pemasukan atau pengeluaran.", html: () => { const days = []; const offset = 1; for (let i = 0; i < offset; i++) days.push(`<span class="off"><em>${31 - offset + i + 1}</em></span>`); for (let d = 1; d <= 30; d++) { const dow = (d + offset - 1) % 7; let cls = dow >= 5 ? "we" : ""; if (d === 24) cls = "sel"; if (d === 18) cls += " today"; const dots = [3, 8, 12, 15, 20, 24, 25].includes(d) ? `<u><i style="background:var(--exp)"></i>${[8, 25].includes(d) ? `<i style="background:var(--inc)"></i>` : ""}</u>` : ""; days.push(`<span class="${cls}"><em>${d}</em>${dots}</span>`); } return `${sb()}${nb("Beranda")}<div class="body">
+      ${lt("Kalender")}
+      <div class="card"><div class="row2" style="margin-bottom:6px"><b style="font-size:10.5px">September 2026</b><span style="display:flex;gap:10px;color:var(--p)">${I("chevL", 12)}${I("chevR", 12)}</span></div><div class="cal">${["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((h) => `<span class="h">${h}</span>`).join("")}${days.join("")}</div></div>
+      <b style="font-size:10.5px;padding:0 2px">Kamis, 24 Sep 2026</b>
+      <div class="split"><div class="card" style="background:color-mix(in srgb,var(--inc) 10%,#fff)"><div class="muted" style="font-size:7.5px">Masuk</div><b class="num" style="color:var(--inc)">Rp 0</b></div><div class="card" style="background:color-mix(in srgb,var(--exp) 10%,#fff)"><div class="muted" style="font-size:7.5px">Keluar</div><b class="num" style="color:var(--exp)">Rp 73.000</b></div></div>
+      ${grp([R(tile("fork", C.orange, true), "Makan", `Nasi Padang ${chip("BCA", "#4A6CF7", "wallet")}`, `<span class="rv" style="color:var(--exp)">-Rp 45.000</span>`), R(tile("bus", C.blue, true), "Transportasi", `Grab ke kantor ${chip("GoPay", "#F0913A", "wallet")}`, `<span class="rv" style="color:var(--exp)">-Rp 28.000</span>`)])}
+    </div>`; } },
+
+    { sec: "tools", name: "Kelola Kategori", note: "List berkelompok ala Settings iPhone. Kategori bawaan diberi keterangan, kategori buatan sendiri bisa diedit atau dihapus.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">
+      ${lt("Kategori")}
+      ${seg(["Pengeluaran", "Pemasukan"], 0, "exp")}
+      ${grp([["fork", "Makan", "Bawaan Aplikasi", false], ["bus", "Transportasi", "Bawaan Aplikasi", false], ["bag", "Belanja", "Bawaan Aplikasi", false], ["bolt", "Tagihan Listrik", "Bawaan Aplikasi", false], ["tag", "Bensin", "", true], ["tag", "Skincare", "", true], ["gift", "Kado", "", true]].map(([ic, n, s, own]) => R(tile(ic, "var(--exp)"), n, s, own ? `<span style="display:flex;gap:10px"><span style="color:${C.blue}">${I("pencil", 12)}</span><span style="color:var(--exp)">${I("trash", 12)}</span></span>` : "")))}
+    </div>` },
+
+    { sec: "tools", name: "Export Laporan", note: "Pilihan periode jadi satu baris list. Tombol cetak menempel di bawah layar.", html: () => `${sb()}${nb("Beranda")}<div class="body">
+      ${lt("Export Laporan")}
+      <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 11px"><span class="tile" style="--c:var(--p);width:46px;height:46px;border-radius:14px">${I("pdf", 22)}</span><b style="font-size:11.5px">Cetak Laporan Keuangan</b><span class="muted" style="font-size:8.5px">Pilih mode periode laporan di bawah ini</span></div>
+      ${seg(["Satu Bulan", "Pilih Tanggal"], 0)}
+      ${grp([R(tile("cal", "var(--p)"), "Bulan Laporan", "", val("September 2026"))])}
+      <div style="flex:1"></div><div class="btn">${I("printer", 12)}Cetak Laporan PDF</div>
+    </div>` },
+
+    { sec: "tools", name: "AI Advisor", note: "Chat bergaya iMessage. Pesan kamu memakai warna palet, jawaban Gemi di balon putih.", html: () => `${sb()}<div class="nb" style="padding-right:11px"><span class="bk">${I("chevL", 14)}</span><span style="display:flex;flex-direction:column;align-items:center"><span class="tile round" style="--c:var(--p);width:22px;height:22px">${I("robot", 12)}</span><b style="color:var(--tx);font-size:9px">Gemi</b><span class="muted" style="font-size:7px;font-weight:500">Siap bantu atur duitmu!</span></span><span>${I("broom", 14)}</span></div><div class="body" style="gap:7px;padding-top:6px">
+      <div class="bubble ai">Halo bos! 👋 Aku Gemi. Aku udah dapet akses VIP ke seluruh brankas tabungan dan riwayat keuanganmu nih! Mau bahas target nabung atau cek pengeluaran hari ini?</div>
+      <div class="bubble me">Pengeluaran makan bulan ini boros nggak?</div>
+      <div class="bubble ai">Makanmu <b>Rp 1.230.000</b>, sudah 82% dari anggaran. Tips:<ul><li>Bawa bekal 3x seminggu</li><li>Batasi kopi di luar</li></ul></div>
+      <div class="bubble ai" style="display:flex;gap:5px;align-items:center;color:var(--tx2)"><span style="width:9px;height:9px;border-radius:50%;border:1.5px solid var(--p);border-right-color:transparent"></span>Gemi sedang menganalisa...</div>
+      <div style="flex:1"></div>
+      <div style="display:flex;gap:6px;align-items:center"><div class="field" style="flex:1;border-radius:999px">Tanya soal keuanganmu...</div><span style="width:30px;height:30px;border-radius:50%;background:var(--p);color:#fff;display:grid;place-items:center">${I("send", 13)}</span></div>
+    </div>` },
+
+    { sec: "tools", name: "Zakat & Sedekah", note: "Hijau dan biru diganti warna palet. Hasil hitungan zakat tampil di card utama.", html: () => `${sb()}${nb("Beranda")}<div class="body">
+      ${lt("Zakat & Sedekah")}
+      ${seg(["Zakat", "Sedekah"], 0)}
+      <div class="callout">${I("info", 11)}<span>Kalkulator Zakat Maal secara otomatis menghitung 2.5% dari total harta yang telah mencapai nisab.</span></div>
+      ${gh("Total Harta Anda (Rp)")}
+      <div class="card"><b class="big" style="font-size:18px">Rp 100.000.000</b></div>
+      <div class="hero"><small>Zakat yang Harus Dibayar</small><div class="big" style="font-size:22px">Rp 2.500.000</div></div>
+      ${gh("Pilih Dompet Sumber Dana")}
+      ${grp([R(tile("wallet", "#4A6CF7"), "BCA", "", val("Rp 9.300.000"))])}
+      <div style="flex:1"></div><div class="btn">Bayar Zakat</div>
+    </div>` },
+
+    { sec: "account", name: "Login", note: "Logo aplikasi seperti ikon iOS. Email dan password dalam satu grup isian.", html: () => `${sb()}<div class="body" style="justify-content:center;gap:10px;padding:0 16px 20px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:8px"><span style="width:54px;height:54px;border-radius:15px;background:var(--p);color:#fff;display:grid;place-items:center;box-shadow:0 8px 18px color-mix(in srgb,var(--p) 35%,transparent)">${I("wallet", 26)}</span><b style="font-size:17px">DompetKu</b><span class="muted" style="font-size:8.5px">Cerdas mengelola, tenang finansial</span></div>
+      <div><b style="font-size:15px">Selamat Datang!</b><div class="muted" style="font-size:8.5px">Silakan masuk untuk melanjutkan</div></div>
+      ${grp([`<div class="r">${I("mail", 13)}<span class="muted" style="flex:1">email@contoh.com</span></div>`, `<div class="r">${I("lock", 13)}<span class="muted" style="flex:1">Masukkan password Anda</span><span class="muted">${I("eye", 13)}</span></div>`], "flat")}
+      <div class="btn">Masuk Sekarang</div>
+      <div style="text-align:center;font-size:9px" class="muted">Belum punya akun? <b style="color:var(--p)">Daftar Disini</b></div>
+    </div>` },
+
+    { sec: "account", name: "Daftar Akun", note: "Pola sama dengan Login, tiga isian dalam satu grup.", html: () => `${sb()}${nb("Masuk")}<div class="body" style="justify-content:center;gap:10px;padding:0 16px 20px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:8px"><span style="width:54px;height:54px;border-radius:15px;background:var(--p10);color:var(--p);display:grid;place-items:center">${I("userplus", 24)}</span><b style="font-size:17px">Daftar Akun</b><span class="muted" style="font-size:8.5px">Gabung dan mulai atur keuanganmu</span></div>
+      ${grp([`<div class="r">${I("user", 13)}<span class="muted" style="flex:1">Masukkan nama asli bos</span></div>`, `<div class="r">${I("mail", 13)}<span class="muted" style="flex:1">email@contoh.com</span></div>`, `<div class="r">${I("lock", 13)}<span class="muted" style="flex:1">Buat password yang kuat</span><span class="muted">${I("eye", 13)}</span></div>`], "flat")}
+      <div class="btn">Daftar Sekarang</div>
+      <div style="text-align:center;font-size:9px" class="muted">Sudah punya akun? <b style="color:var(--p)">Masuk Disini</b></div>
+    </div>` },
+
+    { sec: "account", name: "Kunci Aplikasi", note: "Ikon Face ID di tengah, tombol buka kunci di bawah.", html: () => `${sb()}<div class="body" style="align-items:center;justify-content:center;gap:10px;text-align:center;padding:0 20px 20px">
+      <span style="width:62px;height:62px;border-radius:50%;background:var(--p10);color:var(--p);display:grid;place-items:center">${I("lock", 28)}</span>
+      <b style="font-size:15px">Aplikasi Terkunci</b>
+      <span class="muted" style="font-size:8.5px;line-height:1.5">Demi keamanan datamu, silakan buka kunci menggunakan biometrik perangkat.</span>
+      <span style="color:var(--p);margin:14px 0 6px">${I("face", 40)}</span>
+      <div class="btn" style="align-self:stretch">Buka Kunci</div>
+      <span class="muted" style="font-size:7.5px;opacity:.6;margin-top:10px">Aman bersama DompetKu</span>
+    </div>` },
+
+    { sec: "account", name: "Pengaturan", note: "Persis seperti Settings iPhone: grup Umum dan Lainnya, dengan tombol Keluar berwarna merah.", html: () => `${sb()}${nb("Beranda")}<div class="body">
+      ${lt("Pengaturan")}
+      ${gh("Umum")}
+      ${grp([R(`<span class="tile" style="--c:#fff;background:var(--p);color:#fff">${I("user", 13)}</span>`, "Profil Akun", "Atur nama dan info akun", `<span class="chev">${I("chevR", 11)}</span>`)])}
+      ${gh("Lainnya")}
+      ${grp([R(`<span class="tile" style="background:${C.blue};color:#fff">${I("info", 13)}</span>`, "Tentang Aplikasi", "Versi 1.0.0", `<span class="chev">${I("chevR", 11)}</span>`), R(`<span class="tile" style="background:var(--exp);color:#fff">${I("logout", 13)}</span>`, `<span style="color:var(--exp)">Keluar</span>`, "Logout dari akun", "")])}
+    </div>` },
+
+    { sec: "account", name: "Edit Profil", note: "Avatar inisial di tengah, email terkunci dan nama dalam satu grup isian.", html: () => `${sb()}${nb("Pengaturan")}<div class="body">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 0"><span style="width:62px;height:62px;border-radius:50%;background:var(--p);color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px">AT</span><b style="font-size:13px">Edit Profil</b></div>
+      ${grp([R(`<span class="muted">${I("mail", 13)}</span>`, "Email", "akun.tes@email.com", `<span class="muted">${I("lock", 11)}</span>`), R(`<span class="muted">${I("user", 13)}</span>`, "Nama Lengkap", "Akun Tes", "")], "")}
+      <div style="flex:1"></div><div class="btn" style="background:var(--tx)">Simpan Perubahan</div>
+    </div>` },
+
+    { sec: "sheet", name: "Contoh form: Buat Anggaran", note: "Semua form tambah dan edit (dompet, tabungan, target, utang, jadwal rutin, investasi) memakai pola sheet ini.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">${lt("Anggaran")}</div><div class="dim"></div><div class="sheet" style="top:120px">
+      <div class="grab"></div>
+      <div class="sheethead"><span>Batal</span><b>Buat Anggaran</b><span></span></div>
+      ${grp([R(tile("cal", "var(--p)"), "Periode Anggaran", "", val("Sep 2026")), R(tile("tag", "var(--exp)"), "Kategori", "", val("Pilih Kategori"))])}
+      <div class="amtbig card"><small>Batas Maksimal (Limit)</small><b style="color:var(--p)">Rp 1.500.000</b></div>
+      <div style="flex:1"></div><div class="btn">Simpan Anggaran</div>
+    </div>` },
+
+    { sec: "sheet", name: "Form: Catat Utang / Piutang", note: "Dipakai untuk tambah dan edit utang. Baru: isian Tanggal Pinjam dan Catatan. Saat edit, judulnya jadi Edit Utang.", html: () => `${sb()}${nb("Beranda", addBtn)}<div class="body">${lt("Utang & Piutang")}</div><div class="dim"></div><div class="sheet" style="top:44px">
+      <div class="grab"></div>
+      <div class="sheethead"><span>Batal</span><b>Catat Utang / Piutang</b><span></span></div>
+      ${seg(["Utang", "Piutang"], 0, "exp")}
+      <div class="amtbig card"><small>Jumlah Uang</small><b style="font-size:22px">Rp 2.000.000</b></div>
+      ${grp([R(tile("user", "var(--p)"), "Nama", "", `<span class="val">Budi Santoso</span>`), R(tile("cal", C.blue), "Tanggal Pinjam", "", val("1 Agu 2026")), R(tile("clock", C.orange), "Jatuh Tempo (Opsional)", "", val("22 Sep 2026"))])}
+      <div class="field">Catatan (Opsional): Modal usaha</div>
+      ${grp([`<div class="r"><div class="rt"><b>Catat ke Dompet?</b><small>Saldo BCA akan bertambah Rp 2.000.000</small></div><span class="tog on"></span></div>`, R(tile("wallet", "#4A6CF7"), "Dompet", "", val("BCA"))])}
+      <div style="flex:1"></div><div class="btn">Simpan</div>
+    </div>` },
+  ];
+
+  const SECTIONS = [
+    ["tabs", "Tab utama", "Tiga tab di navbar melayang. Pemasukan dan Pengeluaran sudah digabung jadi tab Transaksi."],
+    ["money", "Transaksi dan Dompet", "Alur mencatat uang dan mengelola dompet."],
+    ["plan", "Perencanaan", "Anggaran, target, tabungan, dan jadwal rutin."],
+    ["assets", "Aset dan Kewajiban", "Investasi serta utang dan piutang."],
+    ["tools", "Alat", "Fitur pendukung dari menu cepat di Beranda."],
+    ["account", "Akun", "Masuk, daftar, kunci aplikasi, dan pengaturan."],
+    ["sheet", "Pola form", "Satu contoh sheet sebagai acuan semua form tambah dan edit."],
+  ];
+
+  const host = document.getElementById("phones");
+  host.innerHTML = SECTIONS.map(([id, title, desc]) => `<section class="group" id="${id}"><header><h2>${title}</h2><p>${desc}</p></header><div class="shots">${SCREENS.filter((s) => s.sec === id).map((s) => `<figure><div class="phone"><div class="scr">${s.html()}</div></div><figcaption><b>${s.name}</b><span>${s.note}</span></figcaption></figure>`).join("")}</div></section>`).join("");
+
+  const palsEl = document.getElementById("pals");
+  const noteEl = document.getElementById("palnote");
+  palsEl.innerHTML = PALETTES.map((p) => `<button type="button" class="pal" id="pal-${p.id}" data-id="${p.id}" aria-pressed="false"><span class="dots"><i style="background:${p.hero || p.p}"></i><i style="background:${p.bg}"></i><i style="background:${p.acc}"></i></span>${p.name}</button>`).join("");
+
+  function apply(id) {
+    const p = PALETTES.find((x) => x.id === id) || PALETTES[0];
+    const s = host.style;
+    s.setProperty("--hero", p.hero || p.p);
+    s.setProperty("--p", p.p); s.setProperty("--bg", p.bg); s.setProperty("--tx", p.tx); s.setProperty("--tx2", p.tx2); s.setProperty("--acc", p.acc);
+    palsEl.querySelectorAll(".pal").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.id === p.id)));
+    noteEl.textContent = `${p.name}: ${p.note}  Primary ${p.p} · Latar ${p.bg} · Aksen ${p.acc}`;
+    try { localStorage.setItem("dk-palette2", p.id); } catch (e) {}
+  }
+  palsEl.addEventListener("click", (e) => { const b = e.target.closest(".pal"); if (b) apply(b.dataset.id); });
+  apply("ios-blue");
+</script>
