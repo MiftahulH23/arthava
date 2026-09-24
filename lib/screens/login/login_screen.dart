@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        "CatatUang",
+                        "DompetKu",
                         style: GoogleFonts.poppins(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,

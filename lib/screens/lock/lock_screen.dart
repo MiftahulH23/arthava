@@ -80,7 +80,7 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
 
     try {
       final authenticated = await _auth.authenticate(
-        localizedReason: 'Gunakan biometrik untuk membuka CatatUang',
+        localizedReason: 'Gunakan biometrik untuk membuka DompetKu',
       );
 
       if (mounted) {

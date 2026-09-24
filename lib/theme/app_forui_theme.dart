@@ -37,11 +37,11 @@ final FThemeData appForuiTheme = FThemeData(
   colors: _appColors,
   // FTypography.copyWith TIDAK menerima `defaultFontFamily` (selalu
   // mempertahankan milik instance asal), jadi pakai `FTypography.inherit`
-  // supaya seluruh skala teks benar-benar memakai Poppins, bukan Inter
+  // supaya seluruh skala teks benar-benar memakai Plus Jakarta Sans, bukan Inter
   // bawaan forui.
   typography: FTypography.inherit(
     colors: _appColors,
-    defaultFontFamily: GoogleFonts.poppins().fontFamily!,
+    defaultFontFamily: GoogleFonts.plusJakartaSans().fontFamily!,
   ),
   style: FThemes.zinc.light.style.copyWith(
     borderRadius: BorderRadius.circular(16),

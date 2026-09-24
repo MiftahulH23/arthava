@@ -7,7 +7,7 @@ import 'package:catat_uang_app/screens/input_transaction/input_transaction_scree
 import 'package:catat_uang_app/screens/manage_category/manage_category_screen.dart';
 import 'package:catat_uang_app/screens/settings/settings_screen.dart';
 import 'package:catat_uang_app/screens/stats/stats_screen.dart';
-import 'package:catat_uang_app/screens/transaction_history/transaction_history_screen.dart';
+import 'package:catat_uang_app/screens/transaction_history/transactions_tab_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,6 +24,7 @@ import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
 import 'package:catat_uang_app/screens/debt/debt_screen.dart';
 import 'package:catat_uang_app/screens/zakat_sedekah/zakat_sedekah_screen.dart';
 import 'package:catat_uang_app/screens/investment/investment_screen.dart';
+import 'package:catat_uang_app/widgets/app_bottom_nav.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -34,6 +35,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
+  bool _transactionsIsExpense = false;
 
   // [FIX] Setelah migrasi TransactionHistoryScreen/StatsScreen ke provider
   // autoDispose, mengganti ValueKey saja tidak lagi cukup untuk memaksa
@@ -85,7 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10),
+                  style: GoogleFonts.poppins(color: AppColors.heroLabel, fontSize: 10),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -122,16 +124,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               height: 60,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
+                    color: AppColors.primary.withOpacity(0.06),
+                    blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: color, size: 26),
             ),
             const SizedBox(height: 8),
             Text(
@@ -164,14 +166,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     return SafeArea(
+      bottom: false,
       child: RefreshIndicator(
         onRefresh: () => ref.read(homeProvider.notifier).refreshData(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 20,
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              20 + MediaQuery.of(context).padding.bottom,
             ), // [FIX] Margin X Global Sejajar
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,13 +236,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2C3E50),
-                    borderRadius: BorderRadius.circular(25),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.heroGradientStart, AppColors.heroGradientEnd],
+                    ),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF2C3E50).withOpacity(0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
+                        color: AppColors.primary.withOpacity(0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
@@ -250,7 +259,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Text(
                             "Total Saldo Keseluruhan",
                             style: GoogleFonts.poppins(
-                              color: Colors.white70,
+                              color: AppColors.heroLabel,
                               fontSize: 12,
                             ),
                           ),
@@ -419,7 +428,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
                             color: walletColor,
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
                                 color: walletColor.withOpacity(0.3),
@@ -669,16 +678,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               height: 70,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: AppColors.primary.withOpacity(0.06),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
-              child: Icon(icon, color: color, size: 32),
+              child: Icon(icon, color: color, size: 30),
             ),
             const SizedBox(height: 12),
             Text(
@@ -769,13 +778,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(30),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2C3E50),
-                          borderRadius: BorderRadius.circular(30),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [AppColors.heroGradientStart, AppColors.heroGradientEnd],
+                          ),
+                          borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2C3E50).withOpacity(0.4),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              color: AppColors.primary.withOpacity(0.35),
+                              blurRadius: 24,
+                              offset: const Offset(0, 12),
                             ),
                           ],
                         ),
@@ -787,7 +800,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               children: [
                                 Text(
                                   "Total Saldo Keseluruhan",
-                                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16),
+                                  style: GoogleFonts.poppins(color: AppColors.heroLabel, fontSize: 16),
                                 ),
                                 const Icon(PhosphorIconsFill.wallet, color: Colors.white54, size: 28),
                               ],
@@ -1034,92 +1047,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildMobileLayout() {
-    final activeColor = AppColors.primary;
-    final inactiveColor = Colors.grey;
     final List<Widget> pages = [
       _buildMobileHomeContent(),
-      TransactionHistoryScreen(
-        key: ValueKey('pemasukan_$_refreshCounter'),
-        isExpense: false,
-      ),
-      TransactionHistoryScreen(
-        key: ValueKey('pengeluaran_$_refreshCounter'),
-        isExpense: true,
+      TransactionsTabScreen(
+        key: ValueKey('transactions_$_refreshCounter'),
+        refreshCounter: _refreshCounter,
+        initialIsExpense: _transactionsIsExpense,
+        onActiveTabChanged: (v) => _transactionsIsExpense = v,
       ),
       StatsScreen(key: ValueKey('stats_$_refreshCounter')),
     ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: true,
       body: pages[_selectedIndex],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          bool isPengeluaran = _selectedIndex == 2;
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  InputTransactionScreen(initialIsExpense: isPengeluaran),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Center(
+            heightFactor: 1,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppBottomNav(
+                  items: [
+                    const AppBottomNavItem(
+                      icon: PhosphorIconsRegular.house,
+                      activeIcon: PhosphorIconsFill.house,
+                    ),
+                    AppBottomNavItem(
+                      icon: PhosphorIconsRegular.receipt,
+                      activeIcon: PhosphorIconsFill.receipt,
+                      activeColor: AppColors.primary,
+                    ),
+                    const AppBottomNavItem(
+                      icon: PhosphorIconsRegular.chartPieSlice,
+                      activeIcon: PhosphorIconsFill.chartPieSlice,
+                    ),
+                  ],
+                  selectedIndex: _selectedIndex,
+                  onChanged: (index) => setState(() => _selectedIndex = index),
+                ),
+                const SizedBox(width: 14),
+                GestureDetector(
+                  onTap: () async {
+                    bool isPengeluaran = _selectedIndex == 1 && _transactionsIsExpense;
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            InputTransactionScreen(initialIsExpense: isPengeluaran),
+                      ),
+                    );
+                    if (!mounted) return;
+                    ref.read(homeProvider.notifier).refreshData();
+                    _bumpRefreshCounter();
+                  },
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 28),
+                  ),
+                ),
+              ],
             ),
-          );
-          ref.read(homeProvider.notifier).refreshData();
-          _bumpRefreshCounter();
-        },
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 10.0,
-        color: Colors.white,
-        elevation: 10,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              IconButton(
-                icon: Icon(
-                  _selectedIndex == 0
-                      ? PhosphorIcons.house(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.house(),
-                  color: _selectedIndex == 0 ? activeColor : inactiveColor,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 0),
-              ),
-              IconButton(
-                icon: Icon(
-                  _selectedIndex == 1
-                      ? PhosphorIcons.wallet(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.wallet(),
-                  color: _selectedIndex == 1 ? AppColors.income : inactiveColor,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 1),
-              ),
-              const SizedBox(width: 40),
-              IconButton(
-                icon: Icon(
-                  _selectedIndex == 2
-                      ? PhosphorIcons.receipt(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.receipt(),
-                  color: _selectedIndex == 2
-                      ? AppColors.expense
-                      : inactiveColor,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 2),
-              ),
-              IconButton(
-                icon: Icon(
-                  _selectedIndex == 3
-                      ? PhosphorIcons.chartPieSlice(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.chartPieSlice(),
-                  color: _selectedIndex == 3 ? activeColor : inactiveColor,
-                ),
-                onPressed: () => setState(() => _selectedIndex = 3),
-              ),
-            ],
           ),
         ),
       ),
@@ -1131,13 +1134,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final inactiveColor = Colors.grey;
     final List<Widget> pages = [
       _buildWebHomeContent(),
-      TransactionHistoryScreen(
-        key: ValueKey('pemasukan_$_refreshCounter'),
-        isExpense: false,
-      ),
-      TransactionHistoryScreen(
-        key: ValueKey('pengeluaran_$_refreshCounter'),
-        isExpense: true,
+      TransactionsTabScreen(
+        key: ValueKey('transactions_$_refreshCounter'),
+        refreshCounter: _refreshCounter,
+        initialIsExpense: _transactionsIsExpense,
+        onActiveTabChanged: (v) => _transactionsIsExpense = v,
       ),
       StatsScreen(key: ValueKey('stats_$_refreshCounter')),
     ];
@@ -1174,14 +1175,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 label: const Text('Beranda'),
               ),
               NavigationRailDestination(
-                icon: Icon(PhosphorIcons.wallet()),
-                selectedIcon: Icon(PhosphorIcons.wallet(PhosphorIconsStyle.fill), color: AppColors.income),
-                label: const Text('Pemasukan'),
-              ),
-              NavigationRailDestination(
                 icon: Icon(PhosphorIcons.receipt()),
-                selectedIcon: Icon(PhosphorIcons.receipt(PhosphorIconsStyle.fill), color: AppColors.expense),
-                label: const Text('Pengeluaran'),
+                selectedIcon: Icon(PhosphorIcons.receipt(PhosphorIconsStyle.fill), color: AppColors.primary),
+                label: const Text('Transaksi'),
               ),
               NavigationRailDestination(
                 icon: Icon(PhosphorIcons.chartPieSlice()),
@@ -1204,13 +1200,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          bool isPengeluaran = _selectedIndex == 2;
+          bool isPengeluaran = _selectedIndex == 1 && _transactionsIsExpense;
           await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => InputTransactionScreen(initialIsExpense: isPengeluaran),
             ),
           );
+          if (!mounted) return;
           ref.read(homeProvider.notifier).refreshData();
           _bumpRefreshCounter();
         },

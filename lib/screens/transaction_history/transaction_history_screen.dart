@@ -456,6 +456,7 @@ class _TransactionHistoryScreenState
     }
 
     return SafeArea(
+      bottom: false,
       child: Column(
         children: [
           // HEADER & FILTER SECTION
@@ -673,7 +674,12 @@ class _TransactionHistoryScreenState
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      20,
+                      20,
+                      20 + MediaQuery.of(context).padding.bottom,
+                    ),
                     itemCount: state.transactions.length,
                     itemBuilder: (context, index) {
                       final trx = state.transactions[index];

@@ -90,7 +90,7 @@ class SettingsScreen extends StatelessWidget {
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text("Aplikasi Catat Uang v1.0 by Miftahul Huda"),
+                    content: Text("Aplikasi DompetKu v1.0 by Miftahul Huda"),
                   ),
                 );
               },
