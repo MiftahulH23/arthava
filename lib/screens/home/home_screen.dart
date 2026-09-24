@@ -87,7 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10),
+                  style: GoogleFonts.poppins(color: AppColors.heroLabel, fontSize: 10),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -259,7 +259,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Text(
                             "Total Saldo Keseluruhan",
                             style: GoogleFonts.poppins(
-                              color: Colors.white70,
+                              color: AppColors.heroLabel,
                               fontSize: 12,
                             ),
                           ),
@@ -800,7 +800,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               children: [
                                 Text(
                                   "Total Saldo Keseluruhan",
-                                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16),
+                                  style: GoogleFonts.poppins(color: AppColors.heroLabel, fontSize: 16),
                                 ),
                                 const Icon(PhosphorIconsFill.wallet, color: Colors.white54, size: 28),
                               ],

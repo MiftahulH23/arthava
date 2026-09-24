@@ -9,6 +9,7 @@ class AppColors {
   static const Color textPrimary = Color(0xFF1C1C1E); // Hitam iOS
   static const Color textSecondary = Color(0xFF8E8E93); // Abu-abu iOS
   static const Color accent = Color(0xFFFF9500); // Oranye hangat, aksen pelengkap
-  static const Color heroGradientStart = Color(0xFF0A84FF); // Awal gradasi hero card
-  static const Color heroGradientEnd = Color(0xFF0060DF); // Akhir gradasi hero card
+  static const Color heroGradientStart = Color(0xFF0071E3); // Awal gradasi hero card
+  static const Color heroGradientEnd = Color(0xFF0047AB); // Akhir gradasi hero card
+  static const Color heroLabel = Color(0xE0FFFFFF); // Putih 88% untuk label kecil di hero card (white70 kurang kontras)
 }
