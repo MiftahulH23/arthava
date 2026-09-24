@@ -236,7 +236,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.heroGradientStart, AppColors.heroGradientEnd],
+                    ),
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
@@ -774,7 +778,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(30),
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [AppColors.heroGradientStart, AppColors.heroGradientEnd],
+                          ),
                           borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
