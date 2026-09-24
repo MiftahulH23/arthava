@@ -57,10 +57,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Tombol Coming Soon
   void _showComingSoon(BuildContext context, String feature) {
-    AppNotification.success(
-      context,
-      "Fitur $feature sedang dikembangkan! 👨‍💻",
-    );
+    AppNotification.success(context, "Fitur $feature sedang dikembangkan! 👨‍💻");
   }
 
   Widget _buildCardStatItem({
@@ -90,10 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white70,
-                    fontSize: 10,
-                  ),
+                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -177,12 +171,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              40,
-            ), // [FIX] Margin X Global Sejajar + extra clearance above floating nav
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 20,
+            ), // [FIX] Margin X Global Sejajar
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -635,28 +627,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               MaterialPageRoute(
                                 builder: (context) => const InvestmentScreen(),
                               ),
-                            ).then(
-                              (_) =>
-                                  ref.read(homeProvider.notifier).refreshData(),
-                            );
+                            ).then((_) => ref.read(homeProvider.notifier).refreshData());
                           },
                         ),
                         _buildFeatureButton(
                           icon: PhosphorIconsFill.handHeart,
                           label: "Zakat",
                           color: Colors.green.shade700,
-                          onTap: () =>
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ZakatSedekahScreen(),
-                                ),
-                              ).then(
-                                (_) => ref
-                                    .read(homeProvider.notifier)
-                                    .refreshData(),
-                              ),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ZakatSedekahScreen(),
+                            ),
+                          ).then((_) => ref.read(homeProvider.notifier).refreshData()),
                         ),
                       ],
                     ),
@@ -748,10 +731,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       children: [
                         Text(
                           "Halo, Bos!",
-                          style: GoogleFonts.poppins(
-                            color: Colors.grey,
-                            fontSize: 16,
-                          ),
+                          style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16),
                         ),
                         Text(
                           homeState.userName,
@@ -765,12 +745,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     GestureDetector(
                       onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsScreen(),
-                          ),
-                        );
+                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
                         ref.read(homeProvider.notifier).getUserProfile();
                       },
                       child: Container(
@@ -779,11 +754,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           color: Colors.grey.shade100,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.settings_outlined,
-                          color: Colors.black,
-                          size: 28,
-                        ),
+                        child: const Icon(Icons.settings_outlined, color: Colors.black, size: 28),
                       ),
                     ),
                   ],
@@ -818,56 +789,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               children: [
                                 Text(
                                   "Total Saldo Keseluruhan",
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white70,
-                                    fontSize: 16,
-                                  ),
+                                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16),
                                 ),
-                                const Icon(
-                                  PhosphorIconsFill.wallet,
-                                  color: Colors.white54,
-                                  size: 28,
-                                ),
+                                const Icon(PhosphorIconsFill.wallet, color: Colors.white54, size: 28),
                               ],
                             ),
                             const SizedBox(height: 15),
                             Text(
-                              currencyFormat.format(
-                                homeState.totalWalletBalance,
-                              ),
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 42,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              currencyFormat.format(homeState.totalWalletBalance),
+                              style: GoogleFonts.poppins(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 30),
                             Container(
                               padding: const EdgeInsets.only(top: 20),
                               decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(
-                                    color: Colors.white.withOpacity(0.1),
-                                  ),
-                                ),
+                                border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
                               ),
                               child: Column(
                                 children: [
                                   Row(
                                     children: [
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.arrowDown,
-                                        color: AppColors.income,
-                                        title: "Masuk",
-                                        amount: homeState.monthlyIncome,
-                                        currencyFormat: currencyFormat,
+                                        icon: PhosphorIconsFill.arrowDown, color: AppColors.income, title: "Masuk", amount: homeState.monthlyIncome, currencyFormat: currencyFormat,
                                       ),
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.arrowUp,
-                                        color: AppColors.expense,
-                                        title: "Keluar",
-                                        amount: homeState.monthlyExpense,
-                                        currencyFormat: currencyFormat,
+                                        icon: PhosphorIconsFill.arrowUp, color: AppColors.expense, title: "Keluar", amount: homeState.monthlyExpense, currencyFormat: currencyFormat,
                                       ),
                                     ],
                                   ),
@@ -875,18 +821,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   Row(
                                     children: [
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.piggyBank,
-                                        color: Colors.tealAccent,
-                                        title: "Tabungan",
-                                        amount: homeState.totalSavings,
-                                        currencyFormat: currencyFormat,
+                                        icon: PhosphorIconsFill.piggyBank, color: Colors.tealAccent, title: "Tabungan", amount: homeState.totalSavings, currencyFormat: currencyFormat,
                                       ),
                                       _buildCardStatItem(
-                                        icon: PhosphorIconsFill.chartLineUp,
-                                        color: Colors.orangeAccent,
-                                        title: "Investasi",
-                                        amount: homeState.totalInvestments,
-                                        currencyFormat: currencyFormat,
+                                        icon: PhosphorIconsFill.chartLineUp, color: Colors.orangeAccent, title: "Investasi", amount: homeState.totalInvestments, currencyFormat: currencyFormat,
                                       ),
                                     ],
                                   ),
@@ -909,30 +847,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             children: [
                               Text(
                                 "Dompet Saya",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
+                                style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                               ),
                               GestureDetector(
                                 onTap: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const WalletScreen(),
-                                    ),
-                                  );
+                                  await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen()));
                                   ref.read(homeProvider.notifier).refreshData();
                                 },
                                 child: Text(
                                   "Kelola",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
+                                  style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primary),
                                 ),
                               ),
                             ],
@@ -941,12 +865,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           if (homeState.wallets.isEmpty)
                             GestureDetector(
                               onTap: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const WalletScreen(),
-                                  ),
-                                );
+                                await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen()));
                                 ref.read(homeProvider.notifier).refreshData();
                               },
                               child: Container(
@@ -955,25 +874,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 decoration: BoxDecoration(
                                   color: AppColors.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: AppColors.primary.withOpacity(0.3),
-                                  ),
+                                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                                 ),
                                 child: Column(
                                   children: [
-                                    const Icon(
-                                      PhosphorIconsRegular.plusCircle,
-                                      color: AppColors.primary,
-                                      size: 40,
-                                    ),
+                                    const Icon(PhosphorIconsRegular.plusCircle, color: AppColors.primary, size: 40),
                                     const SizedBox(height: 10),
                                     Text(
                                       "Buat Dompet Pertama",
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                        fontSize: 16,
-                                      ),
+                                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
                                     ),
                                   ],
                                 ),
@@ -983,22 +892,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    childAspectRatio: 1.8,
-                                    crossAxisSpacing: 15,
-                                    mainAxisSpacing: 15,
-                                  ),
-                              itemCount: homeState.wallets.length > 4
-                                  ? 4
-                                  : homeState.wallets.length,
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 1.8,
+                                crossAxisSpacing: 15,
+                                mainAxisSpacing: 15,
+                              ),
+                              itemCount: homeState.wallets.length > 4 ? 4 : homeState.wallets.length,
                               itemBuilder: (context, index) {
                                 final wallet = homeState.wallets[index];
                                 final colorHex = wallet['color'] ?? '#1E3A8A';
-                                final walletColor = Color(
-                                  int.parse(colorHex.replaceFirst('#', '0xFF')),
-                                );
+                                final walletColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
                                 return Container(
                                   padding: const EdgeInsets.all(15),
                                   decoration: BoxDecoration(
@@ -1013,27 +917,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     ],
                                   ),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(
-                                            PhosphorIconsFill.wallet,
-                                            color: Colors.white70,
-                                            size: 20,
-                                          ),
+                                          const Icon(PhosphorIconsFill.wallet, color: Colors.white70, size: 20),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
                                               wallet['name'],
-                                              style: GoogleFonts.poppins(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
+                                              style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -1041,14 +935,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         ],
                                       ),
                                       Text(
-                                        currencyFormat.format(
-                                          wallet['balance'],
-                                        ),
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                        ),
+                                        currencyFormat.format(wallet['balance']),
+                                        style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -1067,11 +955,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 // GRID MENU (WEB VERSION)
                 Text(
                   "Menu & Fitur",
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
                 const SizedBox(height: 25),
                 Wrap(
@@ -1079,125 +963,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   runSpacing: 25,
                   children: [
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.calendarPlus,
-                      label: "Tagihan",
-                      color: Colors.redAccent,
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RecurringScreen(),
-                          ),
-                        );
-                        ref.read(homeProvider.notifier).refreshData();
-                        _bumpRefreshCounter();
-                      },
+                      icon: PhosphorIconsFill.calendarPlus, label: "Tagihan", color: Colors.redAccent,
+                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const RecurringScreen())); ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.piggyBank,
-                      label: "Tabungan",
-                      color: const Color(0xFF009688),
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SavingsScreen(),
-                          ),
-                        );
-                        ref.read(homeProvider.notifier).refreshData();
-                        _bumpRefreshCounter();
-                      },
+                      icon: PhosphorIconsFill.piggyBank, label: "Tabungan", color: const Color(0xFF009688),
+                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const SavingsScreen())); ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.chartDonut,
-                      label: "Anggaran",
-                      color: Colors.purple,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BudgetScreen(),
-                        ),
-                      ),
+                      icon: PhosphorIconsFill.chartDonut, label: "Anggaran", color: Colors.purple,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BudgetScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.target,
-                      label: "Target",
-                      color: Colors.green,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TargetScreen(),
-                        ),
-                      ),
+                      icon: PhosphorIconsFill.target, label: "Target", color: Colors.green,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TargetScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.squaresFour,
-                      label: "Kategori",
-                      color: Colors.orange,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ManageCategoryScreen(),
-                        ),
-                      ),
+                      icon: PhosphorIconsFill.squaresFour, label: "Kategori", color: Colors.orange,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageCategoryScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.filePdf,
-                      label: "Export",
-                      color: Colors.blue,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ExportScreen(),
-                        ),
-                      ),
+                      icon: PhosphorIconsFill.filePdf, label: "Export", color: Colors.blue,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ExportScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.robot,
-                      label: "AI Advisor",
-                      color: Colors.indigo,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AiAdvisorScreen(),
-                        ),
-                      ),
+                      icon: PhosphorIconsFill.robot, label: "AI Advisor", color: Colors.indigo,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AiAdvisorScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.calendar,
-                      label: "Kalender",
-                      color: Colors.pinkAccent,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CalendarScreen(),
-                        ),
-                      ),
+                      icon: PhosphorIconsFill.calendar, label: "Kalender", color: Colors.pinkAccent,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarScreen())),
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.wallet,
-                      label: "Dompet",
-                      color: Colors.brown,
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const WalletScreen(),
-                          ),
-                        );
-                        ref.read(homeProvider.notifier).refreshData();
-                      },
+                      icon: PhosphorIconsFill.wallet, label: "Dompet", color: Colors.brown,
+                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen())); ref.read(homeProvider.notifier).refreshData(); },
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.handCoins,
-                      label: "Utang",
-                      color: Colors.teal,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DebtScreen(),
-                        ),
-                      ),
+                      icon: PhosphorIconsFill.handCoins, label: "Utang", color: Colors.teal,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DebtScreen())),
                     ),
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.chartLineUp,
@@ -1209,25 +1012,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           MaterialPageRoute(
                             builder: (context) => const InvestmentScreen(),
                           ),
-                        ).then(
-                          (_) => ref.read(homeProvider.notifier).refreshData(),
-                        );
+                        ).then((_) => ref.read(homeProvider.notifier).refreshData());
                       },
                     ),
                     _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.handHeart,
-                      label: "Zakat",
-                      color: Colors.green.shade700,
-                      onTap: () =>
-                          Navigator.push(
+                      icon: PhosphorIconsFill.handHeart, label: "Zakat", color: Colors.green.shade700,
+                      onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => const ZakatSedekahScreen(),
                             ),
-                          ).then(
-                            (_) =>
-                                ref.read(homeProvider.notifier).refreshData(),
-                          ),
+                          ).then((_) => ref.read(homeProvider.notifier).refreshData()),
                     ),
                   ],
                 ),
@@ -1254,6 +1049,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: true,
       body: pages[_selectedIndex],
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -1284,14 +1080,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(width: 14),
                 GestureDetector(
                   onTap: () async {
-                    bool isPengeluaran =
-                        _selectedIndex == 1 && _transactionsIsExpense;
+                    bool isPengeluaran = _selectedIndex == 1 && _transactionsIsExpense;
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => InputTransactionScreen(
-                          initialIsExpense: isPengeluaran,
-                        ),
+                        builder: (context) =>
+                            InputTransactionScreen(initialIsExpense: isPengeluaran),
                       ),
                     );
                     ref.read(homeProvider.notifier).refreshData();
@@ -1351,50 +1145,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             minExtendedWidth: 250,
             backgroundColor: Colors.white,
             selectedIconTheme: IconThemeData(color: activeColor),
-            selectedLabelTextStyle: GoogleFonts.poppins(
-              color: activeColor,
-              fontWeight: FontWeight.bold,
-            ),
+            selectedLabelTextStyle: GoogleFonts.poppins(color: activeColor, fontWeight: FontWeight.bold),
             unselectedIconTheme: IconThemeData(color: inactiveColor),
-            unselectedLabelTextStyle: GoogleFonts.poppins(
-              color: inactiveColor,
-              fontWeight: FontWeight.w500,
-            ),
+            unselectedLabelTextStyle: GoogleFonts.poppins(color: inactiveColor, fontWeight: FontWeight.w500),
             leading: Column(
               children: [
                 const SizedBox(height: 20),
-                Text(
-                  "DompetKu",
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: activeColor,
-                  ),
-                ),
+                Text("DompetKu", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: activeColor)),
                 const SizedBox(height: 30),
               ],
             ),
             destinations: [
               NavigationRailDestination(
                 icon: Icon(PhosphorIcons.house()),
-                selectedIcon: Icon(
-                  PhosphorIcons.house(PhosphorIconsStyle.fill),
-                ),
+                selectedIcon: Icon(PhosphorIcons.house(PhosphorIconsStyle.fill)),
                 label: const Text('Beranda'),
               ),
               NavigationRailDestination(
                 icon: Icon(PhosphorIcons.receipt()),
-                selectedIcon: Icon(
-                  PhosphorIcons.receipt(PhosphorIconsStyle.fill),
-                  color: AppColors.primary,
-                ),
+                selectedIcon: Icon(PhosphorIcons.receipt(PhosphorIconsStyle.fill), color: AppColors.primary),
                 label: const Text('Transaksi'),
               ),
               NavigationRailDestination(
                 icon: Icon(PhosphorIcons.chartPieSlice()),
-                selectedIcon: Icon(
-                  PhosphorIcons.chartPieSlice(PhosphorIconsStyle.fill),
-                ),
+                selectedIcon: Icon(PhosphorIcons.chartPieSlice(PhosphorIconsStyle.fill)),
                 label: const Text('Statistik'),
               ),
             ],
@@ -1417,8 +1191,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  InputTransactionScreen(initialIsExpense: isPengeluaran),
+              builder: (context) => InputTransactionScreen(initialIsExpense: isPengeluaran),
             ),
           );
           ref.read(homeProvider.notifier).refreshData();
@@ -1426,13 +1199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          "Tambah Transaksi",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        label: Text("Tambah Transaksi", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
         elevation: 8,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
