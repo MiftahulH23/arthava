@@ -1,6 +1,6 @@
 {
-    "name": "catat_uang_app",
-    "short_name": "catat_uang_app",
+    "name": "DompetKu",
+    "short_name": "DompetKu",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
