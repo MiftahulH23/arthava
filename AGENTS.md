@@ -63,7 +63,10 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
 - **Font:** `google_fonts` Plus Jakarta Sans
   (`GoogleFonts.plusJakartaSansTextTheme(...)`), applied once in
   `main.dart`'s `ThemeData.textTheme` (light & dark), and mapped into
-  `appForuiTheme`'s typography for forui widgets.
+  `appForuiTheme`'s typography for forui widgets. Many screens still
+  call `GoogleFonts.poppins(...)` inline, which overrides the theme;
+  don't add new ones, and replace them with theme text styles when you
+  touch a screen.
 - **Icons:** `phosphor_flutter` (Regular for inactive, Fill for active).
   Swapping to `hugeicons` and to Phosphor Duotone were both tried and
   rejected by the user.

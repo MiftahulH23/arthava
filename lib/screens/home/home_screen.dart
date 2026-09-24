@@ -1100,6 +1100,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             InputTransactionScreen(initialIsExpense: isPengeluaran),
                       ),
                     );
+                    if (!mounted) return;
                     ref.read(homeProvider.notifier).refreshData();
                     _bumpRefreshCounter();
                   },
@@ -1206,6 +1207,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               builder: (context) => InputTransactionScreen(initialIsExpense: isPengeluaran),
             ),
           );
+          if (!mounted) return;
           ref.read(homeProvider.notifier).refreshData();
           _bumpRefreshCounter();
         },

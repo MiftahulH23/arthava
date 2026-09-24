@@ -8,11 +8,8 @@ import 'package:flutter/material.dart';
 /// sudah dipakai di project ini). Kalau tidak diberikan, [icon] dipakai
 /// terus baik aktif maupun tidak.
 ///
-/// [activeColor] opsional — override warna saat item ini aktif. Dipakai
-/// untuk mempertahankan pewarnaan semantik per-tab yang sudah ada di
-/// bottom nav lama (misal tab "Pemasukan" berwarna hijau/income, tab
-/// "Pengeluaran" berwarna merah/expense), bukan warna primary yang sama
-/// untuk semua tab.
+/// [activeColor] opsional — override warna saat item ini aktif; default
+/// [AppColors.primary].
 class AppBottomNavItem {
   final IconData icon;
   final IconData? activeIcon;
