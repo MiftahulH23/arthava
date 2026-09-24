@@ -166,14 +166,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     return SafeArea(
+      bottom: false,
       child: RefreshIndicator(
         onRefresh: () => ref.read(homeProvider.notifier).refreshData(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 20,
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              20 + MediaQuery.of(context).padding.bottom,
             ), // [FIX] Margin X Global Sejajar
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
