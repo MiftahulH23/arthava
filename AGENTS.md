@@ -20,15 +20,28 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
 - `lib/core/` — cross-cutting concerns: `colors.dart` (palette),
   `theme_mode_manager.dart` (global `ValueNotifier<ThemeMode>`),
   `app_notification.dart`.
+- `lib/theme/app_forui_theme.dart` — maps `AppColors` and the font into
+  forui's `FThemeData`. Build it with the `FThemeData(...)` constructor;
+  `.copyWith` on a preset doesn't propagate the colors into per-widget
+  styles.
 - `lib/models/` — plain Dart data classes, one per Supabase table
   concept, each with a `fromJson` factory matching that table's shape.
   There is no shared base model class — verify each model's own JSON
   keys rather than assuming a common pattern.
-- `lib/screens/` — one file per screen, flat (no subfolders). Screens
-  are `StatefulWidget`s that call services/Supabase directly; there is
-  currently no repository or state-management layer between UI and
-  data access. This is the existing pattern — follow it rather than
-  introducing a new architecture unprompted.
+- `lib/screens/<feature>/<feature>_screen.dart` — feature-first folders,
+  one folder per screen (plus related detail screens, e.g.
+  `budget/budget_detail_screen.dart`). Screens are
+  `ConsumerStatefulWidget`s that read state from providers.
+- `lib/providers/<feature>_provider.dart` — Riverpod (`flutter_riverpod`
+  2.x) `NotifierProvider.autoDispose` per feature; providers own the
+  Supabase queries. A `Notifier.build()` must not touch `state`
+  synchronously (defer the first fetch with `Future.microtask`), or it
+  throws `StateError: uninitialized provider`. To force a refresh,
+  `ref.invalidate(...)` the provider; don't rely on changing a widget's
+  `ValueKey`.
+- `lib/widgets/` — shared UI built on forui: `AppButton`, `AppCard`,
+  `AppTabSelector`, `AppBottomNav`, `showAppBottomSheet`. Use these
+  instead of hand-rolling tabs, sheets, or buttons in a screen.
 - `lib/services/` — thin wrappers around Supabase/external APIs
   (`auth_service.dart`, `gemini_service.dart`, `pdf_service.dart`).
 
@@ -40,12 +53,20 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
   change it — don't invent a second theme-switching mechanism).
 - **Colors:** all named colors come from `AppColors` in `lib/core/colors.dart`.
   Don't hardcode hex colors in screens/widgets — add a new named constant
-  to `AppColors` instead.
+  to `AppColors` instead. The palette is "iOS Blue": system blue primary
+  (`#007AFF`) on the iOS grouped background (`#F2F2F7`), white cards;
+  green/red are reserved for income/expense meaning.
+- **Design direction:** Material widgets styled to feel like iOS (not
+  Cupertino widgets): large left-aligned titles, grouped inset lists,
+  segmented controls, add/edit forms as bottom sheets. For visual
+  redesigns, agree on a mockup with the user before writing code.
 - **Font:** `google_fonts` Plus Jakarta Sans
   (`GoogleFonts.plusJakartaSansTextTheme(...)`), applied once in
   `main.dart`'s `ThemeData.textTheme` (light & dark), and mapped into
   `appForuiTheme`'s typography for forui widgets.
-- **Icons:** `phosphor_flutter`.
+- **Icons:** `phosphor_flutter` (Regular for inactive, Fill for active).
+  Swapping to `hugeicons` and to Phosphor Duotone were both tried and
+  rejected by the user.
 - **Locale:** Indonesian (`id_ID`) date/number formatting via `intl` and
   `initializeDateFormatting('id_ID', null)` in `main.dart`.
 - **File naming:** `snake_case.dart` files, `*_screen.dart` for screens,
