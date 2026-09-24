@@ -1058,6 +1058,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           child: Center(
+            heightFactor: 1,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
