@@ -39,31 +39,34 @@ class _TransactionsTabScreenState extends State<TransactionsTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: AppTabSelector(
-            labels: const ['Pemasukan', 'Pengeluaran'],
-            initialIndex: _tabIndex,
-            onChanged: (i) {
-              setState(() => _tabIndex = i);
-              widget.onActiveTabChanged?.call(i == 1);
-            },
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: AppTabSelector(
+              labels: const ['Pemasukan', 'Pengeluaran'],
+              initialIndex: _tabIndex,
+              onChanged: (i) {
+                setState(() => _tabIndex = i);
+                widget.onActiveTabChanged?.call(i == 1);
+              },
+            ),
           ),
-        ),
-        Expanded(
-          child: _tabIndex == 0
-              ? TransactionHistoryScreen(
-                  key: ValueKey('pemasukan_${widget.refreshCounter}'),
-                  isExpense: false,
-                )
-              : TransactionHistoryScreen(
-                  key: ValueKey('pengeluaran_${widget.refreshCounter}'),
-                  isExpense: true,
-                ),
-        ),
-      ],
+          Expanded(
+            child: _tabIndex == 0
+                ? TransactionHistoryScreen(
+                    key: ValueKey('pemasukan_${widget.refreshCounter}'),
+                    isExpense: false,
+                  )
+                : TransactionHistoryScreen(
+                    key: ValueKey('pengeluaran_${widget.refreshCounter}'),
+                    isExpense: true,
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

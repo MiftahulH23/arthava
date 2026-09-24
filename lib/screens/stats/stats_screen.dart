@@ -449,6 +449,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       dateLabel = DateFormat('MMMM yyyy', 'id_ID').format(state.selectedDate);
 
     return SafeArea(
+      bottom: false,
       child: Column(
         children: [
           Container(
@@ -674,7 +675,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                     ),
                   )
                 : SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      20,
+                      20,
+                      20 + MediaQuery.of(context).padding.bottom,
+                    ),
                     child: Column(
                       children: [
                         SizedBox(
