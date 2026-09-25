@@ -26,6 +26,9 @@ class AppSwipeActions extends StatefulWidget {
   State<AppSwipeActions> createState() => _AppSwipeActionsState();
 }
 
+// Baris yang sedang digeser/terbuka; baris lain menutup diri saat ini berganti.
+final ValueNotifier<Object?> _activeSwipeRow = ValueNotifier<Object?>(null);
+
 class _AppSwipeActionsState extends State<AppSwipeActions> with SingleTickerProviderStateMixin {
   static const double _actionWidth = 72;
 
@@ -41,10 +44,35 @@ class _AppSwipeActionsState extends State<AppSwipeActions> with SingleTickerProv
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
+    _activeSwipeRow.addListener(_onActiveRowChanged);
+  }
+
+  ScrollPosition? _scrollPosition;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = Scrollable.maybeOf(context)?.position;
+    if (position != _scrollPosition) {
+      _scrollPosition?.isScrollingNotifier.removeListener(_onScroll);
+      _scrollPosition = position;
+      _scrollPosition?.isScrollingNotifier.addListener(_onScroll);
+    }
+  }
+
+  void _onActiveRowChanged() {
+    if (_activeSwipeRow.value != this && _isOpen) _controller.animateTo(0, curve: Curves.easeOut);
+  }
+
+  void _onScroll() {
+    if ((_scrollPosition?.isScrollingNotifier.value ?? false) && _isOpen) _close();
   }
 
   @override
   void dispose() {
+    _activeSwipeRow.removeListener(_onActiveRowChanged);
+    _scrollPosition?.isScrollingNotifier.removeListener(_onScroll);
+    if (_activeSwipeRow.value == this) _activeSwipeRow.value = null;
     _controller.dispose();
     super.dispose();
   }
@@ -136,6 +164,7 @@ class _AppSwipeActionsState extends State<AppSwipeActions> with SingleTickerProv
             ),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (_) => _activeSwipeRow.value = this,
               onHorizontalDragUpdate: _onDragUpdate,
               onHorizontalDragEnd: _onDragEnd,
               // Dievaluasi saat tap, bukan saat build: child GestureDetector ini tidak

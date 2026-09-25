@@ -86,4 +86,33 @@ void main() {
     expect(labels, containsAll(['Edit', 'Hapus']));
     handle.dispose();
   });
+
+  Future<void> pumpList(WidgetTester tester) {
+    return pumpApp(tester, Scaffold(body: ListView(children: [
+      for (final name in ['Makan', 'Bensin'])
+        AppSwipeActions(onDelete: () {}, child: ListTile(title: Text(name))),
+      const SizedBox(height: 2000),
+    ])));
+  }
+
+  testWidgets('membuka baris lain menutup baris yang sedang terbuka', (tester) async {
+    await pumpList(tester);
+    await tester.drag(find.text('Makan'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('Makan')).dx, lessThan(0));
+    await tester.drag(find.text('Bensin'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('Bensin')).dx, lessThan(0));
+    expect(tester.getTopLeft(find.byType(ListTile).first).dx, 0);
+  });
+
+  testWidgets('scroll list menutup baris yang terbuka', (tester) async {
+    await pumpList(tester);
+    await tester.drag(find.text('Makan'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.byType(ListTile).first).dx, lessThan(0));
+    await tester.drag(find.byType(ListView), const Offset(0, -50));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.byType(ListTile).first).dx, 0);
+  });
 }

@@ -54,12 +54,18 @@ class _AppFormSheet extends StatelessWidget {
                     width: 72,
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Text(cancelLabel, style: AppTextStyles.navLabel),
+                      child: Semantics(
+                        button: true,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => Navigator.of(context).pop(),
+                          child: SizedBox(
+                            height: 44,
+                            child: Center(
+                              widthFactor: 1,
+                              child: Text(cancelLabel, style: AppTextStyles.navLabel),
+                            ),
+                          ),
                         ),
                       ),
                     ),

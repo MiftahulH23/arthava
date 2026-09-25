@@ -82,4 +82,31 @@ void main() {
     expect(find.descendant(of: find.byType(ListView), matching: find.text('Cetak')), findsNothing);
     expect(find.text('Cetak'), findsOneWidget);
   });
+
+  testWidgets('aksi nav teks minimal 44 dan dikenali sebagai tombol', (tester) async {
+    await pumpApp(tester, AppPageScaffold(title: 'Utang', actions: [AppNavAction.text('Edit', onPressed: () {})], children: const []));
+    expect(tester.getSize(find.byType(AppNavAction)).height, greaterThanOrEqualTo(44));
+    expect(tester.getSemantics(find.byType(AppNavAction)), containsSemantics(isButton: true, label: 'Edit'));
+  });
+
+  testWidgets('AppNavAction.icon menerima tooltip', (tester) async {
+    await pumpApp(tester, AppPageScaffold(
+      title: 'Utang',
+      actions: [AppNavAction.icon(Icons.delete, tooltip: 'Hapus', onPressed: () {})],
+      children: const [],
+    ));
+    expect(find.byTooltip('Hapus'), findsOneWidget);
+  });
+
+  testWidgets('label kembali panjang tidak menimpa judul kecil di 360', (tester) async {
+    await pumpApp(tester, const AppPageScaffold(
+      title: 'Detail Utang Panjang',
+      backLabel: 'Utang & Piutang Saya',
+      largeTitle: false,
+      children: [],
+    ), size: const Size(360, 740));
+    final back = tester.getRect(find.text('Utang & Piutang Saya'));
+    final title = tester.getRect(find.text('Detail Utang Panjang'));
+    expect(back.right, lessThanOrEqualTo(title.left));
+  });
 }
