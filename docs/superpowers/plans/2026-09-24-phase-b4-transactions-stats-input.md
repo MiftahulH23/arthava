@@ -370,7 +370,7 @@ Spec §6 memperbolehkan penambahan parameter opsional di komponen bila sebuah sc
 **Interfaces:**
 - Produces:
   - `AppPageScaffold({..., Widget? leading})`. Bila `leading != null`, widget itu dipakai di sisi kiri nav bar dan menggantikan tombol kembali, apa pun nilai `backLabel`.
-  - `AppSwipeActions({..., String? deleteConfirmTitle, String? deleteConfirmMessage})`. Keduanya diteruskan ke `showAppConfirmDialog` saat user menekan Hapus. Bila null, pakai teks default B1.
+  - `AppSwipeActions(deleteConfirmTitle:, deleteConfirmMessage:)` — SUDAH ADA di B1 (String non-null, default "Hapus?" / "Data ini akan dihapus permanen."). Jangan tambah field; lewati Step 4–5.
 
 - [ ] **Step 1: Baca implementasi B1**
 
