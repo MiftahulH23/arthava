@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:catat_uang_app/theme/app_forui_theme.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
 
 /// Konfigurasi global untuk semua test di folder ini.
 ///
@@ -16,10 +17,21 @@ import 'package:catat_uang_app/theme/app_forui_theme.dart';
 /// unduhan font-nya) tidak lagi dibebankan ke sebuah test. Error-nya ditelan
 /// secara eksplisit di zona terpisah: font tidak tersedia di test memang wajar,
 /// Flutter akan fallback ke font default dan itu tidak memengaruhi assertion
-/// apa pun (nama font family tetap dikembalikan dengan benar).
+/// apa pun (nama font family tetap dikembalikan dengan benar). Hal yang sama
+/// berlaku untuk `AppTextStyles` (Phase B).
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   await runZonedGuarded(() async {
     appForuiTheme.typography.defaultFontFamily;
+    // Sentuh semua gaya supaya unduhan font tiap bobot dimulai (dan gagal) di zona ini.
+    for (final style in [
+      AppTextStyles.largeTitle, AppTextStyles.title, AppTextStyles.headline,
+      AppTextStyles.body, AppTextStyles.bodyStrong, AppTextStyles.subhead,
+      AppTextStyles.caption, AppTextStyles.groupLabel, AppTextStyles.navLabel,
+      AppTextStyles.amountHero, AppTextStyles.amountLarge, AppTextStyles.amountRow,
+      AppTextStyles.button,
+    ]) {
+      style.fontFamily;
+    }
   }, (_, _) {});
 
   await testMain();
