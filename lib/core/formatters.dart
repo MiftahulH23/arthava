@@ -30,9 +30,16 @@ String formatRupiahCompact(num value) {
   return value < 0 && abs.round() != 0 ? '-$body' : body;
 }
 
+// Buang bagian desimal gaya Indonesia (",00", ",5") di akhir teks tempelan
+// sebelum mengambil digit; tanpa ini "1.250.000,00" terbaca 100x lipat.
+final RegExp _trailingDecimal = RegExp(r',\d{1,2}\s*$');
+
+String _digitsOnly(String text) =>
+    text.trim().replaceFirst(_trailingDecimal, '').replaceAll(RegExp(r'[^0-9]'), '');
+
 /// Mengambil digit saja (maks [RupiahInputFormatter.maxDigits]); kosong/sampah -> 0.
 int parseRupiah(String text) {
-  var digits = text.replaceAll(RegExp(r'[^0-9]'), '');
+  var digits = _digitsOnly(text);
   if (digits.isEmpty) return 0;
   if (digits.length > RupiahInputFormatter.maxDigits) {
     digits = digits.substring(0, RupiahInputFormatter.maxDigits);
@@ -46,7 +53,7 @@ class RupiahInputFormatter extends TextInputFormatter {
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    var digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    var digits = _digitsOnly(newValue.text);
     if (digits.length > maxDigits) digits = digits.substring(0, maxDigits);
     digits = digits.replaceFirst(RegExp(r'^0+(?=\d)'), '');
     if (digits.isEmpty) {

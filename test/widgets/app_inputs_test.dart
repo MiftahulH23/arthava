@@ -4,6 +4,7 @@ import 'package:catat_uang_app/widgets/app_switch.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/pump_app.dart';
@@ -45,5 +46,6 @@ void main() {
     )), size: const Size(360, 740));
     expect(tester.takeException(), isNull);
     expect(find.text('Jumlah Uang'), findsOneWidget);
+    expect(tester.renderObject<RenderParagraph>(find.text('Rp 999.999.999.999.999')).didExceedMaxLines, isFalse);
   });
 }

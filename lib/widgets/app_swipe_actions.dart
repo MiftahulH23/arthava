@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_dialogs.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Geser kiri untuk Edit/Hapus (spec G12). Tanpa dependency: GestureDetector + AnimationController.
@@ -103,7 +104,13 @@ class _AppSwipeActionsState extends State<AppSwipeActions> with SingleTickerProv
   Widget build(BuildContext context) {
     if (_actionCount == 0) return widget.child;
 
-    return ClipRect(
+    // Pembaca layar tidak bisa menggeser: Edit/Hapus diekspos sebagai aksi kustom.
+    return Semantics(
+      customSemanticsActions: {
+        if (widget.onEdit != null) const CustomSemanticsAction(label: 'Edit'): _handleEdit,
+        if (widget.onDelete != null) const CustomSemanticsAction(label: 'Hapus'): _handleDelete,
+      },
+      child: ClipRect(
       child: Stack(
         children: [
           Positioned.fill(
@@ -137,7 +144,9 @@ class _AppSwipeActionsState extends State<AppSwipeActions> with SingleTickerProv
               onTap: () {
                 if (_isOpen) _close();
               },
-              child: ColoredBox(
+              // Material (bukan ColoredBox): tetap opaque supaya tombol aksi tidak
+              // tembus, dan menjadi kanvas ink sehingga ripple InkWell baris terlihat.
+              child: Material(
                 color: AppColors.surface,
                 child: AnimatedBuilder(
                   animation: _controller,
@@ -149,6 +158,7 @@ class _AppSwipeActionsState extends State<AppSwipeActions> with SingleTickerProv
           ),
         ],
       ),
+    ),
     );
   }
 }

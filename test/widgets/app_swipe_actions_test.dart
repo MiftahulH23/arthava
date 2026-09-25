@@ -1,6 +1,8 @@
+import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/pump_app.dart';
@@ -65,5 +67,23 @@ void main() {
     await tester.drag(find.text('Makan'), const Offset(-200, 0));
     await tester.pumpAndSettle();
     expect(find.text('Hapus'), findsNothing);
+  });
+
+  testWidgets('child di atas Material surface opaque (ripple terlihat, aksi tak tembus)', (tester) async {
+    await pumpRow(tester, onDelete: () {});
+    final material = tester.widget<Material>(find.ancestor(of: find.text('Makan'), matching: find.byType(Material)).first);
+    expect(material.color, AppColors.surface);
+  });
+
+  testWidgets('Edit dan Hapus tersedia sebagai aksi pembaca layar', (tester) async {
+    final handle = tester.ensureSemantics();
+    var edited = 0;
+    await pumpRow(tester, onEdit: () => edited++, onDelete: () {});
+    final node = tester.getSemantics(find.byType(AppSwipeActions));
+    final labels = node.getSemanticsData().customSemanticsActionIds!
+        .map((id) => CustomSemanticsAction.getAction(id)!.label)
+        .toList();
+    expect(labels, containsAll(['Edit', 'Hapus']));
+    handle.dispose();
   });
 }

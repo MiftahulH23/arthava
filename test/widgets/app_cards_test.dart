@@ -3,6 +3,7 @@ import 'package:catat_uang_app/widgets/app_hero_card.dart';
 import 'package:catat_uang_app/widgets/app_summary_widget.dart';
 import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -28,6 +29,8 @@ void main() {
       child: AppHeroCard(child: AppHeroAmount('Rp 999.999.999.999.999')),
     )), size: const Size(360, 740));
     expect(tester.takeException(), isNull);
+    // maxLines: 1 memotong diam-diam tanpa exception; pastikan angka utuh (mengecil).
+    expect(tester.renderObject<RenderParagraph>(find.text('Rp 999.999.999.999.999')).didExceedMaxLines, isFalse);
   });
 
   testWidgets('AppSurfaceCard putih radius 24 dan bisa ditap', (tester) async {

@@ -65,6 +65,10 @@ void main() {
     test('dibatasi 15 digit', () {
       expect(parseRupiah('1234567890123456789'), 123456789012345);
     });
+    test('bagian desimal (,00 / ,50) dibuang, bukan digabung', () {
+      expect(parseRupiah('Rp 1.250.000,00'), 1250000);
+      expect(parseRupiah('1.250.000,50'), 1250000);
+    });
   });
 
   group('RupiahInputFormatter', () {
@@ -75,6 +79,10 @@ void main() {
     });
     test('membersihkan teks tempelan campur', () {
       expect(_apply('', 'Rp 1.250.000,-').text, '1.250.000');
+    });
+    test('tempelan berdesimal tidak menggelembung 100x', () {
+      expect(_apply('', 'Rp 1.250.000,00').text, '1.250.000');
+      expect(_apply('', '45.000,5').text, '45.000');
     });
     test('menghapus semua digit menghasilkan string kosong', () {
       final v = _apply('5', '');
