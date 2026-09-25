@@ -2,6 +2,13 @@ import 'package:catat_uang_app/core/formatters.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+TextEditingValue _applyAt(String oldText, int oldCursor, String newText, int newCursor) {
+  return RupiahInputFormatter().formatEditUpdate(
+    TextEditingValue(text: oldText, selection: TextSelection.collapsed(offset: oldCursor)),
+    TextEditingValue(text: newText, selection: TextSelection.collapsed(offset: newCursor)),
+  );
+}
+
 TextEditingValue _apply(String oldText, String newText) {
   return RupiahInputFormatter().formatEditUpdate(
     TextEditingValue(text: oldText, selection: TextSelection.collapsed(offset: oldText.length)),
@@ -31,6 +38,10 @@ void main() {
       expect(formatRupiahSigned(45000, isIncome: false), '-Rp 45.000');
       expect(formatRupiahSigned(-45000, isIncome: false), '-Rp 45.000');
     });
+    test('nol tanpa tanda', () {
+      expect(formatRupiahSigned(0, isIncome: false), 'Rp 0');
+      expect(formatRupiahSigned(0.3, isIncome: true), 'Rp 0');
+    });
   });
 
   group('formatRupiahCompact', () {
@@ -49,6 +60,12 @@ void main() {
     });
     test('negatif', () {
       expect(formatRupiahCompact(-3100000), '-Rp 3,1 jt');
+    });
+    test('pembulatan yang melewati batas satuan naik ke satuan berikutnya', () {
+      expect(formatRupiahCompact(999950), 'Rp 1 jt');
+      expect(formatRupiahCompact(999999), 'Rp 1 jt');
+      expect(formatRupiahCompact(999.6), 'Rp 1 rb');
+      expect(formatRupiahCompact(999), 'Rp 999');
     });
   });
 
@@ -91,6 +108,18 @@ void main() {
     });
     test('membuang nol di depan', () {
       expect(_apply('', '000450').text, '450');
+    });
+    test('mengetik di tengah angka mempertahankan posisi kursor', () {
+      // '1.25|0.000' + ketik 9 -> '12.59|0.000'
+      final v = _applyAt('1.250.000', 4, '1.2590.000', 5);
+      expect(v.text, '12.590.000');
+      expect(v.selection, const TextSelection.collapsed(offset: 5));
+    });
+    test('backspace tepat setelah titik menghapus digit sebelum titik', () {
+      // '1.|250.000' backspace -> '|250.000'
+      final v = _applyAt('1.250.000', 2, '1250.000', 1);
+      expect(v.text, '250.000');
+      expect(v.selection, const TextSelection.collapsed(offset: 0));
     });
     test('dibatasi 15 digit', () {
       final v = _apply('', '9999999999999999999');

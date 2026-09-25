@@ -29,7 +29,9 @@ class AppChipTabs extends StatelessWidget {
                 selected: i == selectedIndex,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => onChanged(i),
+                  onTap: () {
+                    if (i != selectedIndex) onChanged(i);
+                  },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 160),
                     height: 30,

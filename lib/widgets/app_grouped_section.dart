@@ -37,12 +37,23 @@ class AppGroupedSection extends StatelessWidget {
                       : Text(header!.toUpperCase(), style: AppTextStyles.groupLabel),
                 ),
                 if (headerAction != null)
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onHeaderAction,
-                    child: Text(
-                      headerAction!,
-                      style: AppTextStyles.subhead.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+                  Semantics(
+                    button: true,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onHeaderAction,
+                      // Target sentuh min 44 tanpa mengubah posisi teks label.
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          widthFactor: 1,
+                          child: Text(
+                            headerAction!,
+                            style: AppTextStyles.subhead.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
               ],

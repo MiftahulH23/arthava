@@ -47,4 +47,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(results, [false, true]);
   });
+
+  testWidgets('tombol Batal di sheet minimal 44 dan berupa tombol', (tester) async {
+    await pumpApp(tester, Builder(builder: (context) => Scaffold(body: TextButton(
+      onPressed: () => showAppFormSheet<void>(context: context, title: 'Buat Anggaran', builder: (_) => const Text('isi')),
+      child: const Text('buka'),
+    ))));
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    final batal = find.ancestor(of: find.text('Batal'), matching: find.byType(Semantics)).first;
+    expect(tester.getSize(batal).height, greaterThanOrEqualTo(44));
+    expect(tester.getSemantics(find.text('Batal')), containsSemantics(isButton: true));
+  });
 }

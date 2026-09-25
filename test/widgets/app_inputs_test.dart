@@ -48,4 +48,17 @@ void main() {
     expect(find.text('Jumlah Uang'), findsOneWidget);
     expect(tester.renderObject<RenderParagraph>(find.text('Rp 999.999.999.999.999')).didExceedMaxLines, isFalse);
   });
+
+  testWidgets('AppAmountField mengecilkan huruf untuk nominal panjang', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    await pumpApp(tester, Scaffold(body: AppAmountField(controller: controller, label: 'Nominal')), size: const Size(360, 740));
+    double fontSize() => tester.widget<TextField>(find.byType(TextField)).style!.fontSize!;
+    await tester.enterText(find.byType(TextField), '45000');
+    await tester.pump();
+    expect(fontSize(), 40);
+    await tester.enterText(find.byType(TextField), '999999999999999');
+    await tester.pump();
+    expect(fontSize(), lessThan(40));
+  });
 }

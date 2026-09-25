@@ -50,9 +50,23 @@ class AppAmountField extends StatelessWidget {
   final bool autofocus;
   final ValueChanged<String>? onChanged;
 
+  // Nominal panjang mengecil (min 22) supaya digit depan tidak tergeser keluar layar.
+  static double fontSizeFor(String text) {
+    const base = 40.0;
+    if (text.length <= 11) return base;
+    return (base * 11 / text.length).clamp(22.0, base);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final style = AppTextStyles.amountLarge.copyWith(color: color ?? AppColors.textPrimary);
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) => _build(context, fontSizeFor(value.text)),
+    );
+  }
+
+  Widget _build(BuildContext context, double fontSize) {
+    final style = AppTextStyles.amountLarge.copyWith(color: color ?? AppColors.textPrimary, fontSize: fontSize);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

@@ -42,6 +42,8 @@ class AppHeroLabel extends StatelessWidget {
 }
 
 /// Nominal besar di kartu hero; mengecil otomatis bila tidak muat.
+/// Butuh lebar terbatas: di dalam `Row`, bungkus dengan `Expanded` (tanpa itu
+/// FittedBox tidak bisa mengecil dan Row overflow).
 class AppHeroAmount extends StatelessWidget {
   const AppHeroAmount(this.text, {this.fontSize = 32, super.key});
 

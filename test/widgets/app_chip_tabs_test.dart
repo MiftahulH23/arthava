@@ -19,4 +19,13 @@ void main() {
     await tester.tap(find.text('Periode'));
     expect(calls, [3]);
   });
+
+  testWidgets('tap chip yang sudah terpilih tidak memanggil onChanged', (tester) async {
+    final calls = <int>[];
+    await pumpApp(tester, Scaffold(body: AppChipTabs(
+      labels: const ['Harian', 'Bulanan'], selectedIndex: 1, onChanged: calls.add,
+    )));
+    await tester.tap(find.text('Bulanan'));
+    expect(calls, isEmpty);
+  });
 }

@@ -36,4 +36,17 @@ void main() {
     final box = tester.widget<Container>(find.byKey(const ValueKey('grouped-separator-1')));
     expect((box.color), AppColors.separator);
   });
+
+  testWidgets('aksi header (Kelola) minimal 44 tinggi dan berupa tombol', (tester) async {
+    var taps = 0;
+    await pumpApp(tester, Scaffold(body: AppGroupedSection(
+      header: 'Dompet', headerAction: 'Kelola', onHeaderAction: () => taps++,
+      children: const [SizedBox(height: 56)],
+    )));
+    final action = find.ancestor(of: find.text('Kelola'), matching: find.byType(Semantics)).first;
+    expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
+    expect(tester.getSemantics(find.text('Kelola')), containsSemantics(isButton: true));
+    await tester.tap(find.text('Kelola'));
+    expect(taps, 1);
+  });
 }

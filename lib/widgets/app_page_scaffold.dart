@@ -100,48 +100,61 @@ class _AppNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          if (title != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 96),
-              child: Text(title!, style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-          Row(
-            children: [
-              if (backLabel != null)
-                Semantics(
-                  button: true,
-                  label: 'Kembali ke $backLabel',
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () => Navigator.maybePop(context),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(6, 8, 10, 8),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(PhosphorIconsRegular.caretLeft, size: 22, color: AppColors.primary),
-                          const SizedBox(width: 2),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 120),
-                            child: Text(backLabel!, style: AppTextStyles.navLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                        ],
+    final back = backLabel == null
+        ? const SizedBox.shrink()
+        : Semantics(
+            button: true,
+            label: 'Kembali ke $backLabel',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => Navigator.maybePop(context),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(PhosphorIconsRegular.caretLeft, size: 22, color: AppColors.primary),
+                      const SizedBox(width: 2),
+                      Flexible(
+                        child: Text(backLabel!, style: AppTextStyles.navLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              const Spacer(),
-              for (var i = 0; i < actions.length; i++) ...[
-                if (i > 0) const SizedBox(width: 4),
-                actions[i],
-              ],
-              const SizedBox(width: 10),
-            ],
+              ),
+            ),
+          );
+
+    // Kiri : tengah : kanan = 1 : 2 : 1 — judul tetap di tengah dan label
+    // kembali yang panjang terpotong "…" alih-alih menimpa judul (gaya iOS).
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          Expanded(child: Align(alignment: Alignment.centerLeft, child: back)),
+          if (title != null)
+            Expanded(
+              flex: 2,
+              child: Text(title!, textAlign: TextAlign.center, style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < actions.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 4),
+                      actions[i],
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -162,9 +175,8 @@ class AppNavAction extends StatelessWidget {
         color = null,
         tooltip = null;
 
-  const AppNavAction.icon(IconData this.icon, {required this.onPressed, this.color, super.key})
-      : label = null,
-        tooltip = null;
+  const AppNavAction.icon(IconData this.icon, {required this.onPressed, this.color, this.tooltip, super.key})
+      : label = null;
 
   final IconData? icon;
   final String? label;
@@ -175,22 +187,34 @@ class AppNavAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (label != null) {
-      return InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onPressed,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Text(label!, style: AppTextStyles.navLabel.copyWith(fontWeight: FontWeight.w600)),
+      return Semantics(
+        button: true,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onPressed,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Center(
+                widthFactor: 1,
+                child: Text(label!, style: AppTextStyles.navLabel.copyWith(fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ),
         ),
       );
     }
-    final button = InkResponse(
+    final button = Semantics(
+      button: true,
+      child: InkResponse(
       radius: 22,
       onTap: onPressed,
       child: SizedBox(
         width: 44,
         height: 44,
         child: Icon(icon, size: 24, color: color ?? AppColors.primary),
+      ),
       ),
     );
     return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
