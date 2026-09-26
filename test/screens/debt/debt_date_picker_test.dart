@@ -32,10 +32,13 @@ void main() {
     expect(find.byType(CalendarDatePicker), findsOneWidget);
     expect(find.byType(DatePickerDialog), findsNothing);
     expect(find.text('Tanggal Pinjam'), findsNWidgets(2)); // baris form + judul sheet pemilih
+    await tester.tap(find.text('15'));
+    await tester.pump();
     await tester.tap(find.text('Pilih'));
     await tester.pumpAndSettle();
     expect(find.byType(CalendarDatePicker), findsNothing);
     expect(find.text('Catat Utang / Piutang'), findsOneWidget); // sheet form masih terbuka
+    expect(find.text('15 Sep 2026'), findsOneWidget); // nilai baru tampil di baris
   });
 
   testWidgets('tanggal pembayaran cicilan memakai sheet bersama', (tester) async {

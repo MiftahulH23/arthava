@@ -1,5 +1,7 @@
 import 'package:catat_uang_app/widgets/app_pickers.dart';
+import 'package:catat_uang_app/core/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/pump_app.dart';
@@ -169,5 +171,86 @@ void main() {
     final style = DefaultTextStyle.of(tester.element(find.text('15'))).style.merge(day.style);
     // google_fonts memberi nama family per bobot, mis. PlusJakartaSans_500.
     expect(style.fontFamily, startsWith('PlusJakartaSans'));
+  });
+
+  testWidgets('mode gelap: angka kalender tetap gelap di kartu putih (terbaca)', (tester) async {
+    await pumpApp(
+      tester,
+      Theme(
+        data: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary, brightness: Brightness.dark)),
+        child: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => showAppDatePicker(
+                  context: context,
+                  initialDate: DateTime(2026, 9, 26),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                ),
+                child: const Text('buka'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.text('15')).style!.color, AppColors.textPrimary);
+  });
+
+  testWidgets('rentang: ganti tahun saat mengedit Dari tidak loncat ke Sampai', (tester) async {
+    Object? result = 'belum';
+    await pumpOpener(
+      tester,
+      (c) => showAppDateRangePicker(
+        context: c,
+        initialRange: DateTimeRange(start: DateTime(2026, 9, 1), end: DateTime(2026, 9, 10)),
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2030),
+      ),
+      (r) => result = r,
+    );
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('September 2026'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2025'));
+    await tester.pumpAndSettle();
+    // Masih mengedit "Dari": ketuk 15 = tanggal mulai, baru pindah ke "Sampai".
+    await tester.tap(find.text('15'));
+    await tester.pump();
+    await tester.tap(find.text('Pilih'));
+    await tester.pumpAndSettle();
+    expect(result, DateTimeRange(start: DateTime(2025, 9, 15), end: DateTime(2026, 9, 10)));
+  });
+
+  testWidgets('kalender selalu berbahasa Indonesia walau bahasa perangkat Inggris', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        supportedLocales: const [Locale('id', 'ID'), Locale('en', 'US')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => showAppDatePicker(
+                  context: context,
+                  initialDate: DateTime(2026, 9, 26),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                ),
+                child: const Text('buka'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    expect(find.text('R'), findsOneWidget); // Rabu (header hari id_ID); Inggris tidak punya "R"
   });
 }

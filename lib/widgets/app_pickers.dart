@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
@@ -20,19 +22,35 @@ DateTime _clamp(DateTime d, DateTime first, DateTime last) {
 }
 
 /// Kalender di kartu putih; warna aksen primary.
+///
+/// Kartu selalu terang, jadi skema warna & teks kalender dipaksa terang juga —
+/// tanpa ini, mode gelap memberi angka terang di atas kartu putih (tak terbaca).
+/// Bahasa kalender dipaksa id_ID (app tidak menyetel `locale`, jadi mengikuti
+/// perangkat), sama seperti `DateFormat(..., 'id_ID')` di label sheet.
 Widget _calendarCard(BuildContext context, Widget calendar) {
-  return Theme(
-    data: Theme.of(context).copyWith(
-      colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppColors.primary, onPrimary: Colors.white, surface: AppColors.surface),
-      // Font aplikasi (spec G14): kalender Material tidak boleh jatuh ke Roboto bila
-      // tema pemanggil tidak menyetelnya. Family diambil dari AppTextStyles (dibuat
-      // sekali), bukan GoogleFonts di build() yang memicu pemuatan font tiap rebuild.
-      textTheme: Theme.of(context).textTheme.apply(fontFamily: AppTextStyles.body.fontFamily),
-    ),
-    child: Container(
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(20)),
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: calendar,
+  final scheme = ColorScheme.fromSeed(seedColor: AppColors.primary).copyWith(
+    primary: AppColors.primary,
+    onPrimary: Colors.white,
+    surface: AppColors.surface,
+    onSurface: AppColors.textPrimary,
+  );
+  return Localizations.override(
+    context: context,
+    locale: const Locale('id', 'ID'),
+    child: Theme(
+      data: Theme.of(context).copyWith(
+        brightness: Brightness.light,
+        colorScheme: scheme,
+        // Font aplikasi (spec G14): kalender Material tidak boleh jatuh ke Roboto bila
+        // tema pemanggil tidak menyetelnya. Family diambil dari AppTextStyles (dibuat
+        // sekali), bukan GoogleFonts di build() yang memicu pemuatan font tiap rebuild.
+        textTheme: Typography.material2021(colorScheme: scheme).black.apply(fontFamily: AppTextStyles.body.fontFamily),
+      ),
+      child: Container(
+        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(20)),
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: calendar,
+      ),
     ),
   );
 }
@@ -192,6 +210,10 @@ Future<DateTimeRange?> showAppDateRangePicker({
   var end = initialRange == null ? start : _clamp(initialRange.end, firstDate, lastDate);
   if (end.isBefore(start)) end = start;
   var editingStart = true;
+  // Ganti tahun di header kalender juga memanggil onDateChanged, tepat setelah
+  // onDisplayedMonthChanged (Flutter `_handleYearChanged`). Tandai sesaat supaya
+  // itu tidak dianggap ketukan tanggal (yang memindahkan edit ke "Sampai").
+  var monthJustChanged = false;
   final fmt = DateFormat('d MMM yyyy', 'id_ID');
   return showAppFormSheet<DateTimeRange>(
     context: context,
@@ -218,11 +240,17 @@ Future<DateTimeRange?> showAppDateRangePicker({
                 initialDate: editingStart ? start : end,
                 firstDate: _dateOnly(editingStart ? firstDate : start),
                 lastDate: _dateOnly(lastDate),
+                onDisplayedMonthChanged: (_) {
+                  monthJustChanged = true;
+                  scheduleMicrotask(() => monthJustChanged = false);
+                },
                 onDateChanged: (d) => setSheetState(() {
+                  final fromYearChange = monthJustChanged;
+                  monthJustChanged = false;
                   if (editingStart) {
                     start = d;
                     if (end.isBefore(start)) end = start;
-                    editingStart = false;
+                    if (!fromYearChange) editingStart = false;
                   } else {
                     end = d;
                   }
