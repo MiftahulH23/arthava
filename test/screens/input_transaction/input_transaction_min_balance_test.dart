@@ -5,6 +5,7 @@ import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../helpers/pump_app.dart';
 
@@ -149,5 +150,18 @@ void main() {
     await pumpInput(tester, '1000', pickCategory: false);
     final walletRow = find.ancestor(of: find.text('Dompet'), matching: find.byType(AppListRow));
     expect(find.descendant(of: walletRow, matching: find.text('BCA')), findsOneWidget);
+  });
+
+  testWidgets('tidak ada kategori untuk jenis ini: baris Kategori tanpa chevron (tidak bisa diketuk)', (tester) async {
+    // Fake hanya punya kategori pengeluaran; buka sebagai pemasukan.
+    await pumpApp(
+      tester,
+      const InputTransactionScreen(initialIsExpense: false),
+      overrides: [inputTransactionProvider.overrideWith(() => FakeInputNotifier())],
+      size: const Size(600, 1400),
+    );
+    await tester.pumpAndSettle();
+    final row = find.ancestor(of: find.text('Kategori'), matching: find.byType(AppListRow));
+    expect(find.descendant(of: row, matching: find.byIcon(PhosphorIconsRegular.caretRight)), findsNothing);
   });
 }

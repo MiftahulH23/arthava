@@ -1,4 +1,5 @@
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -92,5 +93,23 @@ void main() {
     );
     final value = tester.renderObject<RenderParagraph>(find.text('Sab, 26 Sep 2026'));
     expect(value.didExceedMaxLines, isFalse);
+  });
+
+  testWidgets('trailing ikut dihitung: judul pendek tetap satu baris walau nilai panjang', (tester) async {
+    await pumpApp(
+      tester,
+      const Scaffold(
+        body: AppListRow(
+          leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: AppColors.primary),
+          title: 'Dompet',
+          value: 'Rp 9.300.000.000.000.000.000',
+          trailing: Icon(PhosphorIconsBold.check, size: 20),
+        ),
+      ),
+      size: const Size(600, 400),
+    );
+    final title = tester.renderObject<RenderParagraph>(find.text('Dompet'));
+    // Satu baris: tinggi di bawah dua kali ukuran huruf.
+    expect(title.size.height, lessThan(AppTextStyles.bodyStrong.fontSize! * 2));
   });
 }

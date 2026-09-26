@@ -36,14 +36,16 @@ class AppListRow extends StatelessWidget {
   /// panjang dua baris), dan boleh memakai sisa lebar yang tidak dibutuhkan judul
   /// satu baris — jadi judul pendek ("Tanggal") tidak memotong nilai panjang.
   double _valueMaxWidth(BuildContext context, double rowWidth) {
-    final titleWidth = (TextPainter(
+    final painter = TextPainter(
       text: TextSpan(text: title, style: AppTextStyles.bodyStrong),
       maxLines: 1,
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
-    )..layout())
-        .width;
-    final reserved = (leading != null ? 52.0 : 0) + (showChevron ? 22.0 : 0) + 8;
+    )..layout();
+    final titleWidth = painter.width;
+    painter.dispose();
+    // trailing (mis. centang 20 + jarak 8) lebarnya tak diketahui: sisihkan 32.
+    final reserved = (leading != null ? 52.0 : 0) + (showChevron ? 22.0 : 0) + (trailing != null ? 32.0 : 0) + 8;
     final shared = rowWidth - reserved; // lebar yang dibagi judul & nilai
     final spare = shared - titleWidth - 1;
     return spare > shared * 0.4 ? spare : shared * 0.4;

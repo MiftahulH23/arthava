@@ -132,13 +132,13 @@ class _InputTransactionScreenState
               "AI Kategori: ${result['kategori']} (Sesuaikan)";
         }
       });
-      if (mounted)
-        AppNotification.success(
-          context,
-          "Berhasil menjumlahkan ${images.length} struk! 🚀",
-        );
+      // `mounted` sudah dicek tepat setelah runWithAppLoading.
+      AppNotification.success(
+        context,
+        "Berhasil menjumlahkan ${images.length} struk! 🚀",
+      );
     } else {
-      if (mounted) AppNotification.error(context, "AI gagal membaca struk.");
+      AppNotification.error(context, "AI gagal membaca struk.");
     }
   }
 
@@ -514,7 +514,8 @@ class _InputTransactionScreenState
               value: selectedCategory != null
                   ? selectedCategory['name'].toString()
                   : (state.categories.isEmpty ? "Memuat..." : "Pilih Kategori"),
-              showChevron: !_isReadOnly,
+              // Chevron hanya bila memang ada yang bisa dipilih.
+              showChevron: !_isReadOnly && filteredCategories.isNotEmpty,
               onTap: (_isReadOnly || filteredCategories.isEmpty)
                   ? null
                   : () => _showCategoryPicker(filteredCategories),
