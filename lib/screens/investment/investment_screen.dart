@@ -1,23 +1,28 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/models/investment_model.dart';
 import 'package:catat_uang_app/providers/investment_provider.dart';
-import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_amount_display.dart';
+import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:catat_uang_app/widgets/app_callout.dart';
+import 'package:catat_uang_app/widgets/app_dialogs.dart';
+import 'package:catat_uang_app/widgets/app_empty_state.dart';
+import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:catat_uang_app/widgets/app_hero_card.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_sheet.dart';
+import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:catat_uang_app/widgets/app_wallet_select_row.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class InvestmentScreen extends ConsumerWidget {
   const InvestmentScreen({super.key});
-
-  static final _currencyFormat = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: 'Rp ',
-    decimalDigits: 0,
-  );
 
   static final _inputFormat = NumberFormat.currency(
     locale: 'id_ID',
@@ -31,195 +36,62 @@ class InvestmentScreen extends ConsumerWidget {
     final amountController = TextEditingController();
     final wallets = ref.read(investmentProvider).wallets;
     int? selectedWalletId = wallets.isNotEmpty ? wallets.first['id'] as int : null;
+    bool isSubmitting = false;
 
-    showAppBottomSheet(
+    showAppFormSheet(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-            ),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40, height: 5, margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Investasi Baru", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
-                      IconButton(icon: const Icon(Icons.close, color: Colors.grey), onPressed: () => Navigator.pop(context)),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text("Nama Aset (Misal: Saham BBCA, Emas Antam)", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: nameController,
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-                    decoration: InputDecoration(
-                      filled: true, fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text("Jenis (Misal: Saham, Reksadana, Kripto)", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: typeController,
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-                    decoration: InputDecoration(
-                      filled: true, fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text("Modal Awal", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primary),
-                    decoration: InputDecoration(
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(15),
-                        child: Text("Rp", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
-                      ),
-                      filled: true, fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                    ),
-                    onChanged: (s) {
-                      s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                      if (s.isNotEmpty) {
-                        amountController.value = TextEditingValue(
-                          text: _inputFormat.format(int.parse(s)),
-                          selection: TextSelection.collapsed(offset: _inputFormat.format(int.parse(s)).length),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text("Sumber Dana", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(15)),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: selectedWalletId,
-                        isExpanded: true,
-                        items: wallets.map((w) => DropdownMenuItem(value: w['id'] as int, child: Text("${w['name']} (Sisa: ${_currencyFormat.format(w['balance'])})", style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
-                        onChanged: (v) => setSheetState(() => selectedWalletId = v),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-
-                  SizedBox(
-                    width: double.infinity, height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), elevation: 0),
-                      onPressed: () async {
-                        if (nameController.text.isEmpty || typeController.text.isEmpty || amountController.text.isEmpty) {
-                          AppNotification.error(context, "Semua kolom wajib diisi!");
-                          return;
-                        }
-                        if (selectedWalletId == null) {
-                          AppNotification.error(context, "Pilih dompet!");
-                          return;
-                        }
-                        final amount = double.parse(amountController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-
-                        try {
-                          await ref.read(investmentProvider.notifier).buyInvestment(
-                                name: nameController.text.trim(),
-                                type: typeController.text.trim(),
-                                amount: amount,
-                                walletId: selectedWalletId!,
-                              );
-
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            AppNotification.success(context, "Investasi berhasil dibeli!");
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            AppNotification.error(context, e.toString().replaceFirst('Exception: ', ''));
-                          }
-                        }
-                      },
-                      child: Text("Beli Aset", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-    );
-  }
-
-  void _showActionSheet(BuildContext context, WidgetRef ref, InvestmentModel inv) {
-    showAppBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: Column(
+      title: 'Investasi Baru',
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(inv.name, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 5),
-            Text(inv.type, style: GoogleFonts.poppins(color: Colors.grey)),
+            AppAmountField(controller: amountController, label: 'Modal Awal', color: AppColors.primary),
+            const SizedBox(height: 14),
+            const _FieldLabel('Nama Aset (Misal: Saham BBCA, Emas Antam)'),
+            AppTextField(controller: nameController, hint: 'Saham BBCA'),
+            const SizedBox(height: 14),
+            const _FieldLabel('Jenis (Misal: Saham, Reksadana, Kripto)'),
+            AppTextField(controller: typeController, hint: 'Saham'),
+            const SizedBox(height: 14),
+            AppWalletSelectRow(
+              header: 'Sumber Dana',
+              wallets: wallets,
+              selectedId: selectedWalletId,
+              onChanged: (v) => setSheetState(() => selectedWalletId = v),
+            ),
             const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(PhosphorIconsFill.plusCircle, color: Colors.green),
-              title: Text("Beli Tambahan (Top Up)", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                _showBuySellSheet(context, ref, inv, true);
-              },
-            ),
-            ListTile(
-              leading: const Icon(PhosphorIconsFill.minusCircle, color: Colors.red),
-              title: Text("Jual Aset (Withdraw)", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                _showBuySellSheet(context, ref, inv, false);
-              },
-            ),
-            ListTile(
-              leading: const Icon(PhosphorIconsFill.arrowsClockwise, color: Colors.blue),
-              title: Text("Update Nilai Terkini", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-              subtitle: Text("Sesuaikan dengan harga pasar saat ini", style: GoogleFonts.poppins(fontSize: 12)),
-              onTap: () {
-                Navigator.pop(context);
-                _showUpdateValueSheet(context, ref, inv);
-              },
-            ),
-            ListTile(
-              leading: const Icon(PhosphorIconsFill.trash, color: Colors.grey),
-              title: Text("Hapus Portofolio", style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.grey)),
-              onTap: () async {
-                Navigator.pop(context);
-                await ref.read(investmentProvider.notifier).deleteInvestment(inv.id);
+            AppPrimaryButton(
+              label: 'Beli Aset',
+              loading: isSubmitting,
+              onPressed: () async {
+                if (nameController.text.isEmpty || typeController.text.isEmpty || amountController.text.isEmpty) {
+                  AppNotification.error(sheetContext, "Semua kolom wajib diisi!");
+                  return;
+                }
+                if (selectedWalletId == null) {
+                  AppNotification.error(sheetContext, "Pilih dompet!");
+                  return;
+                }
+                final amount = parseRupiah(amountController.text).toDouble();
+                setSheetState(() => isSubmitting = true);
+                try {
+                  await ref.read(investmentProvider.notifier).buyInvestment(
+                        name: nameController.text.trim(),
+                        type: typeController.text.trim(),
+                        amount: amount,
+                        walletId: selectedWalletId!,
+                      );
+                  if (sheetContext.mounted) {
+                    Navigator.pop(sheetContext);
+                    AppNotification.success(sheetContext, "Investasi berhasil dibeli!");
+                  }
+                } catch (e) {
+                  if (sheetContext.mounted) {
+                    setSheetState(() => isSubmitting = false);
+                    AppNotification.error(sheetContext, e.toString().replaceFirst('Exception: ', ''));
+                  }
+                }
               },
             ),
           ],
@@ -228,204 +100,173 @@ class InvestmentScreen extends ConsumerWidget {
     );
   }
 
+  void _showActionSheet(BuildContext context, WidgetRef ref, InvestmentModel inv) {
+    showAppFormSheet(
+      context: context,
+      title: inv.name,
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(inv.type, style: AppTextStyles.subhead, textAlign: TextAlign.center),
+          const SizedBox(height: 14),
+          AppGroupedSection(
+            children: [
+              AppListRow(
+                leading: const AppIconTile(icon: PhosphorIconsFill.plusCircle, color: AppColors.income),
+                title: "Beli Tambahan (Top Up)",
+                showChevron: true,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showBuySellSheet(context, ref, inv, true);
+                },
+              ),
+              AppListRow(
+                leading: const AppIconTile(icon: PhosphorIconsFill.minusCircle, color: AppColors.expense),
+                title: "Jual Aset (Withdraw)",
+                showChevron: true,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showBuySellSheet(context, ref, inv, false);
+                },
+              ),
+              AppListRow(
+                leading: const AppIconTile(icon: PhosphorIconsFill.arrowsClockwise, color: AppColors.primary),
+                title: "Update Nilai Terkini",
+                subtitle: "Sesuaikan dengan harga pasar saat ini",
+                showChevron: true,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showUpdateValueSheet(context, ref, inv);
+                },
+              ),
+              AppListRow(
+                leading: const AppIconTile(icon: PhosphorIconsFill.trash, color: AppColors.tintGray),
+                title: "Hapus Portofolio",
+                titleColor: AppColors.textSecondary,
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  // Semua hapus di app dikonfirmasi dulu (G12/G17); dulu langsung terhapus.
+                  final confirmed = await showAppConfirmDialog(
+                    context: context,
+                    title: 'Hapus Portofolio?',
+                    message: "Aset '${inv.name}' dihapus dari daftar. Saldo dompet tidak berubah.",
+                  );
+                  if (!confirmed || !context.mounted) return;
+                  await ref.read(investmentProvider.notifier).deleteInvestment(inv.id);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBuySellSheet(BuildContext context, WidgetRef ref, InvestmentModel inv, bool isBuy) {
     final amountController = TextEditingController();
     final wallets = ref.read(investmentProvider).wallets;
     int? selectedWalletId = wallets.isNotEmpty ? wallets.first['id'] as int : null;
+    bool isSubmitting = false;
+    final color = isBuy ? AppColors.income : AppColors.expense;
 
-    showAppBottomSheet(
+    showAppFormSheet(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      title: isBuy ? "Top Up: ${inv.name}" : "Jual: ${inv.name}",
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppAmountField(controller: amountController, label: 'Nominal (Rp)', color: color, autofocus: true),
+            const SizedBox(height: 14),
+            AppWalletSelectRow(
+              header: isBuy ? "Sumber Dana" : "Masuk ke Dompet",
+              wallets: wallets,
+              selectedId: selectedWalletId,
+              onChanged: (v) => setSheetState(() => selectedWalletId = v),
             ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(isBuy ? "Top Up: ${inv.name}" : "Jual: ${inv.name}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
-                      IconButton(icon: const Icon(Icons.close, color: Colors.grey), onPressed: () => Navigator.pop(context)),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text("Nominal (Rp)", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 20, color: isBuy ? Colors.green : Colors.red),
-                    decoration: InputDecoration(
-                      prefixIcon: Padding(padding: const EdgeInsets.all(15), child: Text("Rp", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey))),
-                      filled: true, fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                    ),
-                    onChanged: (s) {
-                      s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                      if (s.isNotEmpty) {
-                        amountController.value = TextEditingValue(
-                          text: _inputFormat.format(int.parse(s)),
-                          selection: TextSelection.collapsed(offset: _inputFormat.format(int.parse(s)).length),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text(isBuy ? "Sumber Dana" : "Masuk ke Dompet", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(15)),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: selectedWalletId,
-                        isExpanded: true,
-                        items: wallets.map((w) => DropdownMenuItem(value: w['id'] as int, child: Text("${w['name']} (Sisa: ${_currencyFormat.format(w['balance'])})", style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)))).toList(),
-                        onChanged: (v) => setSheetState(() => selectedWalletId = v),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-
-                  SizedBox(
-                    width: double.infinity, height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: isBuy ? Colors.green : Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), elevation: 0),
-                      onPressed: () async {
-                        if (amountController.text.isEmpty) return;
-                        if (selectedWalletId == null) return;
-                        final amount = double.parse(amountController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-
-                        try {
-                          await ref.read(investmentProvider.notifier).buySellInvestment(
-                                inv: inv,
-                                isBuy: isBuy,
-                                amount: amount,
-                                walletId: selectedWalletId!,
-                              );
-
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            AppNotification.success(context, isBuy ? "Top up berhasil!" : "Penjualan berhasil!");
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            AppNotification.error(context, e.toString().replaceFirst('Exception: ', ''));
-                          }
-                        }
-                      },
-                      child: Text(isBuy ? "Proses Pembelian" : "Proses Penjualan", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 20),
+            AppPrimaryButton(
+              label: isBuy ? "Proses Pembelian" : "Proses Penjualan",
+              color: color,
+              loading: isSubmitting,
+              onPressed: () async {
+                if (amountController.text.isEmpty) return;
+                if (selectedWalletId == null) return;
+                final amount = parseRupiah(amountController.text).toDouble();
+                setSheetState(() => isSubmitting = true);
+                try {
+                  await ref.read(investmentProvider.notifier).buySellInvestment(
+                        inv: inv,
+                        isBuy: isBuy,
+                        amount: amount,
+                        walletId: selectedWalletId!,
+                      );
+                  if (sheetContext.mounted) {
+                    Navigator.pop(sheetContext);
+                    AppNotification.success(sheetContext, isBuy ? "Top up berhasil!" : "Penjualan berhasil!");
+                  }
+                } catch (e) {
+                  if (sheetContext.mounted) {
+                    setSheetState(() => isSubmitting = false);
+                    AppNotification.error(sheetContext, e.toString().replaceFirst('Exception: ', ''));
+                  }
+                }
+              },
             ),
-          ),
+          ],
         ),
+      ),
     );
   }
 
   void _showUpdateValueSheet(BuildContext context, WidgetRef ref, InvestmentModel inv) {
-    final amountController = TextEditingController(text: _inputFormat.format(inv.currentValue));
+    final amountController = TextEditingController(text: _inputFormat.format(inv.currentValue).trim());
+    bool isSubmitting = false;
 
-    showAppBottomSheet(
+    showAppFormSheet(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Update Nilai: ${inv.name}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
-                      IconButton(icon: const Icon(Icons.close, color: Colors.grey), onPressed: () => Navigator.pop(context)),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10)),
-                    child: Row(
-                      children: [
-                        Icon(PhosphorIconsFill.info, color: Colors.blue.shade600, size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text("Update nilai terkini aset sesuai harga pasar. Ini tidak akan memotong saldo dompetmu.", style: GoogleFonts.poppins(fontSize: 12, color: Colors.blue.shade900))),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Text("Nilai Saat Ini (Rp)", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.blue.shade700),
-                    decoration: InputDecoration(
-                      prefixIcon: Padding(padding: const EdgeInsets.all(15), child: Text("Rp", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey))),
-                      filled: true, fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                    ),
-                    onChanged: (s) {
-                      s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                      if (s.isNotEmpty) {
-                        amountController.value = TextEditingValue(
-                          text: _inputFormat.format(int.parse(s)),
-                          selection: TextSelection.collapsed(offset: _inputFormat.format(int.parse(s)).length),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 25),
-
-                  SizedBox(
-                    width: double.infinity, height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade600, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), elevation: 0),
-                      onPressed: () async {
-                        if (amountController.text.isEmpty) return;
-                        final amount = double.parse(amountController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-
-                        try {
-                          await ref.read(investmentProvider.notifier).updateInvestmentValue(inv.id, amount);
-
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            AppNotification.success(context, "Nilai berhasil diperbarui!");
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            AppNotification.error(context, "Error: $e");
-                          }
-                        }
-                      },
-                      child: Text("Simpan Pembaruan", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                  ),
-                ],
+      title: "Update Nilai: ${inv.name}",
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppCallout(
+              icon: PhosphorIconsFill.info,
+              child: Text(
+                "Update nilai terkini aset sesuai harga pasar. Ini tidak akan memotong saldo dompetmu.",
+                style: AppTextStyles.subhead.copyWith(color: AppColors.textPrimary),
               ),
             ),
-          ),
+            const SizedBox(height: 14),
+            AppAmountField(controller: amountController, label: 'Nilai Saat Ini (Rp)', color: AppColors.primary),
+            const SizedBox(height: 20),
+            AppPrimaryButton(
+              label: "Simpan Pembaruan",
+              loading: isSubmitting,
+              onPressed: () async {
+                if (amountController.text.isEmpty) return;
+                final amount = parseRupiah(amountController.text).toDouble();
+                setSheetState(() => isSubmitting = true);
+                try {
+                  await ref.read(investmentProvider.notifier).updateInvestmentValue(inv.id, amount);
+                  if (sheetContext.mounted) {
+                    Navigator.pop(sheetContext);
+                    AppNotification.success(sheetContext, "Nilai berhasil diperbarui!");
+                  }
+                } catch (e) {
+                  if (sheetContext.mounted) {
+                    setSheetState(() => isSubmitting = false);
+                    AppNotification.error(sheetContext, "Error: $e");
+                  }
+                }
+              },
+            ),
+          ],
         ),
+      ),
     );
   }
 
@@ -436,153 +277,140 @@ class InvestmentScreen extends ConsumerWidget {
     final totalValue = invState.totalValue;
     final investments = invState.investments;
 
-    double totalReturn = totalCapital > 0 ? ((totalValue - totalCapital) / totalCapital) * 100 : 0;
-    bool isProfit = totalValue >= totalCapital;
+    final double totalReturn = totalCapital > 0 ? ((totalValue - totalCapital) / totalCapital) * 100 : 0;
+    final bool isProfit = totalValue >= totalCapital;
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: Text("Investasi", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: invState.isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : RefreshIndicator(
-            onRefresh: () => ref.read(investmentProvider.notifier).fetchData(),
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                // Header Dashboard
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue.shade800, Colors.blue.shade600],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Total Nilai Investasi", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14)),
-                      const SizedBox(height: 5),
-                      Text(_currencyFormat.format(totalValue), style: GoogleFonts.poppins(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
+    return AppPageScaffold(
+      title: 'Investasi',
+      backLabel: 'Beranda',
+      actions: [AppNavAction.add(onPressed: () => _showAddInvestmentSheet(context, ref))],
+      onRefresh: () => ref.read(investmentProvider.notifier).fetchData(),
+      children: invState.isLoading
+          ? const [
+              Padding(
+                padding: EdgeInsets.only(top: 80),
+                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              ),
+            ]
+          : [
+              AppHeroCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AppHeroLabel('Total Nilai Investasi'),
+                    const SizedBox(height: 4),
+                    AppHeroAmount(formatRupiah(totalValue)),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Total Modal", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
-                              Text(_currencyFormat.format(totalCapital), style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                              const AppHeroLabel('Total Modal'),
+                              const SizedBox(height: 2),
+                              Text(
+                                formatRupiah(totalCapital),
+                                style: AppTextStyles.bodyStrong.copyWith(color: Colors.white),
+                              ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: isProfit ? Colors.greenAccent.withOpacity(0.2) : Colors.redAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-                            child: Row(
-                              children: [
-                                Icon(isProfit ? PhosphorIconsFill.trendUp : PhosphorIconsFill.trendDown, color: isProfit ? Colors.greenAccent : Colors.redAccent, size: 16),
-                                const SizedBox(width: 5),
-                                Text("${isProfit ? '+' : ''}${totalReturn.toStringAsFixed(2)}%", style: GoogleFonts.poppins(color: isProfit ? Colors.greenAccent : Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                Text("Daftar Portofolio", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
-                const SizedBox(height: 15),
-
-                if (investments.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 50),
-                      child: Column(
-                        children: [
-                          Icon(PhosphorIconsRegular.chartLineUp, size: 64, color: Colors.grey.shade400),
-                          const SizedBox(height: 15),
-                          Text("Belum ada aset investasi.", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16)),
-                        ],
-                      ),
+                        ),
+                        _ReturnPill(percent: totalReturn, isProfit: isProfit),
+                      ],
                     ),
-                  )
-                else
-                  ...investments.map((inv) {
-                    double ret = inv.capitalAmount > 0 ? ((inv.currentValue - inv.capitalAmount) / inv.capitalAmount) * 100 : 0;
-                    bool profit = inv.currentValue >= inv.capitalAmount;
-                    return GestureDetector(
-                      onTap: () => _showActionSheet(context, ref, inv),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 15),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(15)),
-                              child: Icon(PhosphorIconsFill.chartLineUp, color: Colors.blue.shade700, size: 24),
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    inv.name,
-                                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    inv.type,
-                                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text("Modal: ${_currencyFormat.format(inv.capitalAmount)}", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                                ],
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(_currencyFormat.format(inv.currentValue), style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-                                const SizedBox(height: 5),
-                                Text("${profit ? '+' : ''}${ret.toStringAsFixed(2)}%", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12, color: profit ? Colors.green : Colors.red)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-              ],
+                  ],
+                ),
+              ),
+              if (investments.isEmpty)
+                const AppEmptyState(icon: PhosphorIconsRegular.chartLineUp, title: 'Belum ada aset investasi.')
+              else
+                AppGroupedSection(
+                  header: 'Daftar Portofolio',
+                  children: [
+                    for (final inv in investments)
+                      _InvestmentRow(inv: inv, onTap: () => _showActionSheet(context, ref, inv)),
+                  ],
+                ),
+            ],
+    );
+  }
+}
+
+class _ReturnPill extends StatelessWidget {
+  const _ReturnPill({required this.percent, required this.isProfit});
+
+  final double percent;
+  final bool isProfit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isProfit ? PhosphorIconsFill.trendUp : PhosphorIconsFill.trendDown, color: Colors.white, size: 16),
+          const SizedBox(width: 5),
+          Text(
+            "${isProfit ? '+' : ''}${percent.toStringAsFixed(2)}%",
+            style: AppTextStyles.subhead.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvestmentRow extends StatelessWidget {
+  const _InvestmentRow({required this.inv, required this.onTap});
+
+  final InvestmentModel inv;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final double ret = inv.capitalAmount > 0 ? ((inv.currentValue - inv.capitalAmount) / inv.capitalAmount) * 100 : 0;
+    final bool profit = inv.currentValue >= inv.capitalAmount;
+    return AppListRow(
+      leading: const AppIconTile(icon: PhosphorIconsFill.chartLineUp, color: AppColors.primary),
+      title: inv.name,
+      subtitle: '${inv.type} · Modal: ${formatRupiah(inv.capitalAmount)}',
+      trailing: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(formatRupiah(inv.currentValue), style: AppTextStyles.amountRow),
+          const SizedBox(height: 2),
+          Text(
+            "${profit ? '+' : ''}${ret.toStringAsFixed(2)}%",
+            style: AppTextStyles.caption.copyWith(
+              color: profit ? AppColors.income : AppColors.expense,
+              fontWeight: FontWeight.w700,
             ),
           ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddInvestmentSheet(context, ref),
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(),
-        child: const Icon(PhosphorIconsBold.plus, color: Colors.white),
+        ],
       ),
+      onTap: onTap,
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 6),
+      child: Text(text, style: AppTextStyles.subhead),
     );
   }
 }
