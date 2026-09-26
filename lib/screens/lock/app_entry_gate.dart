@@ -40,7 +40,7 @@ class _AppEntryGateState extends State<AppEntryGate> {
   Future<bool> _decide() async {
     try {
       final enabled = await (widget.loadSetting ?? loadBiometricLockSetting)();
-      if (!enabled || kIsWeb) return false;
+      if (!enabled || kIsWeb) return false; // web: plugin local_auth tidak dipanggil sama sekali
       final supported = await (widget.deviceSupported ?? _deviceSupports)();
       return shouldShowLock(enabled: enabled, isWeb: kIsWeb, deviceSupported: supported);
     } catch (_) {

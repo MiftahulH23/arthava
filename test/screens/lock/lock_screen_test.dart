@@ -11,7 +11,11 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../helpers/pump_app.dart';
 
 class _FakeLocalAuth extends LocalAuthentication {
-  _FakeLocalAuth({this.result});
+  _FakeLocalAuth({this.result, this.throwCode});
+
+  /// local_auth 3.x melempar LocalAuthException (bukan mengembalikan false)
+  /// saat dibatalkan/gagal di Android & iOS.
+  final LocalAuthExceptionCode? throwCode;
 
   /// null = authenticate tidak pernah selesai (untuk menguji state loading).
   final bool? result;
@@ -34,6 +38,7 @@ class _FakeLocalAuth extends LocalAuthentication {
   }) {
     authenticateCalls++;
     expect(localizedReason, 'Gunakan biometrik untuk membuka DompetKu');
+    if (throwCode != null) return Future.error(LocalAuthException(code: throwCode!));
     return result == null ? _never.future : Future.value(result);
   }
 }
@@ -64,5 +69,24 @@ void main() {
 
     expect(find.text('Sedang memverifikasi...'), findsOneWidget);
     expect(find.text('Buka Kunci'), findsNothing);
+  });
+
+  testWidgets('Dibatalkan user (LocalAuthException) → tombol Buka Kunci, tanpa toast', (tester) async {
+    final auth = _FakeLocalAuth(throwCode: LocalAuthExceptionCode.userCanceled);
+    await pumpApp(tester, LockScreen(auth: auth));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Buka Kunci'), findsOneWidget);
+    expect(find.text('Gagal menggunakan biometrik.'), findsNothing);
+  });
+
+  testWidgets('Gagal lain (mis. terkunci sementara) → tombol Buka Kunci + toast', (tester) async {
+    final auth = _FakeLocalAuth(throwCode: LocalAuthExceptionCode.temporaryLockout);
+    await pumpApp(tester, LockScreen(auth: auth));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Buka Kunci'), findsOneWidget);
+    expect(find.text('Gagal menggunakan biometrik.'), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
   });
 }

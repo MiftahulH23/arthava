@@ -10,9 +10,11 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../helpers/pump_app.dart';
 
 class _FakeAuth extends LocalAuthentication {
-  _FakeAuth({this.supported = true, this.result = true});
+  _FakeAuth({this.supported = true, this.result = true, this.throwCode, this.delay = Duration.zero});
   final bool supported;
   final bool result;
+  final LocalAuthExceptionCode? throwCode;
+  final Duration delay;
   int calls = 0;
 
   @override
@@ -31,6 +33,8 @@ class _FakeAuth extends LocalAuthentication {
   }) async {
     calls++;
     expect(localizedReason, 'Konfirmasi untuk mengaktifkan kunci DompetKu');
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+    if (throwCode != null) throw LocalAuthException(code: throwCode!);
     return result;
   }
 }
@@ -144,6 +148,37 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Gagal menyimpan pengaturan.'), findsOneWidget);
     expect(_switchValue(tester), isFalse);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('verifikasi dibatalkan (LocalAuthException) → diam, tidak disimpan', (tester) async {
+    final saved = await _pumpBiometric(tester, auth: _FakeAuth(throwCode: LocalAuthExceptionCode.userCanceled));
+    await tester.tap(find.byType(AppSwitch).last);
+    await tester.pump();
+    expect(find.text('Perangkat ini tidak mendukung biometrik.'), findsNothing);
+    expect(saved, isEmpty);
+    expect(_switchValue(tester), isFalse);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('verifikasi gagal (bukan batal) → "Verifikasi biometrik gagal."', (tester) async {
+    final saved = await _pumpBiometric(tester, auth: _FakeAuth(throwCode: LocalAuthExceptionCode.temporaryLockout));
+    await tester.tap(find.byType(AppSwitch).last);
+    await tester.pump();
+    expect(find.text('Verifikasi biometrik gagal.'), findsOneWidget);
+    expect(saved, isEmpty);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('ketuk ganda saat verifikasi berjalan → verifikasi sekali', (tester) async {
+    final auth = _FakeAuth(delay: const Duration(milliseconds: 500));
+    final saved = await _pumpBiometric(tester, auth: auth);
+    await tester.tap(find.byType(AppSwitch).last);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byType(AppSwitch).last, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(auth.calls, 1);
+    expect(saved, [true]);
     await tester.pumpAndSettle(const Duration(seconds: 5));
   });
 }

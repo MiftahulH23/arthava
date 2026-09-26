@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
       AppNotification.error(context, "Email dan Password wajib diisi!");
       return;
     }

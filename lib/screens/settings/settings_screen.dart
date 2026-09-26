@@ -58,35 +58,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleBiometricLock(bool value) async {
+    // Dikunci sejak awal (termasuk selama prompt biometrik): ketukan kedua
+    // tidak memulai verifikasi kedua.
     if (_savingBiometric) return;
-    if (value) {
-      if (kIsWeb) {
-        AppNotification.error(context, 'Kunci biometrik tidak tersedia di versi web.');
-        return;
-      }
-      try {
+    setState(() => _savingBiometric = true);
+    try {
+      if (value) {
+        if (kIsWeb) {
+          AppNotification.error(context, 'Kunci biometrik tidak tersedia di versi web.');
+          return;
+        }
         final supported = await _auth.canCheckBiometrics && await _auth.isDeviceSupported();
         if (!mounted) return;
         if (!supported) {
           AppNotification.error(context, 'Perangkat ini tidak mendukung biometrik.');
           return;
         }
-        final ok = await _auth.authenticate(localizedReason: 'Konfirmasi untuk mengaktifkan kunci DompetKu');
-        if (!ok || !mounted) return; // dibatalkan / gagal: tidak mengubah apa pun
-      } catch (e) {
-        if (mounted) AppNotification.error(context, 'Perangkat ini tidak mendukung biometrik.');
-        return;
+        try {
+          final ok = await _auth.authenticate(localizedReason: 'Konfirmasi untuk mengaktifkan kunci DompetKu');
+          if (!ok || !mounted) return;
+        } on LocalAuthException catch (e) {
+          // local_auth 3.x melempar exception saat dibatalkan/gagal.
+          final canceled = e.code == LocalAuthExceptionCode.userCanceled ||
+              e.code == LocalAuthExceptionCode.systemCanceled;
+          if (!canceled && mounted) AppNotification.error(context, 'Verifikasi biometrik gagal.');
+          return;
+        }
       }
-    }
 
-    setState(() => _savingBiometric = true);
-    try {
-      await (widget.saveBiometricLock ?? saveBiometricLockSetting)(value);
-      if (!mounted) return;
-      setState(() => _useBiometricLock = value);
-      AppNotification.success(context, value ? 'Kunci biometrik aktif.' : 'Kunci biometrik dimatikan.');
+      try {
+        await (widget.saveBiometricLock ?? saveBiometricLockSetting)(value);
+        if (!mounted) return;
+        setState(() => _useBiometricLock = value);
+        AppNotification.success(context, value ? 'Kunci biometrik aktif.' : 'Kunci biometrik dimatikan.');
+      } catch (e) {
+        if (mounted) AppNotification.error(context, 'Gagal menyimpan pengaturan.');
+      }
     } catch (e) {
-      if (mounted) AppNotification.error(context, 'Gagal menyimpan pengaturan.');
+      if (mounted) AppNotification.error(context, 'Perangkat ini tidak mendukung biometrik.');
     } finally {
       if (mounted) setState(() => _savingBiometric = false);
     }

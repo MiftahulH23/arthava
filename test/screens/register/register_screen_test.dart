@@ -60,4 +60,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('buka'), findsOneWidget);
   });
+
+  testWidgets('isian hanya spasi ditolak dengan toast wajib diisi', (tester) async {
+    await pumpApp(tester, const RegisterScreen());
+    for (final f in find.byType(TextField).evaluate().toList()) {
+      await tester.enterText(find.byWidget(f.widget), '   ');
+    }
+    await tester.tap(find.text('Daftar Sekarang'));
+    await tester.pump();
+    expect(find.text('Semua kolom wajib diisi ya bos!'), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
 }

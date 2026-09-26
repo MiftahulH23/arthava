@@ -99,6 +99,19 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
           setState(() => _showManualButton = true);
         }
       }
+    } on LocalAuthException catch (e) {
+      // local_auth 3.x: batal/gagal dilempar sebagai exception (tidak pernah
+      // `false` di Android). Tanpa ini layar macet tanpa tombol "Buka Kunci".
+      debugPrint("Error Auth: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _showManualButton = true;
+        });
+        final canceled = e.code == LocalAuthExceptionCode.userCanceled ||
+            e.code == LocalAuthExceptionCode.systemCanceled;
+        if (!canceled) AppNotification.error(context, "Gagal menggunakan biometrik.");
+      }
     } on PlatformException catch (e) {
       debugPrint("Error Auth: $e");
       if (mounted) {

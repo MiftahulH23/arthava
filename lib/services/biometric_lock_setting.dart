@@ -12,5 +12,11 @@ Future<bool> loadBiometricLockSetting() async {
 
 Future<void> saveBiometricLockSetting(bool value) async {
   final client = Supabase.instance.client;
-  await client.from('profiles').update({'use_biometric_lock': value}).eq('id', client.auth.currentUser!.id);
+  final rows = await client
+      .from('profiles')
+      .update({'use_biometric_lock': value})
+      .eq('id', client.auth.currentUser!.id)
+      .select('id');
+  // UPDATE tanpa baris profil tidak error di Postgres: jangan laporkan sukses.
+  if (rows.isEmpty) throw StateError('Profil tidak ditemukan.');
 }

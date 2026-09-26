@@ -49,4 +49,15 @@ void main() {
     expect(find.byIcon(PhosphorIconsRegular.eyeSlash), findsOneWidget);
     expect(passwordField().obscureText, isFalse);
   });
+
+  testWidgets('isian hanya spasi ditolak dengan toast wajib diisi', (tester) async {
+    await pumpApp(tester, const LoginScreen());
+    for (final f in find.byType(TextField).evaluate().toList()) {
+      await tester.enterText(find.byWidget(f.widget), '   ');
+    }
+    await tester.tap(find.text('Masuk Sekarang'));
+    await tester.pump();
+    expect(find.text('Email dan Password wajib diisi!'), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
 }
