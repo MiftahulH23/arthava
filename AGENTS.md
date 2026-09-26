@@ -86,8 +86,7 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
   `showDatePicker`, `showDateRangePicker`, `showModalBottomSheet` or
   `showAppBottomSheet` directly from a screen.
   `test/architecture/modal_consistency_test.dart` enforces this; its
-  `_legacy` list names the not-yet-redesigned screens and the plan that
-  cleans each one — remove a file's entry when its plan does.
+  `_legacy` allowlist is empty since Phase B — keep it that way.
 - **Font:** `google_fonts` Plus Jakarta Sans. `main.dart` applies
   `GoogleFonts.plusJakartaSansTextTheme(...)` to `ThemeData.textTheme`
   (light & dark), `appForuiTheme` maps it into forui typography, and
