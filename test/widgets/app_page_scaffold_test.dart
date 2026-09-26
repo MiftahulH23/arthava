@@ -204,4 +204,9 @@ void main() {
     final center = tester.getCenter(find.text('Gemi')).dx;
     expect(center, closeTo(195, 2));
   });
+
+  testWidgets('backLabel kosong (chevron saja) tetap berlabel "Kembali" untuk pembaca layar', (tester) async {
+    await pumpApp(tester, const AppPageScaffold(title: 'AI', backLabel: '', largeTitle: false, children: []));
+    expect(find.bySemanticsLabel('Kembali'), findsOneWidget);
+  });
 }

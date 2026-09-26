@@ -144,16 +144,12 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
         AppNotification.success(context, "$categoryName berhasil dibayarkan! Semoga berkah.");
         Navigator.pop(context, true);
       }
-    } catch (e) {
+    } on ZakatRejection catch (e) {
       // Tolakan server (mis. saldo berubah sejak layar dibuka) memakai pesan aslinya.
-      final message = e.toString().replaceFirst('Exception: ', '');
-      if (mounted) {
-        AppNotification.error(
-          context,
-          message == 'Saldo dompet tidak mencukupi!' ? message : "Gagal memproses pembayaran: $e",
-        );
-      }
+      if (mounted) AppNotification.error(context, e.message);
       if (mounted) _fetchWallets();
+    } catch (e) {
+      if (mounted) AppNotification.error(context, "Gagal memproses pembayaran: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

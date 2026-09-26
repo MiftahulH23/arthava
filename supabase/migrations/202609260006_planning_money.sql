@@ -7,7 +7,10 @@
 
 -- Kategori sistem milik user (mis. "Tabungan"); dibuat bila belum ada. Kunci
 -- advisory supaya dua operasi bersamaan tidak membuat kategori kembar.
-create or replace function public.system_category(p_pattern text, p_name text, p_expense boolean)
+-- Bentuk 4 argumen (ikon opsional) sama dengan 202609260008, supaya file ini
+-- tetap aman dijalankan ulang tanpa membuat overload 3 argumen yang ambigu.
+drop function if exists public.system_category(text, text, boolean);
+create or replace function public.system_category(p_pattern text, p_name text, p_expense boolean, p_icon text default 'bank')
 returns bigint language plpgsql security invoker set search_path = public as $$
 declare
   v_user uuid := auth.uid();
@@ -19,7 +22,7 @@ begin
   order by id limit 1;
   if v_id is null then
     insert into categories (user_id, name, is_expense, icon_name)
-    values (v_user, p_name, p_expense, 'bank') returning id into v_id;
+    values (v_user, p_name, p_expense, p_icon) returning id into v_id;
   end if;
   return v_id;
 end $$;
@@ -183,13 +186,13 @@ begin
   delete from savings where id = p_saving_id;
 end $$;
 
-revoke all on function public.system_category(text, text, boolean) from public, anon;
+revoke all on function public.system_category(text, text, boolean, text) from public, anon;
 revoke all on function public.lock_saving(text) from public, anon;
 revoke all on function public.deposit_to_target(bigint, bigint, numeric, date) from public, anon;
 revoke all on function public.saving_transaction(boolean, text, numeric, bigint, text, text, date) from public, anon;
 revoke all on function public.edit_saving_item(bigint, numeric, boolean, text, text) from public, anon;
 revoke all on function public.delete_saving_item(bigint) from public, anon;
-grant execute on function public.system_category(text, text, boolean) to authenticated;
+grant execute on function public.system_category(text, text, boolean, text) to authenticated;
 grant execute on function public.lock_saving(text) to authenticated;
 grant execute on function public.deposit_to_target(bigint, bigint, numeric, date) to authenticated;
 grant execute on function public.saving_transaction(boolean, text, numeric, bigint, text, text, date) to authenticated;

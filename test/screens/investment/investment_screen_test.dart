@@ -18,7 +18,7 @@ class FakeInvestmentNotifier extends InvestmentNotifier {
   InvestmentState build() => initial;
 
   @override
-  Future<void> fetchData() async => calls.add('fetchData');
+  Future<void> fetchData({bool showLoading = true}) async => calls.add('fetchData');
 
   @override
   Future<void> buyInvestment({required String name, required String type, required double amount, required int walletId}) async {

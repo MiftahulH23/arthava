@@ -133,7 +133,7 @@ class _AppNavBar extends StatelessWidget {
         ? const SizedBox.shrink()
         : Semantics(
             button: true,
-            label: 'Kembali ke $backLabel',
+            label: backLabel!.isEmpty ? 'Kembali' : 'Kembali ke $backLabel',
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
               onTap: () => Navigator.maybePop(context),

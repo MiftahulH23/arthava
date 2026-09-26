@@ -121,7 +121,11 @@ class _Temp {
     }
     // Kategori sistem ("Tabungan", "Pencairan Tabungan", "Tabungan Target") yang
     // baru dibuat oleh test ini: hapus bila sudah tidak dipakai transaksi mana pun.
-    final now = await db.from('categories').select('id').eq('user_id', userId);
+    final now = await db
+        .from('categories')
+        .select('id')
+        .eq('user_id', userId)
+        .inFilter('name', ['Tabungan', 'Pencairan Tabungan', 'Tabungan Target']); // file E2E lain berjalan bersamaan
     for (final r in now) {
       final id = r['id'] as int;
       if (categoriesBefore.contains(id)) continue;

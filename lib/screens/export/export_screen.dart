@@ -86,8 +86,7 @@ class _ExportScreenState extends State<ExportScreen> {
 
       if (data.transactions.isEmpty) {
         if (mounted) AppNotification.error(context, "Tidak ada transaksi di periode ini.");
-        setState(() => _isGenerating = false);
-        return;
+        return; // finally mematikan loading (dengan cek mounted)
       }
 
       final pdfBytes = await PdfService().generateReport(

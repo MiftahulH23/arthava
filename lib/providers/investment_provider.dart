@@ -48,8 +48,10 @@ class InvestmentNotifier extends AutoDisposeNotifier<InvestmentState> {
     return const InvestmentState();
   }
 
-  Future<void> fetchData() async {
-    state = state.copyWith(isLoading: true);
+  /// [showLoading] false: segarkan diam-diam (mis. setelah tolakan server,
+  /// supaya daftar di belakang sheet yang masih terbuka tidak berganti spinner).
+  Future<void> fetchData({bool showLoading = true}) async {
+    if (showLoading) state = state.copyWith(isLoading: true);
     try {
       final userId = _supabase.auth.currentUser!.id;
 
@@ -90,7 +92,7 @@ class InvestmentNotifier extends AutoDisposeNotifier<InvestmentState> {
       await _supabase.rpc(fn, params: params);
     } on PostgrestException catch (e) {
       if (e.code == 'P0001') {
-        fetchData();
+        fetchData(showLoading: false);
         throw Exception(e.message);
       }
       rethrow;

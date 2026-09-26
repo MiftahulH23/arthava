@@ -5,6 +5,7 @@ import 'package:catat_uang_app/screens/calendar/calendar_screen.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -76,6 +77,19 @@ void main() {
     final now = DateTime.now();
     final next = DateTime(now.year, now.month + 1, 1);
     await tester.tap(find.byIcon(PhosphorIconsBold.caretRight));
+    await tester.pumpAndSettle();
+
+    expect(find.text(DateFormat('MMMM yyyy', 'id_ID').format(next)), findsOneWidget);
+  });
+
+  testWidgets('geser kalender ke kiri juga memindah judul bulan (Review Focus #3)', (tester) async {
+    final fake = FakeCalendarNotifier(_state(const []));
+    await pumpApp(tester, const CalendarScreen(), overrides: [calendarProvider.overrideWith(() => fake)]);
+    await tester.pump();
+
+    final now = DateTime.now();
+    final next = DateTime(now.year, now.month + 1, 1);
+    await tester.fling(find.byType(TableCalendar<TransactionModel>), const Offset(-300, 0), 1000);
     await tester.pumpAndSettle();
 
     expect(find.text(DateFormat('MMMM yyyy', 'id_ID').format(next)), findsOneWidget);

@@ -110,8 +110,13 @@ class _Temp {
       await db.from('categories').delete().eq('id', id);
     }
     // Kategori sistem ("Investasi", "Zakat", …) yang baru dibuat test ini:
-    // hapus bila tidak dipakai transaksi mana pun.
-    final now = await db.from('categories').select('id').eq('user_id', userId);
+    // hapus bila tidak dipakai transaksi mana pun. Hanya nama sistem milik file
+    // ini — file E2E lain berjalan bersamaan di akun yang sama.
+    final now = await db
+        .from('categories')
+        .select('id')
+        .eq('user_id', userId)
+        .inFilter('name', ['Investasi', 'Hasil Jual Investasi', 'Zakat', 'Sedekah']);
     for (final r in now) {
       final id = r['id'] as int;
       if (categoriesBefore.contains(id)) continue;
@@ -209,12 +214,25 @@ void main() {
         e6 = e;
       }
       check('I6 jual melebihi nilai aset ditolak', e6.toString().contains('Nominal penarikan melebihi nilai aset saat ini!'), e6);
+      check('I6 tolakan tidak memunculkan spinner daftar di belakang sheet', container.read(investmentProvider).isLoading == false);
 
       await inv.updateInvestmentValue(invId, 150000);
       final upd = await db.from('investments').select('current_value, capital_amount').eq('id', invId).single();
       check('I7 update nilai 150.000 (untung 50.000), dompet tidak berubah',
           (upd['current_value'] as num) == 150000 && await balance(walletId) == 300000, upd);
       check('I7 state provider: total nilai ikut', container.read(investmentProvider).investments.firstWhere((x) => x.id == invId).currentValue == 150000);
+
+      // Jual ke dompet bersaldo minus: boleh (transaksi biasa memang boleh membuat saldo minus).
+      final minusWallet = await t.wallet('E2E Minus W', -50000);
+      await inv.fetchData();
+      Object? e9;
+      try {
+        await inv.buySellInvestment(inv: current(), isBuy: false, amount: 100000, walletId: minusWallet);
+      } catch (e) {
+        e9 = e;
+      }
+      check('I9 jual ke dompet bersaldo minus diterima: dompet -50.000 → 50.000',
+          e9 == null && await balance(minusWallet) == 50000, (e9, await balance(minusWallet)));
 
       await inv.deleteInvestment(invId);
       final gone = await db.from('investments').select('id').eq('id', invId);
@@ -300,6 +318,14 @@ void main() {
       final sd = await db.from('transactions').select('categories(name)').eq('wallet_id', walletId).eq('note', 'E2E Sedekah Jumat').single();
       check('Z2 sedekah 10.000: kategori Sedekah, dompet 65.000',
           sd['categories']['name'].toString().contains('Sedekah') && await balance(walletId) == 65000, sd);
+
+      Object? e0;
+      try {
+        await zakat.pay(isZakat: true, walletId: walletId, amount: 0, note: 'E2E nol');
+      } catch (e) {
+        e0 = e;
+      }
+      check('Z0 zakat 0 ditolak "Masukkan total harta yang valid!"', e0 is ZakatRejection && e0.message == 'Masukkan total harta yang valid!', e0);
 
       Object? e3;
       try {
