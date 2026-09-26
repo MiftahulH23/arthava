@@ -1,266 +1,210 @@
+import 'package:catat_uang_app/models/debt_model.dart';
+import 'package:catat_uang_app/models/debt_payment_model.dart';
+import 'package:catat_uang_app/models/wallet_model.dart';
+import 'package:catat_uang_app/services/debt_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// State gabungan untuk DebtScreen (daftar utang/piutang) dan
-/// DebtDetailScreen (detail + riwayat cicilan satu utang). Keduanya berbagi
-/// provider ini karena mencatat pembayaran dari layar detail mengubah
-/// `remaining_amount`/`status` milik item yang sama yang ditampilkan
-/// DebtScreen — dengan satu provider, perubahan itu langsung terlihat di
-/// kedua layar tanpa refetch manual setelah Navigator.pop.
+/// Jam yang dipakai layar Utang untuk menghitung "Terlambat N hari".
+/// Di-override di test supaya hasilnya pasti.
+final debtClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
+/// State bersama DebtScreen dan DebtDetailScreen. Satu provider untuk kedua
+/// layar supaya perubahan dari detail (bayar/edit/hapus) langsung terlihat di
+/// daftar tanpa refetch manual setelah Navigator.pop.
 class DebtState {
   final bool isLoading;
-  final List<Map<String, dynamic>> myDebts;
-  final List<Map<String, dynamic>> theirDebts;
-  final List<Map<String, dynamic>> wallets;
+  final bool isSubmitting;
+  final List<DebtModel> debts;
+  final List<WalletModel> wallets;
+  final Map<int, List<DebtPaymentModel>> payments;
+  final Set<int> loadingPayments;
 
   const DebtState({
     this.isLoading = true,
-    this.myDebts = const [],
-    this.theirDebts = const [],
+    this.isSubmitting = false,
+    this.debts = const [],
     this.wallets = const [],
+    this.payments = const {},
+    this.loadingPayments = const {},
   });
 
-  /// Gabungan `myDebts` + `theirDebts`, dipakai DebtDetailScreen untuk
-  /// mencari versi terkini satu utang lewat `firstWhere`.
-  List<Map<String, dynamic>> get allDebts => [...myDebts, ...theirDebts];
+  List<DebtModel> myDebts(DateTime today) => sortDebts(debts.where((d) => d.isPayable), today);
+
+  List<DebtModel> theirDebts(DateTime today) => sortDebts(debts.where((d) => !d.isPayable), today);
+
+  double get totalPayable => debts
+      .where((d) => d.isPayable && !d.isPaidOff)
+      .fold(0.0, (sum, d) => sum + d.remainingAmount);
+
+  double get totalReceivable => debts
+      .where((d) => !d.isPayable && !d.isPaidOff)
+      .fold(0.0, (sum, d) => sum + d.remainingAmount);
+
+  DebtModel? debtById(int id) {
+    for (final d in debts) {
+      if (d.id == id) return d;
+    }
+    return null;
+  }
 
   DebtState copyWith({
     bool? isLoading,
-    List<Map<String, dynamic>>? myDebts,
-    List<Map<String, dynamic>>? theirDebts,
-    List<Map<String, dynamic>>? wallets,
+    bool? isSubmitting,
+    List<DebtModel>? debts,
+    List<WalletModel>? wallets,
+    Map<int, List<DebtPaymentModel>>? payments,
+    Set<int>? loadingPayments,
   }) {
     return DebtState(
       isLoading: isLoading ?? this.isLoading,
-      myDebts: myDebts ?? this.myDebts,
-      theirDebts: theirDebts ?? this.theirDebts,
+      isSubmitting: isSubmitting ?? this.isSubmitting,
+      debts: debts ?? this.debts,
       wallets: wallets ?? this.wallets,
+      payments: payments ?? this.payments,
+      loadingPayments: loadingPayments ?? this.loadingPayments,
     );
   }
 }
 
 class DebtNotifier extends AutoDisposeNotifier<DebtState> {
-  SupabaseClient get _supabase => Supabase.instance.client;
+  DebtApi get _api => ref.read(debtApiProvider);
+
+  bool _alive = true;
 
   @override
   DebtState build() {
-    // Sama seperti provider lain: jangan baca/tulis `state` secara sinkron
-    // di sini karena state baru diinisialisasi Riverpod SETELAH build()
-    // return. Future.microtask menunda fetch pertama sampai build() selesai.
+    _alive = true;
+    ref.onDispose(() => _alive = false);
+    // Jangan sentuh `state` di sini: Riverpod baru menginisialisasi state
+    // SETELAH build() return. Future.microtask menunda fetch pertama.
     Future.microtask(fetchData);
     return const DebtState();
   }
 
-  Future<void> fetchData() async {
-    state = state.copyWith(isLoading: true);
+  void _update(DebtState Function(DebtState s) change) {
+    if (!_alive) return;
+    state = change(state);
+  }
+
+  /// `silent: true` dipakai setelah mutasi supaya layar tidak berganti
+  /// jadi spinner penuh.
+  Future<void> fetchData({bool silent = false}) async {
+    if (!silent) _update((s) => s.copyWith(isLoading: true));
     try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      // Diambil berurutan (bukan Future.wait) — persis urutan fetch di
-      // _DebtScreenState._fetchData sebelum migrasi (wallets dulu, baru
-      // debts, tanpa dijalankan paralel).
-      final resWallets =
-          await _supabase.from('wallets').select().eq('user_id', userId);
-
-      final resDebts = await _supabase
-          .from('debts')
-          .select()
-          .eq('user_id', userId)
-          .order('status', ascending: true) // 'active' comes before 'paid'
-          .order('created_at', ascending: false);
-
-      List<Map<String, dynamic>> myDebts = [];
-      List<Map<String, dynamic>> theirDebts = [];
-
-      for (var item in resDebts as List) {
-        if (item['type'] == 'payable') {
-          myDebts.add(Map<String, dynamic>.from(item));
-        } else {
-          theirDebts.add(Map<String, dynamic>.from(item));
-        }
-      }
-
-      state = state.copyWith(
-        wallets: List<Map<String, dynamic>>.from(resWallets),
-        myDebts: myDebts,
-        theirDebts: theirDebts,
-        isLoading: false,
-      );
+      // Berurutan (dompet dulu, lalu utang), sama seperti sebelum redesign.
+      final wallets = await _api.fetchWallets();
+      final debts = await _api.fetchDebts();
+      _update((s) => s.copyWith(wallets: wallets, debts: debts, isLoading: false));
     } catch (e) {
-      debugPrint("Error fetching debts: $e");
-      state = state.copyWith(isLoading: false);
+      debugPrint('Error fetching debts: $e');
+      _update((s) => s.copyWith(isLoading: false));
     }
   }
 
-  Future<int> _getOrCreateCategory(
-    String userId,
-    String name,
-    bool isExpense,
-  ) async {
-    final catRes = await _supabase
-        .from('categories')
-        .select()
-        .eq('user_id', userId)
-        .eq('name', name)
-        .maybeSingle();
-    if (catRes != null) return catRes['id'] as int;
-
-    final insertedCat = await _supabase
-        .from('categories')
-        .insert({
-          'user_id': userId,
-          'name': name,
-          'icon_name': 'bank',
-          'is_expense': isExpense,
-        })
-        .select()
-        .single();
-    return insertedCat['id'] as int;
+  Future<void> fetchPayments(int debtId) async {
+    _update((s) => s.copyWith(loadingPayments: {...s.loadingPayments, debtId}));
+    try {
+      final list = await _api.fetchPayments(debtId);
+      _update((s) => s.copyWith(
+            payments: {...s.payments, debtId: list},
+            loadingPayments: {...s.loadingPayments}..remove(debtId),
+          ));
+    } catch (e) {
+      debugPrint('Error fetching debt payments: $e');
+      _update((s) => s.copyWith(loadingPayments: {...s.loadingPayments}..remove(debtId)));
+    }
   }
 
-  /// Menambahkan catatan utang/piutang baru, dari `_showAddDebtSheet` di
-  /// DebtScreen. `affectWallet`/`walletId` opsional untuk langsung mencatat
-  /// mutasi saldo dompet + histori transaksi. Melempar [Exception] dengan
-  /// pesan yang sama persis dengan sebelum migrasi untuk kasus saldo tidak
-  /// mencukupi, supaya layar bisa menampilkannya lewat AppNotification.
-  Future<void> addDebt({
+  Future<T> _submit<T>(Future<T> Function() action, {int? refreshPaymentsFor}) async {
+    if (state.isSubmitting) {
+      throw const DebtActionException('Sedang menyimpan, tunggu sebentar.');
+    }
+    _update((s) => s.copyWith(isSubmitting: true));
+    try {
+      final result = await action();
+      await fetchData(silent: true);
+      if (refreshPaymentsFor != null) await fetchPayments(refreshPaymentsFor);
+      return result;
+    } on DebtActionException {
+      rethrow;
+    } catch (e) {
+      debugPrint('Debt action error: $e');
+      throw const DebtActionException('Gagal menyimpan. Coba lagi.');
+    } finally {
+      _update((s) => s.copyWith(isSubmitting: false));
+    }
+  }
+
+  Future<int> createDebt({
     required String name,
-    required String debtType, // 'payable' | 'receivable'
+    required DebtType type,
     required double amount,
+    required DateTime loanDate,
     DateTime? dueDate,
-    bool affectWallet = false,
+    String? notes,
     int? walletId,
-  }) async {
-    final userId = _supabase.auth.currentUser!.id;
-
-    if (affectWallet && walletId != null) {
-      final w = state.wallets.firstWhere((w) => w['id'] == walletId);
-      final currentBalance = (w['balance'] as num).toDouble();
-      double newBalance;
-      if (debtType == 'payable') {
-        newBalance = currentBalance + amount;
-      } else {
-        if (currentBalance < amount) {
-          throw Exception("Saldo dompet tidak mencukupi untuk dipinjamkan!");
-        }
-        newBalance = currentBalance - amount;
-      }
-
-      await _supabase
-          .from('wallets')
-          .update({'balance': newBalance})
-          .eq('id', walletId);
-
-      // Create Transaction history for the wallet
-      // We should find a category or create a system category for debt
-      bool isExp = debtType == 'receivable';
-      String catName = isExp ? 'Utang/Piutang' : 'Utang/Piutang';
-      final sysCatId = await _getOrCreateCategory(userId, catName, isExp);
-
-      await _supabase.from('transactions').insert({
-        'user_id': userId,
-        'wallet_id': walletId,
-        'category_id': sysCatId,
-        'amount': amount,
-        'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'note': debtType == 'payable'
-            ? 'Pinjaman diterima dari $name'
-            : 'Memberi pinjaman ke $name',
-      });
-    }
-
-    await _supabase.from('debts').insert({
-      'user_id': userId,
-      'name': name,
-      'type': debtType,
-      'amount': amount,
-      'remaining_amount': amount,
-      'due_date': dueDate != null ? DateFormat('yyyy-MM-dd').format(dueDate) : null,
-    });
-
-    await fetchData();
+  }) {
+    return _submit(() => _api.createDebt(
+          name: name,
+          type: type,
+          amount: amount,
+          loanDate: loanDate,
+          dueDate: dueDate,
+          notes: notes,
+          walletId: walletId,
+        ));
   }
 
-  /// Mencatat cicilan/pembayaran untuk satu utang, dari
-  /// `_showAddPaymentSheet` di DebtDetailScreen. Melempar [Exception] untuk
-  /// kasus validasi (jumlah melebihi sisa tagihan / saldo dompet kurang)
-  /// dengan pesan yang sama persis dengan sebelum migrasi.
-  Future<void> addPayment({
-    required Map<String, dynamic> debt,
+  Future<void> updateDebt({
+    required int debtId,
+    required String name,
+    required double amount,
+    required DateTime loanDate,
+    DateTime? dueDate,
+    String? notes,
+  }) {
+    return _submit(() => _api.updateDebt(
+          debtId: debtId,
+          name: name,
+          amount: amount,
+          loanDate: loanDate,
+          dueDate: dueDate,
+          notes: notes,
+        ));
+  }
+
+  Future<int> addPayment({
+    required int debtId,
     required double amount,
     required DateTime date,
-    bool affectWallet = false,
     int? walletId,
-  }) async {
-    final userId = _supabase.auth.currentUser!.id;
-    final debtId = debt['id'] as int;
-    final isPayable = debt['type'] == 'payable';
-    final remainingAmount = (debt['remaining_amount'] as num).toDouble();
-
-    if (amount > remainingAmount) {
-      throw Exception("Jumlah bayar tidak boleh melebihi sisa utang!");
-    }
-
-    if (affectWallet && walletId != null) {
-      final w = state.wallets.firstWhere((w) => w['id'] == walletId);
-      final currentBalance = (w['balance'] as num).toDouble();
-      double newBalance;
-      if (isPayable) {
-        if (currentBalance < amount) {
-          throw Exception("Saldo dompet tidak mencukupi!");
-        }
-        newBalance = currentBalance - amount;
-      } else {
-        newBalance = currentBalance + amount;
-      }
-
-      await _supabase
-          .from('wallets')
-          .update({'balance': newBalance})
-          .eq('id', walletId);
-
-      bool isExp = isPayable;
-      String catName = isExp
-          ? 'Sistem: Uang Keluar (Utang/Piutang)'
-          : 'Sistem: Uang Masuk (Utang/Piutang)';
-      final sysCatId = await _getOrCreateCategory(userId, catName, isExp);
-
-      await _supabase.from('transactions').insert({
-        'user_id': userId,
-        'wallet_id': walletId,
-        'category_id': sysCatId,
-        'amount': amount,
-        'date': DateFormat('yyyy-MM-dd').format(date),
-        'note': isPayable
-            ? 'Bayar utang ke ${debt['name']}'
-            : 'Menerima bayaran dari ${debt['name']}',
-      });
-    }
-
-    // Insert payment record
-    await _supabase.from('debt_payments').insert({
-      'debt_id': debtId,
-      'user_id': userId,
-      'wallet_id': walletId,
-      'amount': amount,
-      'date': DateFormat('yyyy-MM-dd').format(date),
-    });
-
-    // Update remaining amount and status
-    final newRemaining = remainingAmount - amount;
-    await _supabase.from('debts').update({
-      'remaining_amount': newRemaining,
-      'status': newRemaining <= 0 ? 'paid' : 'active',
-    }).eq('id', debtId);
-
-    await fetchData();
+  }) {
+    return _submit(
+      () => _api.addPayment(debtId: debtId, amount: amount, date: date, walletId: walletId),
+      refreshPaymentsFor: debtId,
+    );
   }
 
-  Future<void> deleteDebt(int id) async {
-    await _supabase.from('debts').delete().eq('id', id);
-    await fetchData();
+  Future<void> updatePayment({
+    required int debtId,
+    required int paymentId,
+    required double amount,
+    required DateTime date,
+  }) {
+    return _submit(
+      () => _api.updatePayment(paymentId: paymentId, amount: amount, date: date),
+      refreshPaymentsFor: debtId,
+    );
+  }
+
+  Future<void> deletePayment({required int debtId, required int paymentId}) {
+    return _submit(() => _api.deletePayment(paymentId), refreshPaymentsFor: debtId);
+  }
+
+  Future<void> deleteDebt(int debtId) async {
+    await _submit(() => _api.deleteDebt(debtId));
+    _update((s) => s.copyWith(payments: {...s.payments}..remove(debtId)));
   }
 }
 

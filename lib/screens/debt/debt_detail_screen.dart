@@ -1,5 +1,7 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/models/debt_model.dart';
+import 'package:catat_uang_app/models/debt_payment_model.dart';
 import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
@@ -7,22 +9,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DebtDetailScreen extends ConsumerStatefulWidget {
-  final Map<String, dynamic> debt;
+  final int debtId;
 
-  const DebtDetailScreen({super.key, required this.debt});
+  const DebtDetailScreen({super.key, required this.debtId});
 
   @override
   ConsumerState<DebtDetailScreen> createState() => _DebtDetailScreenState();
 }
 
 class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _payments = [];
-
   final currencyFormat = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
@@ -38,35 +35,11 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchPayments();
+    Future.microtask(() => ref.read(debtProvider.notifier).fetchPayments(widget.debtId));
   }
 
-  // Utang/dompet sudah tersedia lewat debtProvider (dibagi dengan
-  // DebtScreen) — layar ini hanya perlu mengambil riwayat cicilan sendiri.
-  Future<void> _fetchPayments() async {
-    setState(() => _isLoading = true);
-    try {
-      final resPayments = await _supabase
-          .from('debt_payments')
-          .select('*, wallets(name)')
-          .eq('debt_id', widget.debt['id'])
-          .order('date', ascending: false)
-          .order('created_at', ascending: false);
-
-      if (mounted) {
-        setState(() {
-          _payments = List<Map<String, dynamic>>.from(resPayments);
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching debt detail: $e");
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _showAddPaymentSheet(BuildContext context, Map<String, dynamic> debt) {
-    final remainingAmount = (debt['remaining_amount'] as num).toDouble();
+  void _showAddPaymentSheet(BuildContext context, DebtModel debt) {
+    final remainingAmount = debt.remainingAmount;
     if (remainingAmount <= 0) {
       AppNotification.success(context, "Utang ini sudah lunas!");
       return;
@@ -76,7 +49,7 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
     DateTime selectedDate = DateTime.now();
     bool affectWallet = false;
     int? selectedWalletId;
-    final isPayable = debt['type'] == 'payable';
+    final isPayable = debt.isPayable;
 
     showAppBottomSheet(
       context: context,
@@ -289,9 +262,9 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
                               ),
                               items: wallets.map((w) {
                                 return DropdownMenuItem<int>(
-                                  value: w['id'],
+                                  value: w.id,
                                   child: Text(
-                                    w['name'],
+                                    w.name,
                                     style: GoogleFonts.poppins(fontSize: 13),
                                   ),
                                 );
@@ -347,16 +320,14 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
 
                           try {
                             await ref.read(debtProvider.notifier).addPayment(
-                                  debt: debt,
+                                  debtId: debt.id,
                                   amount: rawAmount,
                                   date: selectedDate,
-                                  affectWallet: affectWallet,
-                                  walletId: selectedWalletId,
+                                  walletId: affectWallet ? selectedWalletId : null,
                                 );
 
                             if (context.mounted) {
                               Navigator.pop(context);
-                              _fetchPayments();
                               AppNotification.success(
                                 context,
                                 "Pembayaran berhasil dicatat!",
@@ -416,7 +387,7 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
     if (confirm != true) return;
 
     try {
-      await ref.read(debtProvider.notifier).deleteDebt(widget.debt['id'] as int);
+      await ref.read(debtProvider.notifier).deleteDebt(widget.debtId);
       if (mounted) {
         Navigator.pop(context);
         AppNotification.success(context, "Data berhasil dihapus!");
@@ -428,30 +399,21 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Utang ini juga ditampilkan di daftar DebtScreen lewat debtProvider
-    // yang sama — cari versi terkini dari state supaya perubahan
-    // `remaining_amount`/`status` lewat _showAddPaymentSheet langsung
-    // tercermin di sini tanpa state lokal duplikat. Fallback ke
-    // widget.debt kalau item ini sudah tidak ada di state (mis. dihapus
-    // dari layar lain).
     final debtState = ref.watch(debtProvider);
-    final debt = debtState.allDebts.firstWhere(
-      (d) => d['id'] == widget.debt['id'],
-      orElse: () => widget.debt,
-    );
-
-    if (_isLoading) {
+    final debt = debtState.debtById(widget.debtId);
+    if (debt == null) {
       return const Scaffold(
         backgroundColor: AppColors.background,
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    final payments = debtState.payments[debt.id] ?? const <DebtPaymentModel>[];
 
-    final isPayable = debt['type'] == 'payable';
-    final amount = (debt['amount'] as num).toDouble();
-    final remaining = (debt['remaining_amount'] as num).toDouble();
+    final isPayable = debt.isPayable;
+    final amount = debt.amount;
+    final remaining = debt.remainingAmount;
     final paid = amount - remaining;
-    final isPaid = debt['status'] == 'paid' || remaining <= 0;
+    final isPaid = debt.isPaidOff;
     final percentage = amount > 0 ? (paid / amount) : 0.0;
     final mainColor = isPayable ? Colors.red : Colors.green;
 
@@ -504,7 +466,7 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
                   ),
                   const SizedBox(height: 15),
                   Text(
-                    debt['name'],
+                    debt.name,
                     style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -529,9 +491,9 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
                         ),
                       ),
                     )
-                  else if (debt['due_date'] != null)
+                  else if (debt.dueDate != null)
                     Text(
-                      "Jatuh Tempo: ${DateFormat('dd MMM yyyy').format(DateTime.parse(debt['due_date']))}",
+                      "Jatuh Tempo: ${DateFormat('dd MMM yyyy').format(debt.dueDate!)}",
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         color: Colors.white70,
@@ -647,7 +609,7 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
               ),
             ),
 
-            if (_payments.isEmpty)
+            if (payments.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(40),
                 child: Text(
@@ -663,11 +625,11 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(20),
-                itemCount: _payments.length,
+                itemCount: payments.length,
                 itemBuilder: (context, index) {
-                  final pay = _payments[index];
-                  final payAmount = (pay['amount'] as num).toDouble();
-                  final walletName = pay['wallets'] != null ? pay['wallets']['name'] : 'Tanpa Dompet';
+                  final pay = payments[index];
+                  final payAmount = pay.amount;
+                  final walletName = pay.walletName ?? 'Tanpa Dompet';
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 10),
@@ -697,7 +659,7 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                DateFormat('dd MMM yyyy').format(DateTime.parse(pay['date'])),
+                                DateFormat('dd MMM yyyy').format(pay.date),
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,

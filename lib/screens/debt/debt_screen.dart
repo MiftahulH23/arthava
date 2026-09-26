@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/models/debt_model.dart';
 import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
@@ -314,9 +315,9 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
                               ),
                               items: wallets.map((w) {
                                 return DropdownMenuItem<int>(
-                                  value: w['id'],
+                                  value: w.id,
                                   child: Text(
-                                    w['name'],
+                                    w.name,
                                     style: GoogleFonts.poppins(fontSize: 13),
                                   ),
                                 );
@@ -383,13 +384,13 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
                           );
 
                           try {
-                            await ref.read(debtProvider.notifier).addDebt(
+                            await ref.read(debtProvider.notifier).createDebt(
                                   name: nameController.text.trim(),
-                                  debtType: debtType,
+                                  type: debtType == 'payable' ? DebtType.payable : DebtType.receivable,
                                   amount: rawAmount,
+                                  loanDate: DateTime.now(),
                                   dueDate: selectedDate,
-                                  affectWallet: affectWallet,
-                                  walletId: selectedWalletId,
+                                  walletId: affectWallet ? selectedWalletId : null,
                                 );
 
                             if (context.mounted) {
@@ -428,7 +429,7 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
     );
   }
 
-  Widget _buildDebtList(List<Map<String, dynamic>> debts, String emptyMsg) {
+  Widget _buildDebtList(List<DebtModel> debts, String emptyMsg) {
     if (debts.isEmpty) {
       return Center(
         child: Column(
@@ -454,13 +455,13 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
       itemCount: debts.length,
       itemBuilder: (context, index) {
         final debt = debts[index];
-        final amount = (debt['amount'] as num).toDouble();
-        final remaining = (debt['remaining_amount'] as num).toDouble();
+        final amount = debt.amount;
+        final remaining = debt.remainingAmount;
         final paid = amount - remaining;
         final percentage = amount > 0 ? (paid / amount) : 0.0;
-        final isPaid = debt['status'] == 'paid' || remaining <= 0;
+        final isPaid = debt.isPaidOff;
 
-        final isPayable = debt['type'] == 'payable';
+        final isPayable = debt.isPayable;
         final mainColor = isPayable ? Colors.red : Colors.green;
         final label = isPayable ? "Saya berutang ke:" : "Piutang dari:";
 
@@ -469,7 +470,7 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => DebtDetailScreen(debt: debt),
+                builder: (context) => DebtDetailScreen(debtId: debt.id),
               ),
             );
           },
@@ -516,9 +517,9 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
                           ),
                         ),
                       )
-                    else if (debt['due_date'] != null)
+                    else if (debt.dueDate != null)
                       Text(
-                        "Tempo: ${DateFormat('dd MMM yyyy').format(DateTime.parse(debt['due_date']))}",
+                        "Tempo: ${DateFormat('dd MMM yyyy').format(debt.dueDate!)}",
                         style: GoogleFonts.poppins(
                           fontSize: 11,
                           color: Colors.orange.shade700,
@@ -529,7 +530,7 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  debt['name'],
+                  debt.name,
                   style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -643,7 +644,7 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
             child: debtState.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _buildDebtList(
-                    _isMyDebt ? debtState.myDebts : debtState.theirDebts,
+                    _isMyDebt ? debtState.myDebts(DateTime.now()) : debtState.theirDebts(DateTime.now()),
                     _isMyDebt
                         ? "Belum ada utang yang dicatat.\nAlhamdulillah!"
                         : "Belum ada orang yang ngutang ke kamu.",
