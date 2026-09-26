@@ -486,6 +486,7 @@ Logika `_pickDate` dan `_showFilterSheet` identik di `transaction_history_screen
 
 **Interfaces:**
 - Consumes: `showAppFormSheet`, `AppPillButton`, `AppPrimaryButton`, `AppTextStyles`, `AppColors` (B1).
+- Consumes (B3b): `showAppDatePicker`, `showAppYearPicker`, `showAppDateRangePicker`, `showAppMonthPicker` (`lib/widgets/app_pickers.dart`).
 - Produces:
   ```dart
   Future<void> showAppPeriodPicker({
@@ -519,13 +520,13 @@ Logika `_pickDate` dan `_showFilterSheet` identik di `transaction_history_screen
 
 - [ ] **Step 1: Tambah `showAppPeriodPicker` ke `lib/widgets/app_period_picker.dart`**
 
-Tambahkan import `package:catat_uang_app/core/colors.dart` dan `package:catat_uang_app/theme/app_text_styles.dart`, lalu fungsi berikut. Isinya menyalin percabangan lama persis; hanya gaya teks dan warna yang diganti.
+Tambahkan import `package:catat_uang_app/widgets/app_pickers.dart` (Plan B3b), lalu fungsi berikut. Percabangan per tipe periode sama seperti `_pickDate` lama; bentuk modalnya memakai pemilih bersama (spec G17), **bukan** `showDatePicker`/`AlertDialog`/`showDateRangePicker` — `test/architecture/modal_consistency_test.dart` menolak pemanggilan itu.
 
 ```dart
-/// Menampilkan pemilih tanggal sesuai [filterType]. Perilaku identik dengan
-/// `_pickDate` lama di TransactionHistoryScreen & StatsScreen:
-/// Harian = date picker, Tahunan = dialog YearPicker, Periode = date range
-/// picker, lainnya (Bulanan) = dialog grid 12 bulan + dropdown tahun.
+/// Menampilkan pemilih sesuai [filterType]. Percabangan sama dengan `_pickDate`
+/// lama di TransactionHistoryScreen & StatsScreen: Harian = tanggal,
+/// Tahunan = tahun, Periode = rentang tanggal, lainnya (Bulanan) = bulan + tahun.
+/// Semua memakai sheet bersama `lib/widgets/app_pickers.dart` (spec G17).
 Future<void> showAppPeriodPicker({
   required BuildContext context,
   required String filterType,
@@ -534,146 +535,47 @@ Future<void> showAppPeriodPicker({
   required ValueChanged<DateTime> onDateSelected,
   required ValueChanged<DateTimeRange> onRangeSelected,
 }) async {
-  Widget themed(BuildContext context, Widget? child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.primary),
-        ),
-        child: child!,
-      );
-
   if (filterType == 'Harian') {
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      builder: themed,
     );
     if (picked != null) onDateSelected(picked);
   } else if (filterType == 'Tahunan') {
-    await showDialog<void>(
+    final year = await showAppYearPicker(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("Pilih Tahun", style: AppTextStyles.headline),
-        content: SizedBox(
-          width: 300,
-          height: 300,
-          child: YearPicker(
-            firstDate: DateTime(2020),
-            lastDate: DateTime(2030),
-            selectedDate: selectedDate,
-            onChanged: (DateTime val) {
-              Navigator.pop(dialogContext);
-              onDateSelected(val);
-            },
-          ),
-        ),
-      ),
+      initialYear: selectedDate.year,
+      firstYear: 2020,
+      lastYear: 2030,
     );
+    // Sama seperti YearPicker lama: bulan yang sedang dipilih dipertahankan.
+    if (year != null) onDateSelected(DateTime(year, selectedDate.month));
   } else if (filterType == 'Periode') {
-    final DateTimeRange? picked = await showDateRangePicker(
+    final picked = await showAppDateRangePicker(
       context: context,
-      initialDateRange: selectedDateRange,
+      initialRange: selectedDateRange,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      builder: themed,
     );
     if (picked != null) onRangeSelected(picked);
   } else {
     final currentYear = DateTime.now().year;
-    final years = List.generate(11, (i) => (currentYear - 5) + i);
-    int tempYear = selectedDate.year;
-
-    await showDialog<void>(
+    final picked = await showAppMonthPicker(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Pilih Bulan", style: AppTextStyles.headline),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.track,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: tempYear,
-                    dropdownColor: AppColors.surface,
-                    isDense: true,
-                    icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-                    items: years
-                        .map((year) => DropdownMenuItem<int>(
-                              value: year,
-                              child: Text("$year", style: AppTextStyles.bodyStrong),
-                            ))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setDialogState(() => tempYear = val);
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 300,
-            height: 300,
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 1.5,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: 12,
-              itemBuilder: (context, index) {
-                final int monthIndex = index + 1;
-                final bool isSelected =
-                    selectedDate.month == monthIndex && selectedDate.year == tempYear;
-                return InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () {
-                    Navigator.pop(dialogContext);
-                    onDateSelected(DateTime(tempYear, monthIndex));
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : AppColors.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isSelected ? AppColors.primary : AppColors.separator,
-                      ),
-                    ),
-                    child: Text(
-                      DateFormat('MMM', 'id_ID').format(DateTime(2024, monthIndex)),
-                      style: AppTextStyles.body.copyWith(
-                        color: isSelected ? Colors.white : AppColors.textPrimary,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
+      initialMonth: selectedDate,
+      firstYear: currentYear - 5,
+      lastYear: currentYear + 5,
     );
+    if (picked != null) onDateSelected(picked);
   }
 }
 ```
 
-Catatan: dialog bulan lama punya `Divider` + `SizedBox(height: 10)` di atas grid. Dua elemen dekoratif ini sengaja dibuang supaya tampilan lebih bersih ala iOS; perilakunya tidak berubah.
+Catatan perilaku (ruling Plan B3b, disetujui user 2026-09-26): dialog bulan/tahun lama menutup langsung saat item diketuk; sekarang item diketuk = ditandai, lalu "Pilih". Judul sheet memakai default komponen ("Pilih Tanggal", "Pilih Tahun", "Pilih Periode", "Pilih Bulan").
+
+Tambahkan juga di `test/widgets/app_period_picker_test.dart` satu test per tipe: buka lewat tombol, pastikan judul sheet yang benar tampil, "Pilih", lalu callback yang benar terpanggil (Tahunan: `DateTime(tahun, bulan lama)`).
 
 - [ ] **Step 2: Tulis test sheet filter (gagal)**
 
@@ -2185,7 +2087,7 @@ EOF
 | 9 | ITS:645–700. Mode edit: "Transaksi ini tercatat di dompet X" ("Memuat..."/"Telah Dihapus") | `AppCallout(icon: wallet)` dengan teks yang sama. |
 | 10 | ITS:702–743. Pill "Scan Struk AI" hanya bila pengeluaran dan bukan read-only, membuka `_showImageSourceBottomSheet` | `AppPillButton('Scan Struk AI', icon: sparkle)` di bawah nominal, kondisi sama. |
 | 11 | ITS:130–230. Sheet "Pilih Metode Scan": Kamera "(1 Struk)" memanggil `pickImage(camera, 80)`; Galeri "(Banyak Struk)" memanggil `pickMultiImage(80)`; lalu `_processScanReceipts` | `showAppFormSheet(title: 'Pilih Metode Scan')` dengan dua `AppListRow`. Callback sama; ikon diganti Phosphor (camera/images). |
-| 12 | ITS:79–128. `_processScanReceipts`: dialog spinner, isi nominal/kategori/catatan, toast "Berhasil menjumlahkan N struk! 🚀" / "AI gagal membaca struk." | Tidak diubah. |
+| 12 | ITS:79–128. `_processScanReceipts`: dialog spinner, isi nominal/kategori/catatan, toast "Berhasil menjumlahkan N struk! 🚀" / "AI gagal membaca struk." | Spinner `showDialog` + `Navigator.pop` manual diganti `runWithAppLoading(context, () => GeminiService.scanReceipts(images), message: 'Membaca struk...')` (Plan B3b, spec G17). Sisanya tidak diubah. |
 | 13 | ITS:745–795. Field nominal besar "Rp", hint 0, format ribuan saat mengetik, nonaktif saat read-only | Mode normal: `AppAmountField(label: 'Nominal')`; `RupiahInputFormatter` menggantikan `onChanged` manual. Read-only: `AppAmountDisplay(label: 'Nominal', amountText: 'Rp …')`. |
 | 14 | ITS:798–856. Dropdown "Kategori" (hint "Memuat..."/"Pilih Kategori") dengan ikon kategori; kategori difilter per `_isExpense`; nonaktif saat read-only | Baris "Kategori" yang nilainya nama terpilih atau hint sama. Tap membuka sheet "Pilih Kategori" berisi ikon dari `categoryIcon` dan warna `categoryColor`. Nonaktif saat read-only atau daftar kosong. |
 | 15 | ITS:859–897, 284–294. Tanggal `EEEE, d MMMM yyyy`, tap memanggil `_pickDate` (nonaktif saat read-only; locale id) | Baris "Tanggal" dengan nilai `EEE, d MMM yyyy` (mengikuti mockup) yang memanggil `_pickDate`. Isi `_pickDate` sama, ditambah `mounted`. |
@@ -2365,7 +2267,23 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 ```
 
-Pertahankan tanpa perubahan: semua field state, `initState`, `_processScanReceipts`, dan `_saveTransaction`.
+Pertahankan tanpa perubahan: semua field state, `initState`, dan `_saveTransaction` (termasuk peringatan saldo minimal dari Plan B3; `test/screens/input_transaction/input_transaction_min_balance_test.dart` harus tetap lulus).
+
+Di `_processScanReceipts`, ganti hanya awalnya (spinner manual) dengan loading bersama; sisa method tidak diubah:
+
+```dart
+  Future<void> _processScanReceipts(List<XFile> images) async {
+    if (images.isEmpty) return;
+    final result = await runWithAppLoading(
+      context,
+      () => GeminiService.scanReceipts(images),
+      message: 'Membaca struk...',
+    );
+    if (!mounted) return;
+    // ... lanjutan lama mulai `if (result != null) {` tidak diubah.
+```
+
+Tambah import `package:catat_uang_app/widgets/app_dialogs.dart` (bila belum) dan `package:catat_uang_app/widgets/app_pickers.dart`.
 
 Hapus `_getCategoryIcon` dan `_buildToggleBtn`.
 
@@ -2407,12 +2325,11 @@ Ganti `_showImageSourceBottomSheet` dan `_pickDate`, lalu tambahkan method baru 
 
   Future<void> _pickDate() async {
     if (_isReadOnly) return;
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      locale: const Locale('id', 'ID'),
     );
     if (!mounted) return;
     if (picked != null) setState(() => _selectedDate = picked);
@@ -2738,7 +2655,14 @@ EOF
 
 ### Task 7: Verifikasi penuh & checkpoint screenshot user
 
-**Files:** tidak ada perubahan kode, kecuali perbaikan dari temuan verifikasi.
+**Files:** `test/architecture/modal_consistency_test.dart` (hapus entri `_legacy` B4), selain itu tidak ada perubahan kode kecuali perbaikan dari temuan verifikasi.
+
+- [ ] **Step 0: Kosongkan entri `_legacy` milik B4**
+
+Hapus tiga baris `'B4'` (`input_transaction_screen.dart`, `stats_screen.dart`, `transaction_history_screen.dart`) dari `_legacy` di `test/architecture/modal_consistency_test.dart`, lalu:
+
+Run: `flutter test test/architecture/modal_consistency_test.dart`
+Expected: PASS. Bila gagal, baris yang disebut masih memanggil modal mentah — ganti dengan komponen bersama (spec G17), jangan kembalikan entri `_legacy`.
 
 - [ ] **Step 1: Analyze & test penuh**
 

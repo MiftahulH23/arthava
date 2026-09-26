@@ -522,6 +522,7 @@ import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_hero_card.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_pickers.dart';
 import 'package:catat_uang_app/widgets/app_progress.dart';
 import 'package:catat_uang_app/widgets/app_select_row.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
@@ -547,51 +548,19 @@ class BudgetScreen extends ConsumerWidget {
     ref.read(budgetProvider.notifier).changeMonth(offset);
   }
 
-  /// Sheet "Pilih Periode" (dulu AlertDialog). Mengembalikan bulan terpilih
-  /// atau null bila dibatalkan. Dipakai pill bulan di header dan baris
-  /// "Periode Anggaran" di sheet "Buat Anggaran".
+  // Catatan executor (B3b): bila `AppSelectRow`/`AppGroupedSection` tidak lagi
+  // dipakai di file ini setelah _pickPeriod memakai showAppMonthPicker, hapus import-nya.
+  /// Sheet "Pilih Periode" (dulu AlertDialog) — pemilih bulan bersama
+  /// (Plan B3b, spec G17). Mengembalikan bulan terpilih atau null bila batal.
+  /// Dipakai pill bulan di header dan baris "Periode Anggaran" di sheet "Buat Anggaran".
   static Future<DateTime?> _pickPeriod(BuildContext context, DateTime initial) {
-    int tempMonth = initial.month;
-    int tempYear = initial.year;
     final currentYear = DateTime.now().year;
-    final years = List.generate(11, (i) => (currentYear - 5) + i);
-
-    return showAppFormSheet<DateTime>(
+    return showAppMonthPicker(
       context: context,
       title: 'Pilih Periode',
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppGroupedSection(
-              insetSeparators: false,
-              children: [
-                AppSelectRow<int>(
-                  title: 'Bulan',
-                  value: tempMonth,
-                  options: [
-                    for (var m = 1; m <= 12; m++)
-                      AppSelectOption(m, DateFormat('MMMM', 'id_ID').format(DateTime(2024, m))),
-                  ],
-                  onChanged: (v) => setSheetState(() => tempMonth = v),
-                ),
-                AppSelectRow<int>(
-                  title: 'Tahun',
-                  value: tempYear,
-                  options: [for (final y in years) AppSelectOption(y, '$y')],
-                  onChanged: (v) => setSheetState(() => tempYear = v),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            AppPrimaryButton(
-              label: 'Tampilkan',
-              onPressed: () => Navigator.pop(context, DateTime(tempYear, tempMonth)),
-            ),
-          ],
-        ),
-      ),
+      initialMonth: initial,
+      firstYear: currentYear - 5,
+      lastYear: currentYear + 5,
     );
   }
 
@@ -1498,6 +1467,7 @@ import 'package:catat_uang_app/widgets/app_empty_state.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_pickers.dart';
 import 'package:catat_uang_app/widgets/app_progress.dart';
 import 'package:catat_uang_app/widgets/app_select_row.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
@@ -1511,13 +1481,6 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 Widget _fieldLabel(String text) => Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
       child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
-    );
-
-Widget _pickerTheme(BuildContext context, Widget? child) => Theme(
-      data: Theme.of(context).copyWith(
-        colorScheme: const ColorScheme.light(primary: AppColors.primary, surface: AppColors.surface),
-      ),
-      child: child!,
     );
 
 String _plainAmount(num value) => NumberFormat.decimalPattern('id_ID').format(value.round());
@@ -1627,12 +1590,11 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
                         : DateFormat('dd MMMM yyyy', 'id_ID').format(selectedDate!),
                     showChevron: true,
                     onTap: () async {
-                      final picked = await showDatePicker(
+                      final picked = await showAppDatePicker(
                         context: context,
                         initialDate: DateTime.now(),
                         firstDate: DateTime.now(),
                         lastDate: DateTime(2030),
-                        builder: _pickerTheme,
                       );
                       if (picked != null) setSheetState(() => selectedDate = picked);
                     },
@@ -1711,14 +1673,13 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
                     onTap: () async {
                       final now = DateTime.now();
                       // [LOGIKA] Deadline lama bisa sudah lewat; initialDate tidak
-                      // boleh sebelum firstDate atau showDatePicker melempar assertion.
+                      // boleh sebelum firstDate (showAppDatePicker juga menjepit, tapi nilai tampilan tetap dijaga di sini).
                       final initial = (selectedDate != null && selectedDate!.isAfter(now)) ? selectedDate! : now;
-                      final picked = await showDatePicker(
+                      final picked = await showAppDatePicker(
                         context: context,
                         initialDate: initial,
                         firstDate: now,
                         lastDate: DateTime(2030),
-                        builder: _pickerTheme,
                       );
                       if (picked != null) setSheetState(() => selectedDate = picked);
                     },
@@ -3109,7 +3070,7 @@ EOF
 | 8 | :277-327 "Kategori" (hint "Pilih Kategori"; opsi disaring `is_expense == isExpense`; value null bila tidak ada di daftar tersaring) | | `AppSelectRow` kategori, aturan value sama |
 | 9 | :331-400 "Nominal" (Rp) | | `AppAmountField` |
 | 10 | :410-450 "Diulang Setiap" (dropdown frekuensi) | | `AppSelectRow<String>` |
-| 11 | :454-481 "Mulai Tanggal (Jatuh Tempo Pertama)" (picker 2020-2030, initialDate selectedDate) | | `AppListRow` + `showDatePicker` sama |
+| 11 | :454-481 "Mulai Tanggal (Jatuh Tempo Pertama)" (picker 2020-2030, initialDate selectedDate) | | `AppListRow` + `showAppDatePicker` (Plan B3b) dengan batas sama |
 | 12 | :516-527 "Catatan (Cth: Bayar Kos / Tagihan WiFi)" (hint "Tulis catatan...") | | label + `AppTextField` |
 | 13 | :572-629 tombol "Perbarui Jadwal"/"Simpan Jadwal": validasi "Nominal, Kategori, dan Dompet wajib diisi!"; data map (user_id dari `Supabase.instance.client.auth`, `note` trim, `start_date` yyyy-MM-dd, `next_run_date` edit = lama `toIso8601String()` / baru = start date) → `updateRecurring`/`addRecurring` → pop + "Jadwal diperbarui!"/"Jadwal berhasil dibuat!"; catch → "Gagal menyimpan jadwal" | | Sama persis |
 | 14 | :664-680 AppBar "Tagihan & Pemasukan Rutin" | | `AppPageScaffold(title: 'Tagihan & Pemasukan Rutin', backLabel: 'Beranda')` |
@@ -3260,6 +3221,7 @@ import 'package:catat_uang_app/widgets/app_empty_state.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_pickers.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:catat_uang_app/widgets/app_select_row.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
@@ -3394,20 +3356,11 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
                     value: DateFormat('dd MMM yyyy', 'id_ID').format(selectedDate),
                     showChevron: true,
                     onTap: () async {
-                      final picked = await showDatePicker(
+                      final picked = await showAppDatePicker(
                         context: context,
                         initialDate: selectedDate,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
-                        builder: (context, child) => Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: const ColorScheme.light(
-                              primary: AppColors.primary,
-                              surface: AppColors.surface,
-                            ),
-                          ),
-                          child: child!,
-                        ),
                       );
                       if (picked != null) setSheetState(() => selectedDate = picked);
                     },
@@ -3635,7 +3588,14 @@ EOF
 
 ### Task 8: Verifikasi akhir + checkpoint screenshot user
 
-**Files:** tidak ada perubahan kode (kecuali perbaikan temuan).
+**Files:** `test/architecture/modal_consistency_test.dart` (hapus entri `_legacy` B5); selain itu tidak ada perubahan kode (kecuali perbaikan temuan).
+
+- [ ] **Step 0: Kosongkan entri `_legacy` milik B5**
+
+Hapus enam baris `'B5'` (`budget_screen.dart`, `budget_detail_screen.dart`, `recurring_screen.dart`, `saving_detail_screen.dart`, `savings_screen.dart`, `target_screen.dart`) dari `_legacy` di `test/architecture/modal_consistency_test.dart`, lalu:
+
+Run: `flutter test test/architecture/modal_consistency_test.dart`
+Expected: PASS. Bila gagal, baris yang disebut masih memanggil modal mentah (`showDialog`, `AlertDialog`, `showDatePicker`, `showAppBottomSheet`, …) — ganti dengan komponen bersama (spec G17): konfirmasi → `showAppConfirmDialog`, form → `showAppFormSheet`, tanggal → `showAppDatePicker`. Jangan kembalikan entri `_legacy`.
 
 - [ ] **Step 1: Seluruh test hijau**
 
