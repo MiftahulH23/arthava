@@ -2,10 +2,10 @@ import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/core/lock_policy.dart';
 import 'package:catat_uang_app/screens/home/home_screen.dart';
 import 'package:catat_uang_app/screens/lock/lock_screen.dart';
+import 'package:catat_uang_app/services/biometric_lock_setting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Titik masuk setelah login (cold start): menampilkan [LockScreen] bila user
 /// mengaktifkan kunci biometrik di Pengaturan dan perangkat mendukungnya,
@@ -32,14 +32,6 @@ class AppEntryGate extends StatefulWidget {
 class _AppEntryGateState extends State<AppEntryGate> {
   late final Future<bool> _showLock = _decide();
 
-  static Future<bool> _loadFromProfile() async {
-    final client = Supabase.instance.client;
-    final uid = client.auth.currentUser?.id;
-    if (uid == null) return false;
-    final row = await client.from('profiles').select('use_biometric_lock').eq('id', uid).maybeSingle();
-    return (row?['use_biometric_lock'] as bool?) ?? false;
-  }
-
   static Future<bool> _deviceSupports() async {
     final auth = LocalAuthentication();
     return await auth.canCheckBiometrics && await auth.isDeviceSupported();
@@ -47,7 +39,7 @@ class _AppEntryGateState extends State<AppEntryGate> {
 
   Future<bool> _decide() async {
     try {
-      final enabled = await (widget.loadSetting ?? _loadFromProfile)();
+      final enabled = await (widget.loadSetting ?? loadBiometricLockSetting)();
       if (!enabled || kIsWeb) return false;
       final supported = await (widget.deviceSupported ?? _deviceSupports)();
       return shouldShowLock(enabled: enabled, isWeb: kIsWeb, deviceSupported: supported);

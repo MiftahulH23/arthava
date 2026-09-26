@@ -7,6 +7,7 @@ import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_switch.dart';
 import 'package:catat_uang_app/screens/settings/include_min_balance_row.dart';
+import 'package:catat_uang_app/services/biometric_lock_setting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
@@ -46,22 +47,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadBiometricLock();
   }
 
-  static Future<bool> _loadFromProfile() async {
-    final client = Supabase.instance.client;
-    final uid = client.auth.currentUser?.id;
-    if (uid == null) return false;
-    final row = await client.from('profiles').select('use_biometric_lock').eq('id', uid).maybeSingle();
-    return (row?['use_biometric_lock'] as bool?) ?? false;
-  }
-
-  static Future<void> _saveToProfile(bool value) async {
-    final client = Supabase.instance.client;
-    await client.from('profiles').update({'use_biometric_lock': value}).eq('id', client.auth.currentUser!.id);
-  }
-
   Future<void> _loadBiometricLock() async {
     try {
-      final value = await (widget.loadBiometricLock ?? _loadFromProfile)();
+      final value = await (widget.loadBiometricLock ?? loadBiometricLockSetting)();
       if (!mounted) return;
       setState(() => _useBiometricLock = value);
     } catch (e) {
@@ -93,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _savingBiometric = true);
     try {
-      await (widget.saveBiometricLock ?? _saveToProfile)(value);
+      await (widget.saveBiometricLock ?? saveBiometricLockSetting)(value);
       if (!mounted) return;
       setState(() => _useBiometricLock = value);
       AppNotification.success(context, value ? 'Kunci biometrik aktif.' : 'Kunci biometrik dimatikan.');
