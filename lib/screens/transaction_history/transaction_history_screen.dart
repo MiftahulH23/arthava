@@ -218,21 +218,32 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
       badge = AppChip(label: walletName, color: walletColor, icon: PhosphorIconsFill.wallet);
     }
 
-    final subtitle = Row(
-      children: [
-        if (cleanNote.isNotEmpty)
-          Flexible(
-            child: Text(
-              cleanNote,
-              style: AppTextStyles.caption,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        if (cleanNote.isNotEmpty && badge != null) const SizedBox(width: 6),
-        // Flexible: nama dompet panjang terpotong "…" di dalam chip, bukan meluap.
-        if (badge != null) Flexible(child: badge),
-      ],
+    // Chip didahulukan: lebar aslinya sampai 65% baris (catatan yang dipotong
+    // lebih dulu); di atas itu teks chip terpotong "…", tidak pernah meluap.
+    // Baris sangat sempit (nominal besar): catatan disembunyikan, chip dapat semua.
+    final subtitle = LayoutBuilder(
+      builder: (context, constraints) {
+        final showNote = cleanNote.isNotEmpty && (badge == null || constraints.maxWidth >= 80);
+        return Row(
+          children: [
+            if (showNote)
+              Flexible(
+                child: Text(
+                  cleanNote,
+                  style: AppTextStyles.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            if (showNote && badge != null) const SizedBox(width: 6),
+            if (badge != null)
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth * (showNote ? 0.65 : 1)),
+                child: badge,
+              ),
+          ],
+        );
+      },
     );
 
     final row = AppListRow(

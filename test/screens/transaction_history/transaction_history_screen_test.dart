@@ -6,6 +6,7 @@ import 'package:catat_uang_app/screens/transaction_history/transactions_tab_scre
 import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 
@@ -177,5 +178,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(values.last, isTrue);
     expect(find.text('Transaksi'), findsOneWidget);
+  });
+
+  testWidgets('chip mutasi tampil utuh; catatan yang dipotong lebih dulu', (tester) async {
+    _createdFakes.clear();
+    final seed = _state([
+      _trx(9, DateTime(2026, 9, 23), category: 'Tabungan', note: 'Setor Liburan Bali ke celengan keluarga [SAVING_ID:3]'),
+    ]);
+    await pumpApp(
+      tester,
+      const TransactionHistoryScreen(isExpense: true),
+      overrides: [transactionHistoryProvider.overrideWith(() => FakeTransactionHistoryNotifier(seed))],
+      size: const Size(560, 1200),
+    );
+    await tester.pumpAndSettle();
+    final chip = tester.renderObject<RenderParagraph>(find.text('Mutasi Internal'));
+    expect(chip.didExceedMaxLines, isFalse);
   });
 }
