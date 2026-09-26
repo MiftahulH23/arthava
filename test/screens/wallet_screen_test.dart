@@ -2,6 +2,7 @@ import 'package:catat_uang_app/models/wallet_model.dart';
 import 'package:catat_uang_app/providers/user_settings_provider.dart';
 import 'package:catat_uang_app/providers/wallet_provider.dart';
 import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
+import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -38,7 +39,12 @@ List<WalletModel> sample() => [
       WalletModel(id: 3, userId: 'u', name: 'Tunai', balance: 1300000, color: '#00796B'),
     ];
 
-Future<FakeWalletNotifier> pumpWallet(WidgetTester tester, List<WalletModel> wallets, {bool include = true}) async {
+Future<FakeWalletNotifier> pumpWallet(
+  WidgetTester tester,
+  List<WalletModel> wallets, {
+  bool include = true,
+  Size size = const Size(390, 1200),
+}) async {
   final fake = FakeWalletNotifier(wallets);
   await pumpApp(
     tester,
@@ -47,7 +53,7 @@ Future<FakeWalletNotifier> pumpWallet(WidgetTester tester, List<WalletModel> wal
       walletProvider.overrideWith(() => fake),
       userSettingsProvider.overrideWith(() => FakeUserSettingsNotifier(include)),
     ],
-    size: const Size(390, 1200),
+    size: size,
   );
   return fake;
 }
@@ -120,5 +126,24 @@ void main() {
     await pumpWallet(tester, sample(), include: false);
     final text = tester.getRect(find.text('Bisa dipakai Rp 9.250.000'));
     expect(text.bottom, lessThanOrEqualTo(cardRect(tester, 'GOPAY').top));
+  });
+
+  testWidgets('pill Transfer · Tambah memakai tombol besar dengan jarak lega, tidak selebar layar', (tester) async {
+    // Lebar 600: font test (Ahem) jauh lebih lebar dari font asli.
+    await pumpWallet(tester, sample(), size: const Size(600, 1200));
+    final transfer = tester.getRect(find.widgetWithText(AppPillButton, 'Transfer'));
+    final tambah = tester.getRect(find.widgetWithText(AppPillButton, 'Tambah'));
+    expect(transfer.height, 44);
+    expect(tambah.height, 44);
+    expect(tambah.left - transfer.right, 10);
+    expect(tambah.right - transfer.left, lessThan(600 - 64));
+  });
+
+  testWidgets('teks sistem diperbesar: pill tidak meluap', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpWallet(tester, sample());
+    expect(tester.takeException(), isNull);
+    expect(find.widgetWithText(AppPillButton, 'Tambah'), findsOneWidget);
   });
 }

@@ -561,7 +561,7 @@ class _WalletActionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(999),
@@ -569,25 +569,32 @@ class _WalletActionPill extends StatelessWidget {
           BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 20, offset: const Offset(0, 8)),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showTransfer) ...[
+      // scaleDown: ukuran asli bila muat; di teks besar (aksesibilitas) pill
+      // mengecil, bukan meluap.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showTransfer) ...[
+              AppPillButton(
+                label: 'Transfer',
+                icon: PhosphorIconsBold.arrowsLeftRight,
+                color: AppColors.tintOrange,
+                large: true,
+                onPressed: onTransfer,
+              ),
+              const SizedBox(width: 10),
+            ],
             AppPillButton(
-              label: 'Transfer',
-              icon: PhosphorIconsBold.arrowsLeftRight,
-              color: AppColors.tintOrange,
-              onPressed: onTransfer,
+              label: 'Tambah',
+              icon: PhosphorIconsBold.plus,
+              filled: true,
+              large: true,
+              onPressed: onAdd,
             ),
-            const SizedBox(width: 6),
           ],
-          AppPillButton(
-            label: 'Tambah',
-            icon: PhosphorIconsBold.plus,
-            filled: true,
-            onPressed: onAdd,
-          ),
-        ],
+        ),
       ),
     );
   }

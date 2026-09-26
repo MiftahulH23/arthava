@@ -63,6 +63,7 @@ class AppPillButton extends StatelessWidget {
     this.icon,
     this.color,
     this.filled = false,
+    this.large = false,
     super.key,
   });
 
@@ -72,6 +73,10 @@ class AppPillButton extends StatelessWidget {
   final Color? color;
   final bool filled;
 
+  /// Varian besar untuk pill aksi melayang (mis. Transfer · Tambah di Dompet):
+  /// tinggi 44, bulat penuh, isi lebih lega.
+  final bool large;
+
   @override
   Widget build(BuildContext context) {
     final c = color ?? AppColors.primary;
@@ -80,24 +85,24 @@ class AppPillButton extends StatelessWidget {
       opacity: onPressed == null ? 0.45 : 1,
       child: Material(
         color: filled ? c : Color.alphaBlend(c.withValues(alpha: 0.13), AppColors.surface),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(large ? 999 : 12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
           child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            height: large ? 44 : 36,
+            padding: EdgeInsets.symmetric(horizontal: large ? 20 : 14),
             alignment: Alignment.center,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (icon != null) ...[Icon(icon, size: 16, color: fg), const SizedBox(width: 6)],
+                if (icon != null) ...[Icon(icon, size: large ? 18 : 16, color: fg), SizedBox(width: large ? 8 : 6)],
                 Flexible(
                   child: Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.subhead.copyWith(fontSize: 14, fontWeight: FontWeight.w700, color: fg),
+                    style: AppTextStyles.subhead.copyWith(fontSize: large ? 15 : 14, fontWeight: FontWeight.w700, color: fg),
                   ),
                 ),
               ],
