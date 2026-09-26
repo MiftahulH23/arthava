@@ -1,9 +1,12 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/core/formatters.dart';
+import 'package:catat_uang_app/core/wallet_rules.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/providers/input_transaction_provider.dart';
 import 'package:catat_uang_app/services/gemini_service.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
+import 'package:catat_uang_app/widgets/app_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -264,6 +267,34 @@ class _InputTransactionScreenState
   }
 
   Future<void> _saveTransaction() async {
+    // Peringatan saldo minimal (spec §7.3): hanya pengeluaran baru dari dompet.
+    if (_isExpense && !_isFromSaving && widget.transactionToEdit == null && _selectedWalletId != null) {
+      Map<String, dynamic>? wallet;
+      for (final w in ref.read(inputTransactionProvider).wallets) {
+        if (w['id'] == _selectedWalletId) {
+          wallet = w;
+          break;
+        }
+      }
+      if (wallet != null) {
+        final warning = minBalanceWarningMessage(
+          walletName: wallet['name'].toString(),
+          balance: (wallet['balance'] as num).toDouble(),
+          minBalance: (wallet['min_balance'] as num?)?.toDouble() ?? 0,
+          amount: parseRupiah(_amountController.text).toDouble(),
+        );
+        if (warning != null) {
+          final ok = await showAppConfirmDialog(
+            context: context,
+            title: 'Di bawah saldo minimal',
+            message: warning,
+            confirmLabel: 'Lanjutkan',
+            destructive: false,
+          );
+          if (!ok || !mounted) return;
+        }
+      }
+    }
     final notifier = ref.read(inputTransactionProvider.notifier);
     final result = await notifier.saveTransaction(
       amountText: _amountController.text,
