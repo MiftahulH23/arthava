@@ -75,4 +75,22 @@ void main() {
     expect(tester.widget<Text>(find.text('1 Sep 2026')).style!.color, AppColors.primary);
     expect(tester.widget<Text>(find.text('10 Sep 2026')).style!.color, isNot(AppColors.primary));
   });
+
+  testWidgets('judul pendek: value panjang tidak dipotong (tidak dikunci porsi 3:2)', (tester) async {
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: AppListRow(
+          leading: const AppIconTile(icon: PhosphorIconsFill.calendarBlank, color: AppColors.expense),
+          title: 'Tanggal',
+          value: 'Sab, 26 Sep 2026',
+          showChevron: true,
+          onTap: () {},
+        ),
+      ),
+      size: const Size(600, 400),
+    );
+    final value = tester.renderObject<RenderParagraph>(find.text('Sab, 26 Sep 2026'));
+    expect(value.didExceedMaxLines, isFalse);
+  });
 }

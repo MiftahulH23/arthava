@@ -32,19 +32,36 @@ class AppListRow extends StatelessWidget {
   final bool showChevron;
   final VoidCallback? onTap;
 
+  /// Lebar maksimum nilai: minimal 40% baris (porsi lama 3:2, cukup untuk judul
+  /// panjang dua baris), dan boleh memakai sisa lebar yang tidak dibutuhkan judul
+  /// satu baris — jadi judul pendek ("Tanggal") tidak memotong nilai panjang.
+  double _valueMaxWidth(BuildContext context, double rowWidth) {
+    final titleWidth = (TextPainter(
+      text: TextSpan(text: title, style: AppTextStyles.bodyStrong),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout())
+        .width;
+    final reserved = (leading != null ? 52.0 : 0) + (showChevron ? 22.0 : 0) + 8;
+    final shared = rowWidth - reserved; // lebar yang dibagi judul & nilai
+    final spare = shared - titleWidth - 1;
+    return spare > shared * 0.4 ? spare : shared * 0.4;
+  }
+
   @override
   Widget build(BuildContext context) {
     final content = ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 56),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
           children: [
             if (leading != null) ...[leading!, const SizedBox(width: 12)],
-            // Judul mendapat porsi 3 : 2 dari nilai dan boleh turun ke baris
-            // kedua, supaya label panjang (mis. "Tanggal Pembayaran") tidak "…".
+            // Judul mengisi sisa lebar dan boleh turun ke baris kedua, supaya label
+            // panjang (mis. "Tanggal Pembayaran") tidak "…".
             Expanded(
-              flex: 3,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -67,19 +84,14 @@ class AppListRow extends StatelessWidget {
             ),
             if (value != null) ...[
               const SizedBox(width: 8),
-              Flexible(
-                flex: 2,
-                // Align mengisi porsi Flexible sehingga nilai pendek tetap
-                // menempel ke kanan (bukan mulai di tengah baris).
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    value!,
-                    style: valueColor == null ? AppTextStyles.subhead : AppTextStyles.subhead.copyWith(color: valueColor),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end,
-                  ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: _valueMaxWidth(context, constraints.maxWidth)),
+                child: Text(
+                  value!,
+                  style: valueColor == null ? AppTextStyles.subhead : AppTextStyles.subhead.copyWith(color: valueColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
                 ),
               ),
             ],
@@ -93,6 +105,7 @@ class AppListRow extends StatelessWidget {
               ),
             ],
           ],
+          ),
         ),
       ),
     );
