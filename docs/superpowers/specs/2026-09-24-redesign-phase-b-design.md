@@ -447,4 +447,5 @@ Setiap task screen selesai bila:
 2. `flutter test` hijau (setelah B1 tidak ada lagi test yang gagal).
 3. `grep -c "GoogleFonts.poppins" <file screen>` = 0.
 4. Tidak ada hex/`Colors.<warna>` baru di screen (kecuali pengecualian §9.9).
-5. Checklist visual di task itu dicocokkan dengan mockup memakai skill `run-and-screenshot`. Bila agent tidak punya otomasi browser, koordinator meminta screenshot ke user di akhir plan (bukan per task) dan mencocokkan dengan mockup sebelum merge.
+5. **Backend terbukti jalan ke Supabase sungguhan** (keputusan user 2026-09-26): E2E fitur yang disentuh plan itu lulus (`test/e2e/`, `tool/e2e/`), dengan akun tes dan data sementara yang dibersihkan. Perubahan saldo dompet/tabungan lewat RPC atomik (pola `wallet_add`), bukan baca-lalu-tulis dari app.
+6. Checklist visual di task itu dicocokkan dengan mockup memakai skill `run-and-screenshot`. Bila agent tidak punya otomasi browser, koordinator meminta screenshot ke user di akhir plan (bukan per task) dan mencocokkan dengan mockup sebelum merge.

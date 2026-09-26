@@ -2745,6 +2745,22 @@ EOF
 
 ---
 
+## Task 6b: Backend terbukti jalan (E2E Supabase) + operasi uang atomik
+
+Aturan user 2026-09-26 (spec §10.5, AGENTS.md): plan tidak selesai sebelum backend fitur yang disentuhnya terbukti jalan ke Supabase sungguhan. Pola: `test/e2e/wallet_transaction_e2e_test.dart` (provider ASLI, akun tes lewat `E2E_EMAIL`/`E2E_PASSWORD`, data sementara bernama "E2E …" dibersihkan di `finally`, test di-skip tanpa env). Perubahan saldo dompet/tabungan wajib atomik di database (pola `wallet_add`/`lock_wallets` di `supabase/migrations/202609260004_atomic_money.sql`), bukan baca-saldo-lalu-tulis dari app.
+
+- [ ] **Step 1 (merah dulu):** tulis E2E di bawah, jalankan terhadap kode saat ini, catat di ledger mana yang gagal. Sertakan skenario **bersamaan** (`Future.wait` dua operasi uang pada dompet/tabungan yang sama) untuk setiap operasi uang.
+- [ ] **Step 2:** untuk setiap operasi uang yang masih baca-lalu-tulis, tulis migration RPC baru (`supabase/migrations/2026MMDDNNNN_<plan>_money.sql`, `security invoker`, cek `auth.uid()`, pesan error = pesan lama di app), commit, jalankan lewat `.superpowers/sdd/tools/supa_sql.sh`, verifikasi di `pg_proc`, dokumentasikan di `docs/database/schema.md`; provider memanggil RPC dengan pesan sukses/gagal lama.
+- [ ] **Step 3:** E2E hijau + E2E lama tetap hijau (`flutter test test/e2e/`, `dart run tool/e2e/debt_rpc_e2e.dart`) + cek sisa data "E2E" = 0. Laporkan jumlah PASS ke user sebelum minta merge.
+
+Cakupan E2E B6 (file `test/e2e/tools_assets_e2e_test.dart`):
+- **Investasi:** beli (dompet terpotong), jual (dompet bertambah, untung/rugi benar), hapus — `investment_provider.dart:135-195` baca-lalu-tulis → RPC atomik; dua beli bersamaan dari dompet yang sama tidak kehilangan potongan; beli melebihi saldo ditolak dengan pesan lama.
+- **Zakat & Sedekah:** bayar dari dompet — `zakat_sedekah_screen.dart:175-190` menulis saldo langsung dari layar → pindah ke provider/RPC atomik; transaksi tercatat dengan kategori yang benar.
+- **Kategori:** tambah, ganti nama, hapus; hapus kategori yang dipakai transaksi ditolak dengan pesan "Gagal hapus. Kategori sedang digunakan.".
+- **Kalender:** transaksi per tanggal yang dibaca provider sama dengan isi tabel (termasuk transaksi utang/tabungan ditandai benar).
+- **Export Laporan:** data yang dikirim ke `pdf_service` untuk satu bulan/rentang sama dengan isi tabel (jumlah baris & total; PDF-nya sendiri tidak perlu dibuka).
+- **AI Advisor:** hanya dicek bahwa data ringkasan yang dikirim ke Gemini dibangun dari data user yang benar (panggilan Gemini sungguhan tidak wajib; boleh di-skip bila kunci API tidak ada).
+
 ## Task 7: Verifikasi menyeluruh & checkpoint screenshot user
 
 **Files:** `test/architecture/modal_consistency_test.dart` (hapus entri `_legacy` B6 — daftar jadi kosong); selain itu tidak ada perubahan kode (kecuali perbaikan temuan).

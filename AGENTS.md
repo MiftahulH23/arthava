@@ -112,6 +112,15 @@ file to match what was approved.
 - `flutter run -d chrome` — run as a web app (fastest way to visually
   verify UI changes).
 - `flutter run -d windows` — run as a Windows desktop app.
+- Backend E2E against the real Supabase project (test account, temporary
+  data cleaned up; credentials only via env, never committed):
+  `E2E_EMAIL=… E2E_PASSWORD=… flutter test test/e2e/` and
+  `E2E_EMAIL=… E2E_PASSWORD=… dart run tool/e2e/debt_rpc_e2e.dart`.
+  Every plan must pass the E2E for the features it touches before
+  merge — fake-data widget tests alone don't prove the backend works.
+  Money changes (wallet/savings balances) go through atomic RPCs
+  (`wallet_add` pattern, `supabase/migrations/202609260004_atomic_money.sql`),
+  never read-then-write from the app.
 
 ## Git Hooks
 
