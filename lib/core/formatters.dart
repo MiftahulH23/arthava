@@ -96,3 +96,12 @@ class RupiahInputFormatter extends TextInputFormatter {
     return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: offset));
   }
 }
+
+/// Inisial untuk avatar: dua huruf dari dua kata pertama, satu huruf bila
+/// hanya satu kata, "?" bila kosong.
+String initialsOf(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+  if (parts.isEmpty) return '?';
+  if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+  return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
+}

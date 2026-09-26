@@ -30,4 +30,27 @@ class AppColors {
   static const Color tintGreen = Color(0xFF2E9E68);
   static const Color tintSky = Color(0xFF3AA6D8);
   static const Color tintGray = Color(0xFF8E8E93); // Ikon netral (mutasi internal)
+
+  // Statistik kecil di kartu hero Beranda (pastel supaya terbaca di atas gradasi biru).
+  static const Color heroStatIncome = Color(0xFF9BF0C4);
+  static const Color heroStatExpense = Color(0xFFFFB4AE);
+  static const Color heroStatSavings = Color(0xFFBFE6FF);
+  static const Color heroStatInvest = Color(0xFFFFD28A);
+
+  // Pilihan warna dompet. Disimpan sebagai string hex di kolom wallets.color,
+  // jadi urutan & nilainya jangan diubah (data lama merujuk ke nilai ini).
+  static const List<String> walletColorChoices = [
+    '#1E3A8A', '#00796B', '#5E35B1', '#E65100',
+    '#C62828', '#2E7D32', '#37474F', '#E91E63',
+  ];
+
+  /// Warna dompet dari string hex di data (mis. "#1E3A8A"); nilai null/rusak
+  /// jatuh ke pilihan pertama, sama seperti fallback layar lama.
+  static Color fromWalletHex(String? hex) {
+    final value = int.tryParse((hex ?? '').replaceFirst('#', ''), radix: 16);
+    if (value == null || (hex ?? '').replaceFirst('#', '').length != 6) {
+      return const Color(0xFF1E3A8A);
+    }
+    return Color(0xFF000000 | value);
+  }
 }
