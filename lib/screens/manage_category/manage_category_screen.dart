@@ -2,9 +2,17 @@ import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/category_model.dart';
 import 'package:catat_uang_app/providers/category_provider.dart';
+import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:catat_uang_app/widgets/app_dialogs.dart';
+import 'package:catat_uang_app/widgets/app_empty_state.dart';
+import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_segmented_control.dart';
+import 'package:catat_uang_app/widgets/app_sheet.dart';
+import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class ManageCategoryScreen extends ConsumerWidget {
@@ -67,7 +75,7 @@ class ManageCategoryScreen extends ConsumerWidget {
     }
   }
 
-  void _showInputDialog(
+  void _showInputSheet(
     BuildContext context,
     WidgetRef ref, {
     CategoryModel? categoryToEdit,
@@ -77,172 +85,62 @@ class ManageCategoryScreen extends ConsumerWidget {
     final controller = TextEditingController(
       text: isEditing ? categoryToEdit.name : '',
     );
+    bool isSaving = false;
 
-    showDialog(
+    showAppFormSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        bool isSaving = false;
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              surfaceTintColor: Colors.transparent,
-              backgroundColor: Colors.white,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-
-              title: Center(
-                child: Text(
-                  isEditing
-                      ? "Edit Kategori"
-                      : (isExpense
-                            ? "Tambah Pengeluaran"
-                            : "Tambah Pemasukan"),
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-
-              content: SizedBox(
-                width: double.maxFinite,
-                child: TextField(
-                  controller: controller,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: "Nama Kategori (Contoh: Bensin)",
-                    hintStyle: GoogleFonts.poppins(
-                      color: Colors.grey.shade400,
-                      fontSize: 14,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                  textCapitalization: TextCapitalization.sentences,
-                  autofocus: true,
-                  enabled: !isSaving,
-                ),
-              ),
-
-              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              actions: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: isSaving ? null : () => Navigator.pop(ctx),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          "Batal",
-                          style: GoogleFonts.poppins(
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: isSaving
-                            ? null
-                            : () async {
-                                if (controller.text.trim().isEmpty) return;
-                                setDialogState(() => isSaving = true);
-                                try {
-                                  if (isEditing) {
-                                    await ref
-                                        .read(categoryProvider.notifier)
-                                        .editCategory(
-                                          categoryToEdit.id,
-                                          controller.text.trim(),
-                                        );
-                                  } else {
-                                    await ref
-                                        .read(categoryProvider.notifier)
-                                        .addCategory(controller.text.trim());
-                                  }
-                                  if (context.mounted) {
-                                    Navigator.pop(context);
-                                    AppNotification.success(
-                                      context,
-                                      isEditing
-                                          ? "Berhasil diubah!"
-                                          : "Berhasil ditambah!",
-                                    );
-                                  }
-                                } catch (e) {
-                                  setDialogState(() => isSaving = false);
-                                  if (context.mounted)
-                                    AppNotification.error(context, "Error: $e");
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                "Simpan",
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          },
-        );
-      },
+      title: isEditing
+          ? "Edit Kategori"
+          : (isExpense ? "Tambah Pengeluaran" : "Tambah Pemasukan"),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppTextField(
+              controller: controller,
+              hint: "Nama Kategori (Contoh: Bensin)",
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              readOnly: isSaving,
+            ),
+            const SizedBox(height: 20),
+            AppPrimaryButton(
+              label: "Simpan",
+              loading: isSaving,
+              onPressed: () async {
+                if (controller.text.trim().isEmpty) return;
+                setSheetState(() => isSaving = true);
+                try {
+                  if (isEditing) {
+                    await ref
+                        .read(categoryProvider.notifier)
+                        .editCategory(categoryToEdit.id, controller.text.trim());
+                  } else {
+                    await ref
+                        .read(categoryProvider.notifier)
+                        .addCategory(controller.text.trim());
+                  }
+                  if (sheetContext.mounted) {
+                    Navigator.pop(sheetContext);
+                  }
+                  if (context.mounted) {
+                    AppNotification.success(
+                      context,
+                      isEditing ? "Berhasil diubah!" : "Berhasil ditambah!",
+                    );
+                  }
+                } catch (e) {
+                  if (sheetContext.mounted) {
+                    setSheetState(() => isSaving = false);
+                    AppNotification.error(sheetContext, "Error: $e");
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -250,226 +148,73 @@ class ManageCategoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(categoryProvider);
     final isExpense = state.isExpense;
+    final color = isExpense ? AppColors.expense : AppColors.income;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          "Kelola Kategori",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+    return AppPageScaffold(
+      title: 'Kelola Kategori',
+      backLabel: 'Beranda',
+      actions: [AppNavAction.add(onPressed: () => _showInputSheet(context, ref))],
+      children: [
+        AppSegmentedControl(
+          labels: const ['Pengeluaran', 'Pemasukan'],
+          selectedIndex: isExpense ? 0 : 1,
+          selectedLabelColors: const [AppColors.expense, AppColors.income],
+          onChanged: (index) {
+            final wantExpense = index == 0;
+            if (isExpense != wantExpense) {
+              ref.read(categoryProvider.notifier).fetchCategories(isExpense: wantExpense);
+            }
+          },
         ),
-        centerTitle: true,
-        backgroundColor: AppColors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: AppColors.white,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Row(
-                children: [
-                  _buildToggleBtn(ref, "Pengeluaran", true, isExpense),
-                  _buildToggleBtn(ref, "Pemasukan", false, isExpense),
-                ],
-              ),
-            ),
+        if (state.isLoading)
+          const Padding(
+            padding: EdgeInsets.only(top: 60),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          )
+        else if (state.categories.isEmpty)
+          const AppEmptyState(icon: PhosphorIconsRegular.tag, title: 'Belum ada kategori')
+        else
+          AppGroupedSection(
+            children: [
+              for (final cat in state.categories) _buildCategoryRow(context, ref, cat, color),
+            ],
           ),
-          Expanded(
-            child: state.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : state.categories.isEmpty
-                ? Center(
-                    child: Text(
-                      "Belum ada kategori",
-                      style: GoogleFonts.poppins(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: state.categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = state.categories[index];
-                      final isSystem = cat.userId == null;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: isExpense
-                                    ? AppColors.expense.withOpacity(0.1)
-                                    : AppColors.income.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              // [UPDATE: Panggil fungsi getCategoryIcon di sini]
-                              child: Icon(
-                                _getCategoryIcon(cat.name, cat.iconName),
-                                color: isExpense
-                                    ? AppColors.expense
-                                    : AppColors.income,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    cat.name,
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  if (isSystem)
-                                    Text(
-                                      "Bawaan Aplikasi",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            if (!isSystem) ...[
-                              IconButton(
-                                icon: const Icon(
-                                  PhosphorIconsFill.pencilSimple,
-                                  color: Colors.blue,
-                                  size: 20,
-                                ),
-                                onPressed: () => _showInputDialog(
-                                  context,
-                                  ref,
-                                  categoryToEdit: cat,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  PhosphorIconsFill.trash,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      backgroundColor: Colors.white,
-                                      surfaceTintColor: Colors.transparent,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(15),
-                                      ),
-                                      title: const Text("Hapus Kategori?"),
-                                      content: Text(
-                                        "Yakin mau hapus '${cat.name}'?",
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(ctx),
-                                          child: const Text("Batal"),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(ctx);
-                                            _deleteCategory(context, ref, cat.id);
-                                          },
-                                          child: const Text(
-                                            "Hapus",
-                                            style: TextStyle(color: Colors.red),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showInputDialog(context, ref),
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      ],
     );
   }
 
-  Widget _buildToggleBtn(
-    WidgetRef ref,
-    String title,
-    bool isExpenseBtn,
-    bool currentIsExpense,
-  ) {
-    final bool isSelected = currentIsExpense == isExpenseBtn;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          if (currentIsExpense != isExpenseBtn) {
-            ref.read(categoryProvider.notifier).fetchCategories(
-                  isExpense: isExpenseBtn,
-                );
-          }
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 5,
-                    ),
-                  ]
-                : [],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              color: isSelected
-                  ? (isExpenseBtn ? AppColors.expense : AppColors.income)
-                  : Colors.grey,
+  Widget _buildCategoryRow(BuildContext context, WidgetRef ref, CategoryModel cat, Color color) {
+    final isSystem = cat.userId == null;
+    return AppListRow(
+      leading: AppIconTile(icon: _getCategoryIcon(cat.name, cat.iconName), color: color),
+      title: cat.name,
+      subtitle: isSystem ? "Bawaan Aplikasi" : null,
+      trailing: isSystem
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Edit',
+                  icon: const Icon(PhosphorIconsFill.pencilSimple, color: AppColors.tintBlue, size: 20),
+                  onPressed: () => _showInputSheet(context, ref, categoryToEdit: cat),
+                ),
+                IconButton(
+                  tooltip: 'Hapus',
+                  icon: const Icon(PhosphorIconsFill.trash, color: AppColors.expense, size: 20),
+                  onPressed: () async {
+                    final confirmed = await showAppConfirmDialog(
+                      context: context,
+                      title: "Hapus Kategori?",
+                      message: "Yakin mau hapus '${cat.name}'?",
+                    );
+                    if (confirmed && context.mounted) {
+                      _deleteCategory(context, ref, cat.id);
+                    }
+                  },
+                ),
+              ],
             ),
-          ),
-        ),
-      ),
     );
   }
 }

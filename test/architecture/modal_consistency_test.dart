@@ -26,9 +26,6 @@ const _shared = {
 /// Layar lama yang belum didesain ulang, dan plan yang wajib membersihkannya.
 /// Hapus entri saat plan-nya merapikan layar itu; daftar ini harus kosong di akhir Phase B.
 const _legacy = <String, String>{
-  'lib/screens/export/export_screen.dart': 'B6',
-  'lib/screens/investment/investment_screen.dart': 'B6',
-  'lib/screens/manage_category/manage_category_screen.dart': 'B6',
 };
 
 /// Baris (1-based) yang memanggil modal mentah. Komentar `//` dan `/* */`

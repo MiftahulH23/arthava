@@ -1,6 +1,7 @@
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../helpers/pump_app.dart';
 
@@ -156,5 +157,56 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Batal'), findsOneWidget);
+  });
+
+  testWidgets('scrollController diteruskan ke scrollable isi halaman', (tester) async {
+    final controller = ScrollController();
+    await pumpApp(
+      tester,
+      AppPageScaffold(
+        title: 'Uji',
+        scrollController: controller,
+        children: [for (var i = 0; i < 40; i++) SizedBox(height: 60, child: Text('Baris $i'))],
+      ),
+    );
+    expect(controller.hasClients, isTrue);
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pump();
+    expect(find.text('Baris 39'), findsOneWidget);
+  });
+
+  testWidgets('AppNavAction.icon menampilkan tooltip', (tester) async {
+    var tapped = false;
+    await pumpApp(
+      tester,
+      AppPageScaffold(
+        title: 'Uji',
+        actions: [AppNavAction.icon(PhosphorIconsRegular.broom, onPressed: () => tapped = true, tooltip: 'Mulai Chat Baru')],
+        children: const [SizedBox()],
+      ),
+    );
+    await tester.tap(find.byTooltip('Mulai Chat Baru'));
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('navTitleWidget tampil di tengah nav bar, bukan di list', (tester) async {
+    await pumpApp(tester, AppPageScaffold(
+      title: 'AI Advisor',
+      backLabel: '',
+      largeTitle: false,
+      navTitleWidget: const Text('Gemi'),
+      actions: [AppNavAction.icon(PhosphorIconsRegular.broom, onPressed: () {}, tooltip: 'Reset')],
+      children: const [Text('isi')],
+    ));
+    expect(find.text('Gemi'), findsOneWidget);
+    expect(find.descendant(of: find.byType(ListView), matching: find.text('Gemi')), findsNothing);
+    expect(find.text('AI Advisor'), findsNothing);
+    final center = tester.getCenter(find.text('Gemi')).dx;
+    expect(center, closeTo(195, 2));
+  });
+
+  testWidgets('backLabel kosong (chevron saja) tetap berlabel "Kembali" untuk pembaca layar', (tester) async {
+    await pumpApp(tester, const AppPageScaffold(title: 'AI', backLabel: '', largeTitle: false, children: []));
+    expect(find.bySemanticsLabel('Kembali'), findsOneWidget);
   });
 }

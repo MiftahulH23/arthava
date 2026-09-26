@@ -22,6 +22,8 @@ class AppPageScaffold extends StatelessWidget {
     this.largeTitle = true,
     this.titleWidget,
     this.leading,
+    this.scrollController,
+    this.navTitleWidget,
     super.key,
   });
 
@@ -42,6 +44,13 @@ class AppPageScaffold extends StatelessWidget {
   /// Bila diisi, `backLabel` diabaikan.
   final Widget? leading;
 
+  /// Controller scroll isi halaman (mis. chat AI yang digulir ke bawah).
+  final ScrollController? scrollController;
+
+  /// Pengganti judul kecil di tengah nav bar (mis. avatar + nama "Gemi");
+  /// hanya dipakai bila [largeTitle] false.
+  final Widget? navTitleWidget;
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = embedded ? MediaQuery.of(context).padding.bottom : 0.0;
@@ -59,6 +68,7 @@ class AppPageScaffold extends StatelessWidget {
     ];
 
     Widget list = ListView(
+      controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
@@ -81,7 +91,13 @@ class AppPageScaffold extends StatelessWidget {
     final body = Column(
       children: [
         if (hasNav)
-          _AppNavBar(leading: leading, backLabel: backLabel, title: largeTitle ? null : title, actions: actions),
+          _AppNavBar(
+            leading: leading,
+            backLabel: backLabel,
+            title: largeTitle ? null : title,
+            titleWidget: largeTitle ? null : navTitleWidget,
+            actions: actions,
+          ),
         Expanded(child: list),
         if (bottomBar != null)
           Padding(
@@ -97,11 +113,18 @@ class AppPageScaffold extends StatelessWidget {
 }
 
 class _AppNavBar extends StatelessWidget {
-  const _AppNavBar({required this.leading, required this.backLabel, required this.title, required this.actions});
+  const _AppNavBar({
+    required this.leading,
+    required this.backLabel,
+    required this.title,
+    required this.actions,
+    this.titleWidget,
+  });
 
   final Widget? leading;
   final String? backLabel;
   final String? title;
+  final Widget? titleWidget;
   final List<Widget> actions;
 
   @override
@@ -110,7 +133,7 @@ class _AppNavBar extends StatelessWidget {
         ? const SizedBox.shrink()
         : Semantics(
             button: true,
-            label: 'Kembali ke $backLabel',
+            label: backLabel!.isEmpty ? 'Kembali' : 'Kembali ke $backLabel',
             child: InkWell(
               borderRadius: BorderRadius.circular(10),
               onTap: () => Navigator.maybePop(context),
@@ -153,9 +176,9 @@ class _AppNavBar extends StatelessWidget {
                       constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.4),
                       child: back,
                     ),
-          middle: title == null
+          middle: titleWidget ?? (title == null
               ? null
-              : Text(title!, textAlign: TextAlign.center, style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis),
+              : Text(title!, textAlign: TextAlign.center, style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis)),
           trailing: actions.isEmpty
               ? null
               : Padding(

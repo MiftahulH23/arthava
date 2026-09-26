@@ -1,9 +1,16 @@
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/providers/calendar_provider.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_chip.dart';
+import 'package:catat_uang_app/widgets/app_empty_state.dart';
+import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -42,16 +49,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return PhosphorIconsFill.tag;
   }
 
+  static final DateTime _firstDay = DateTime.utc(2020, 1, 1);
+  static final DateTime _lastDay = DateTime.utc(2030, 12, 31);
+
+  void _goToMonth(int delta) {
+    final target = DateTime(_focusedDay.year, _focusedDay.month + delta, 1);
+    final lastOfTarget = DateTime(target.year, target.month + 1, 0);
+    if (lastOfTarget.isBefore(_firstDay) || target.isAfter(_lastDay)) return;
+    setState(() => _focusedDay = target);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(calendarProvider);
     final selectedTransactions = state.eventsForDay(_selectedDay!);
-
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
 
     double dailyIncome = 0;
     double dailyExpense = 0;
@@ -63,396 +74,201 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
     }
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: Text(
-          "Kalender Keuangan",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+    return AppPageScaffold(
+      title: 'Kalender Keuangan',
+      backLabel: 'Beranda',
+      children: state.isLoading
+          ? const [
+              Padding(
+                padding: EdgeInsets.only(top: 80),
+                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              ),
+            ]
+          : [
+              AppSurfaceCard(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            DateFormat('MMMM yyyy', 'id_ID').format(_focusedDay),
+                            style: AppTextStyles.headline,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Bulan sebelumnya',
+                          icon: const Icon(PhosphorIconsBold.caretLeft, color: AppColors.primary, size: 20),
+                          onPressed: () => _goToMonth(-1),
+                        ),
+                        IconButton(
+                          tooltip: 'Bulan berikutnya',
+                          icon: const Icon(PhosphorIconsBold.caretRight, color: AppColors.primary, size: 20),
+                          onPressed: () => _goToMonth(1),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    _buildCalendar(state),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  DateFormat('EEEE, d MMM yyyy', 'id_ID').format(_selectedDay!),
+                  style: AppTextStyles.headline,
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(child: _DailyTotalTile(label: 'Masuk', amount: dailyIncome, color: AppColors.income)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _DailyTotalTile(label: 'Keluar', amount: dailyExpense, color: AppColors.expense)),
+                ],
+              ),
+              if (selectedTransactions.isEmpty)
+                const AppEmptyState(icon: PhosphorIconsRegular.coffee, title: 'Tidak ada transaksi hari ini')
+              else
+                AppGroupedSection(
+                  children: [for (final trx in selectedTransactions) _buildTransactionRow(state, trx)],
+                ),
+            ],
+    );
+  }
+
+  Widget _buildCalendar(CalendarState state) {
+    final dayStyle = AppTextStyles.body.copyWith(fontSize: 15);
+    return TableCalendar<TransactionModel>(
+      locale: 'id_ID',
+      firstDay: _firstDay,
+      lastDay: _lastDay,
+      focusedDay: _focusedDay,
+      headerVisible: false,
+      daysOfWeekHeight: 24,
+      rowHeight: 44,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      startingDayOfWeek: StartingDayOfWeek.monday,
+      daysOfWeekStyle: DaysOfWeekStyle(
+        weekdayStyle: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700),
+        weekendStyle: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700),
       ),
-      body: state.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      calendarStyle: CalendarStyle(
+        defaultTextStyle: dayStyle,
+        weekendTextStyle: dayStyle.copyWith(color: AppColors.expense),
+        outsideTextStyle: dayStyle.copyWith(color: AppColors.textSecondary.withValues(alpha: 0.5)),
+        todayDecoration: const BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
+        todayTextStyle: dayStyle.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
+        selectedDecoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+        selectedTextStyle: dayStyle.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+      ),
+      eventLoader: state.eventsForDay,
+      onDaySelected: (selectedDay, focusedDay) {
+        if (!isSameDay(_selectedDay, selectedDay)) {
+          setState(() {
+            _selectedDay = selectedDay;
+            _focusedDay = focusedDay;
+          });
+        }
+      },
+      onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
+      calendarBuilders: CalendarBuilders(
+        markerBuilder: (context, date, events) {
+          if (events.isEmpty) return const SizedBox();
+          final bool hasIncome = events.any((ev) => !(ev.category?.isExpense ?? true));
+          final bool hasExpense = events.any((ev) => (ev.category?.isExpense ?? true));
+          return Positioned(
+            bottom: 4,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // KALENDER MODERN
-                Container(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: TableCalendar<TransactionModel>(
-                    firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.utc(2030, 12, 31),
-                    focusedDay: _focusedDay,
-                    daysOfWeekHeight: 30,
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                    startingDayOfWeek: StartingDayOfWeek.monday,
-                    calendarStyle: CalendarStyle(
-                      todayDecoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      selectedDecoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      markerSize: 6,
-                      markerDecoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      weekendTextStyle: const TextStyle(color: Colors.red),
-                    ),
-                    headerStyle: HeaderStyle(
-                      titleCentered: true,
-                      formatButtonVisible: false,
-                      titleTextStyle: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      leftChevronIcon: const Icon(
-                        Icons.chevron_left,
-                        color: AppColors.primary,
-                      ),
-                      rightChevronIcon: const Icon(
-                        Icons.chevron_right,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    eventLoader: state.eventsForDay,
-                    onDaySelected: (selectedDay, focusedDay) {
-                      if (!isSameDay(_selectedDay, selectedDay)) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                      }
-                    },
-                    calendarBuilders: CalendarBuilders(
-                      markerBuilder: (context, date, events) {
-                        if (events.isEmpty) return const SizedBox();
-                        bool hasIncome = events.any(
-                          (ev) => !(ev.category?.isExpense ?? true),
-                        );
-                        bool hasExpense = events.any(
-                          (ev) => (ev.category?.isExpense ?? true),
-                        );
-
-                        return Positioned(
-                          bottom: 6,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (hasIncome)
-                                Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 1,
-                                  ),
-                                  width: 5,
-                                  height: 5,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.income,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              if (hasExpense)
-                                Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 1,
-                                  ),
-                                  width: 5,
-                                  height: 5,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.expense,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // RINGKASAN HARIAN
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        DateFormat(
-                          'EEEE, d MMM yyyy',
-                          'id_ID',
-                        ).format(_selectedDay!),
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.income.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Masuk",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10,
-                                  color: AppColors.income,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                currencyFormat.format(dailyIncome),
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.income,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.expense.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Keluar",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10,
-                                  color: AppColors.expense,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                currencyFormat.format(dailyExpense),
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.expense,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 15),
-
-                // LIST TRANSAKSI HARIAN DENGAN BADGE DOMPET
-                Expanded(
-                  child: selectedTransactions.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                PhosphorIconsRegular.coffee,
-                                size: 50,
-                                color: Colors.grey.shade300,
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                "Tidak ada transaksi hari ini",
-                                style: GoogleFonts.poppins(
-                                  color: Colors.grey,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 5,
-                          ),
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: selectedTransactions.length,
-                          itemBuilder: (context, index) {
-                            final trx = selectedTransactions[index];
-                            final isExpense = trx.category?.isExpense ?? true;
-
-                            // Logika Bersihin Saving ID
-                            String displayNote = trx.note ?? '';
-                            final match = RegExp(
-                              r'\[SAVING_ID:(\d+)\]',
-                            ).firstMatch(displayNote);
-                            if (match != null) {
-                              String sId = match.group(1)!;
-                              String sName =
-                                  state.savingNames[sId] ?? 'Tabungan';
-                              displayNote = displayNote
-                                  .replaceAll(
-                                    match.group(0)!,
-                                    '(Sumber: $sName)',
-                                  )
-                                  .trim();
-                            }
-                            if (displayNote.isEmpty)
-                              displayNote = "Tanpa catatan";
-
-                            // [NEW] Persiapan Wallet Badge
-                            final wId = trx.walletId;
-                            final wName =
-                                state.walletNames[wId] ?? 'Kas Utama';
-                            final wColor =
-                                state.walletColors[wId] ?? Colors.grey;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.02),
-                                    blurRadius: 5,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          (isExpense
-                                                  ? AppColors.expense
-                                                  : AppColors.income)
-                                              .withOpacity(0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      _getCategoryIcon(
-                                        trx.category?.name ?? '',
-                                      ),
-                                      color: isExpense
-                                          ? AppColors.expense
-                                          : AppColors.income,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 15),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          trx.category?.name ?? "Umum",
-                                          style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          displayNote,
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.grey,
-                                            fontSize: 11,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        // [NEW] Badge Dompet
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: wColor.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            wName,
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: wColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Text(
-                                    (isExpense ? "- " : "+ ") +
-                                        currencyFormat.format(trx.amount),
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.bold,
-                                      color: isExpense
-                                          ? AppColors.expense
-                                          : AppColors.income,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
+                if (hasIncome) const _MarkerDot(color: AppColors.income),
+                if (hasExpense) const _MarkerDot(color: AppColors.expense),
               ],
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTransactionRow(CalendarState state, TransactionModel trx) {
+    final isExpense = trx.category?.isExpense ?? true;
+
+    // Logika Bersihin Saving ID (sama persis dengan versi lama)
+    String displayNote = trx.note ?? '';
+    final match = RegExp(r'\[SAVING_ID:(\d+)\]').firstMatch(displayNote);
+    if (match != null) {
+      String sId = match.group(1)!;
+      String sName = state.savingNames[sId] ?? 'Tabungan';
+      displayNote = displayNote.replaceAll(match.group(0)!, '(Sumber: $sName)').trim();
+    }
+    if (displayNote.isEmpty) displayNote = "Tanpa catatan";
+
+    final wId = trx.walletId;
+    final wName = state.walletNames[wId] ?? 'Kas Utama';
+    final wColor = state.walletColors[wId] ?? AppColors.tintGray;
+    final color = isExpense ? AppColors.expense : AppColors.income;
+
+    return AppListRow(
+      leading: AppIconTile(icon: _getCategoryIcon(trx.category?.name ?? ''), color: color, round: true),
+      title: trx.category?.name ?? "Umum",
+      // Wrap: chip dompet turun ke baris berikut bila tidak muat di samping catatan.
+      subtitleWidget: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(displayNote, style: AppTextStyles.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+          AppChip(label: wName, color: wColor, icon: PhosphorIconsFill.wallet),
+        ],
+      ),
+      trailing: Text(
+        (isExpense ? "- " : "+ ") + formatRupiah(trx.amount),
+        style: AppTextStyles.amountRow.copyWith(color: color),
+      ),
+    );
+  }
+}
+
+class _MarkerDot extends StatelessWidget {
+  const _MarkerDot({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 1),
+      width: 5,
+      height: 5,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _DailyTotalTile extends StatelessWidget {
+  const _DailyTotalTile({required this.label, required this.amount, required this.color});
+
+  final String label;
+  final double amount;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSurfaceCard(
+      color: color.withValues(alpha: 0.10),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(formatRupiah(amount), style: AppTextStyles.amountRow.copyWith(color: color)),
+        ],
+      ),
     );
   }
 }

@@ -16,6 +16,8 @@ class AppTextField extends StatelessWidget {
     this.maxLines = 1,
     this.onTap,
     this.focusNode,
+    this.autofocus = false,
+    this.textCapitalization = TextCapitalization.none,
     this.onChanged,
     this.inputFormatters,
     super.key,
@@ -31,6 +33,8 @@ class AppTextField extends StatelessWidget {
   final int maxLines;
   final VoidCallback? onTap;
   final FocusNode? focusNode;
+  final bool autofocus;
+  final TextCapitalization textCapitalization;
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
 
@@ -40,6 +44,8 @@ class AppTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       focusNode: focusNode,
+      autofocus: autofocus,
+      textCapitalization: textCapitalization,
       obscureText: obscure,
       keyboardType: keyboardType,
       readOnly: readOnly,

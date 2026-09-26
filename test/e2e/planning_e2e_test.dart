@@ -121,7 +121,11 @@ class _Temp {
     }
     // Kategori sistem ("Tabungan", "Pencairan Tabungan", "Tabungan Target") yang
     // baru dibuat oleh test ini: hapus bila sudah tidak dipakai transaksi mana pun.
-    final now = await db.from('categories').select('id').eq('user_id', userId);
+    final now = await db
+        .from('categories')
+        .select('id')
+        .eq('user_id', userId)
+        .inFilter('name', ['Tabungan', 'Pencairan Tabungan', 'Tabungan Target']); // file E2E lain berjalan bersamaan
     for (final r in now) {
       final id = r['id'] as int;
       if (categoriesBefore.contains(id)) continue;
@@ -306,7 +310,7 @@ void main() {
     container.listen(savingsProvider, (_, _) {});
     await settle();
     final savings = container.read(savingsProvider.notifier);
-    const name = 'E2E Tab';
+    const name = 'E2E Tab Buku'; // unik: file E2E lain memakai "E2E Tab" dan berjalan bersamaan
     t.savingNames.addAll({name, 'E2E Tab Baru'});
     try {
       final walletId = await t.wallet('E2E Tabungan W', 1000000);
