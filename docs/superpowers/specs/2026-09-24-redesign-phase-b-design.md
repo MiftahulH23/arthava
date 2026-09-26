@@ -381,7 +381,7 @@ Fitur baru yang disetujui:
   - *Utang*: utang saya (bukan piutang) aktif yang terlambat, atau jatuh tempo terdekat. Nama, "Terlambat N hari"/tanggal tempo, sisa. Kosong → "Bebas utang".
 - **Baris "Semua Fitur"** (ikon grid filled primary, subjudul "Anggaran, target, tabungan, dan 9 lainnya") → halaman baru.
 - **Halaman Semua Fitur** (`lib/screens/all_features/all_features_screen.dart`): judul besar "Semua Fitur", kolom cari (filter baris berdasarkan nama, tanpa huruf besar/kecil), grup: HARIAN (Dompet, Kalender, Kategori), PERENCANAAN (Anggaran, Target Keuangan, Buku Tabungan, Tagihan & Pemasukan Rutin), ASET & KEWAJIBAN (Investasi, Utang & Piutang, Zakat & Sedekah), ALAT (AI Advisor, Export Laporan). Setiap navigasi melakukan refresh Beranda yang sama seperti tombol grid lama.
-- Grid 12 ikon di Beranda mobile **dihapus**. Layout web (`_buildWebLayout`) ikut: grid fitur web diganti grouped list Semua Fitur di kolom kanan.
+- Grid 12 ikon di Beranda mobile **dihapus**. Layout web (`_buildWebLayout`) ikut: grid fitur web diganti grouped list Semua Fitur selebar konten di bawah kartu Ringkasan (kolom kanan sudah dipakai list Dompet; keputusan user 2026-09-26: "yang penting rapi").
 
 ### 7.3 Dompet (Plan B3)
 
