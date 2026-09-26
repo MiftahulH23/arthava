@@ -92,7 +92,10 @@ class HomeNotifier extends AutoDisposeNotifier<HomeState> {
     try {
       // Server menjalankan setiap jadwal jatuh tempo tepat sekali, termasuk saldo
       // dompet dan next_run_date, dalam satu transaksi (Plan B4b).
-      await _supabase.rpc('run_due_recurring');
+      // Tanggal perangkat (seperti kode lama); server membatasi maks +1 hari.
+      await _supabase.rpc('run_due_recurring', params: {
+        'p_today': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      });
     } catch (e) {
       debugPrint("Error Recurring Executor: $e");
     }

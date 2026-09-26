@@ -131,7 +131,10 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
         'p_amount': amount,
       });
     } on PostgrestException catch (e) {
-      throw Exception(e.message);
+      // Saldo di layar mungkin sudah basi (itulah sebab server menolak): segarkan.
+      await fetchWallets();
+      // P0001 = RAISE dari RPC kita (pesan Indonesia); galat lain tetap pesan umum.
+      throw Exception(e.code == 'P0001' ? e.message : 'Gagal memproses transfer.');
     } catch (e) {
       throw Exception('Gagal memproses transfer.');
     }

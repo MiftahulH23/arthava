@@ -120,7 +120,10 @@ file to match what was approved.
   merge — fake-data widget tests alone don't prove the backend works.
   Money changes (wallet/savings balances) go through atomic RPCs
   (`wallet_add` pattern, `supabase/migrations/202609260004_atomic_money.sql`),
-  never read-then-write from the app.
+  never read-then-write from the app. Migrations are applied with the
+  local helper `.superpowers/sdd/tools/supa_sql.sh` (git-ignored; it
+  reads a Supabase personal access token from `~/.dompetku_supabase_token`).
+  Without it, paste the migration into the Supabase SQL Editor.
 
 ## Git Hooks
 
