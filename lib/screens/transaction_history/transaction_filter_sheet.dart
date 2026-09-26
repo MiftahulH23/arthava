@@ -1,6 +1,7 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 
@@ -32,87 +33,93 @@ Future<void> showTransactionFilterSheet({
   required void Function(int id, bool selected) onToggleWallet,
   required VoidCallback onReset,
   required VoidCallback onApply,
-}) {
-  return showAppFormSheet<void>(
-    context: context,
-    title: 'Filter Transaksi',
-    builder: (sheetContext) => StatefulBuilder(
-      builder: (context, setSheetState) {
-        final data = readData();
+}) async {
+  // "Reset" ada di header sheet (di luar StatefulBuilder isi); notifier ini
+  // membangun ulang isi supaya chip langsung tampil kosong.
+  final resetTick = ValueNotifier<int>(0);
+  try {
+    await showAppFormSheet<void>(
+      context: context,
+      title: 'Filter Transaksi',
+      trailing: AppNavAction.text(
+        'Reset',
+        color: AppColors.expense,
+        onPressed: () {
+          onReset();
+          resetTick.value++;
+        },
+      ),
+      builder: (sheetContext) => ValueListenableBuilder<int>(
+        valueListenable: resetTick,
+        builder: (_, _, _) => StatefulBuilder(
+          builder: (context, setSheetState) {
+            final data = readData();
 
-        Widget toggle({required String label, required bool selected, required VoidCallback onTap}) {
-          return AppPillButton(
-            label: label,
-            color: selected ? accentColor : AppColors.textSecondary,
-            filled: selected,
-            onPressed: onTap,
-          );
-        }
+            Widget toggle({required String label, required bool selected, required VoidCallback onTap}) {
+              return AppPillButton(
+                label: label,
+                color: selected ? accentColor : AppColors.textSecondary,
+                filled: selected,
+                onPressed: onTap,
+              );
+            }
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: AppPillButton(
-                label: 'Reset',
-                color: AppColors.expense,
-                onPressed: () {
-                  onReset();
-                  setSheetState(() {});
-                },
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text('Kategori'.toUpperCase(), style: AppTextStyles.groupLabel),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final c in data.categories)
-                  toggle(
-                    label: c['name'].toString(),
-                    selected: data.selectedCategoryIds.contains(c['id'] as int),
-                    onTap: () {
-                      final id = c['id'] as int;
-                      onToggleCategory(id, !data.selectedCategoryIds.contains(id));
-                      setSheetState(() {});
-                    },
-                  ),
+                Text('Kategori'.toUpperCase(), style: AppTextStyles.groupLabel),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final c in data.categories)
+                      toggle(
+                        label: c['name'].toString(),
+                        selected: data.selectedCategoryIds.contains(c['id'] as int),
+                        onTap: () {
+                          final id = c['id'] as int;
+                          onToggleCategory(id, !data.selectedCategoryIds.contains(id));
+                          setSheetState(() {});
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text('Dompet'.toUpperCase(), style: AppTextStyles.groupLabel),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final e in data.walletNames.entries)
+                      toggle(
+                        label: e.value,
+                        selected: data.selectedWalletIds.contains(e.key),
+                        onTap: () {
+                          onToggleWallet(e.key, !data.selectedWalletIds.contains(e.key));
+                          setSheetState(() {});
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                AppPrimaryButton(
+                  label: 'Terapkan Filter',
+                  color: accentColor,
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    onApply();
+                  },
+                ),
               ],
-            ),
-            const SizedBox(height: 20),
-            Text('Dompet'.toUpperCase(), style: AppTextStyles.groupLabel),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final e in data.walletNames.entries)
-                  toggle(
-                    label: e.value,
-                    selected: data.selectedWalletIds.contains(e.key),
-                    onTap: () {
-                      onToggleWallet(e.key, !data.selectedWalletIds.contains(e.key));
-                      setSheetState(() {});
-                    },
-                  ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            AppPrimaryButton(
-              label: 'Terapkan Filter',
-              color: accentColor,
-              onPressed: () {
-                Navigator.pop(sheetContext);
-                onApply();
-              },
-            ),
-          ],
-        );
-      },
-    ),
-  );
+            );
+          },
+        ),
+      ),
+    );
+  } finally {
+    resetTick.dispose();
+  }
 }

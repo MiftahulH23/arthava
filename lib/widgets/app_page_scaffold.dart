@@ -184,9 +184,9 @@ class AppNavAction extends StatelessWidget {
         color = null,
         tooltip = 'Tambah';
 
-  const AppNavAction.text(String this.label, {required this.onPressed, super.key})
+  /// [color] opsional, mis. `AppColors.expense` untuk aksi merusak ("Reset").
+  const AppNavAction.text(String this.label, {required this.onPressed, this.color, super.key})
       : icon = null,
-        color = null,
         tooltip = null;
 
   const AppNavAction.icon(IconData this.icon, {required this.onPressed, this.color, this.tooltip, super.key})
@@ -212,7 +212,7 @@ class AppNavAction extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Center(
                 widthFactor: 1,
-                child: Text(label!, style: AppTextStyles.navLabel.copyWith(fontWeight: FontWeight.w600)),
+                child: Text(label!, style: AppTextStyles.navLabel.copyWith(fontWeight: FontWeight.w600, color: color)),
               ),
             ),
           ),

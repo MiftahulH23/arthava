@@ -65,6 +65,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(selectedCats, isEmpty);
 
+    // Reset ada di header, sejajar judul "Filter Transaksi" (permintaan user).
+    expect(tester.getRect(find.text('Reset')).center.dy,
+        closeTo(tester.getRect(find.text('Filter Transaksi')).center.dy, 1));
     await tester.tap(find.text('Reset'));
     await tester.pumpAndSettle();
     expect(resetCount, 1);
