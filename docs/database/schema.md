@@ -37,6 +37,10 @@ Diekspor user dari SQL Editor pada 2026-09-24 (schema `public`). Sumber resmi un
 | `date` | date | TIDAK |  |
 | `created_at` | timestamp with time zone | ya | `now()` |
 
+## `debt_payments` (tambahan B2)
+
+`transaction_id bigint null → transactions(id) on delete set null`; FK `wallet_id → wallets` kini ON DELETE SET NULL.
+
 ## `debts`
 
 | Kolom | Tipe | Null | Default |
@@ -50,6 +54,10 @@ Diekspor user dari SQL Editor pada 2026-09-24 (schema `public`). Sumber resmi un
 | `due_date` | date | ya |  |
 | `status` | character varying | ya | `'active'::character varying` |
 | `created_at` | timestamp with time zone | ya | `now()` |
+| `loan_date` | date | TIDAK | `CURRENT_DATE` |
+| `notes` | text | ya |  |
+| `wallet_id` | bigint | ya |  |
+| `transaction_id` | bigint | ya |  |
 
 ## `investments`
 
@@ -194,7 +202,7 @@ Fungsi: `handle_new_user`. Trigger di schema public: tidak ada (trigger `handle_
 
 - `transactions` tidak punya `is_expense`; arah uang berasal dari `categories.is_expense`. Kategori global punya `user_id` null.
 - Tidak ada kolom yang menautkan transaksi ke tabungan/utang; penautan memakai tag di `note` (`[SAVING_ID:x]`, dan `[DEBT_ID:x]` mulai Plan B2).
-- `debt_payments.wallet_id → wallets` ON DELETE NO ACTION: dompet yang pernah dipakai cicilan tidak bisa dihapus (diperbaiki Plan B2).
+- `debt_payments.wallet_id → wallets` kini ON DELETE SET NULL (migrasi B2, dijalankan user 2026-09-26).
 - `transactions.category_id → categories` NO ACTION: kategori yang dipakai transaksi tidak bisa dihapus (disengaja; UI menampilkan "Kategori sedang digunakan").
 - `profiles` punya policy SELECT `true` ("Public profiles are viewable by everyone") sehingga semua user bisa membaca nama user lain — dihapus di Plan B3.
-- Belum ada fungsi RPC selain `handle_new_user`; fungsi baru ditulis di `supabase/migrations/`.
+- RPC utang (migrasi `202609240001_debt_rpc.sql`, dijalankan 2026-09-26): `create_debt`, `add_debt_payment`, `update_debt`, `update_debt_payment`, `delete_debt_payment`, `delete_debt`, helper `debt_category_id`, `debt_move_wallet`.
