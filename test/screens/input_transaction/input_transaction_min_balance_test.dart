@@ -47,18 +47,33 @@ class FakeInputNotifier extends InputTransactionNotifier {
 }
 
 void main() {
-  Future<FakeInputNotifier> pumpInput(WidgetTester tester, String amount) async {
+  Future<FakeInputNotifier> pumpInput(
+    WidgetTester tester,
+    String amount, {
+    bool pickCategory = true,
+    TransactionModel? edit,
+  }) async {
     final fake = FakeInputNotifier();
     // Lebar 600: layar Input lama (sebelum B4) meluap di font test pada baris tanggal.
     await pumpApp(
       tester,
-      const InputTransactionScreen(initialIsExpense: true),
+      InputTransactionScreen(initialIsExpense: true, transactionToEdit: edit),
       overrides: [inputTransactionProvider.overrideWith(() => fake)],
       size: const Size(600, 1400),
     );
     await tester.pump();
     await tester.enterText(find.byType(TextField).first, amount);
     await tester.pump();
+    if (pickCategory && edit == null) {
+      final dropdown = find.byWidgetPredicate(
+        (w) => w is DropdownButton<int> && (w.items?.any((i) => i.value == 10) ?? false),
+      );
+      await tester.ensureVisible(dropdown);
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Makan').last);
+      await tester.pumpAndSettle();
+    }
     return fake;
   }
 
@@ -88,6 +103,42 @@ void main() {
 
   testWidgets('pengeluaran masih di atas saldo minimal: tanpa dialog', (tester) async {
     final fake = await pumpInput(tester, '40000');
+    await tapSave(tester);
+    expect(find.text('Di bawah saldo minimal'), findsNothing);
+    expect(fake.saveCalls, 1);
+    await tester.pump(const Duration(seconds: 4)); // tutup toast
+  });
+
+  testWidgets('kategori belum dipilih: tanpa dialog, validasi lama yang bicara duluan', (tester) async {
+    final fake = await pumpInput(tester, '60000', pickCategory: false);
+    await tapSave(tester);
+    expect(find.text('Di bawah saldo minimal'), findsNothing);
+    expect(fake.saveCalls, 1);
+    await tester.pump(const Duration(seconds: 4)); // tutup toast
+  });
+
+  TransactionModel oldExpense(double amount) => TransactionModel(
+        id: 5,
+        userId: 'u',
+        categoryId: 10,
+        amount: amount,
+        date: DateTime(2026, 9, 20),
+        note: 'makan siang',
+        walletId: 1,
+      );
+
+  testWidgets('edit pengeluaran: saldo lama dikembalikan dulu, lalu dicek (30rb -> 90rb memicu dialog)', (tester) async {
+    // Saldo 100rb sudah dipotong 30rb lama -> 130rb sebelum edit; 130rb - 90rb = 40rb < minimal 50rb.
+    final fake = await pumpInput(tester, '90000', edit: oldExpense(30000));
+    await tapSave(tester);
+    expect(find.text('Di bawah saldo minimal'), findsOneWidget);
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+    expect(fake.saveCalls, 0);
+  });
+
+  testWidgets('edit pengeluaran: 30rb -> 70rb masih di atas minimal, tanpa dialog', (tester) async {
+    final fake = await pumpInput(tester, '70000', edit: oldExpense(30000));
     await tapSave(tester);
     expect(find.text('Di bawah saldo minimal'), findsNothing);
     expect(fake.saveCalls, 1);

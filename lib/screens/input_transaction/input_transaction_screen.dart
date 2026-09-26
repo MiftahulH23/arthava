@@ -267,8 +267,16 @@ class _InputTransactionScreenState
   }
 
   Future<void> _saveTransaction() async {
-    // Peringatan saldo minimal (spec §7.3): hanya pengeluaran baru dari dompet.
-    if (_isExpense && !_isFromSaving && widget.transactionToEdit == null && _selectedWalletId != null) {
+    // Peringatan saldo minimal (spec §7.3): pengeluaran dari dompet, baru atau diedit.
+    // Hanya bila isian dasar lengkap, supaya validasi lama di provider tetap bicara
+    // lebih dulu (urutan sama dengan Transfer).
+    final amount = parseRupiah(_amountController.text).toDouble();
+    if (_isExpense &&
+        !_isFromSaving &&
+        !_isReadOnly &&
+        _selectedWalletId != null &&
+        _selectedCategoryId != null &&
+        amount > 0) {
       Map<String, dynamic>? wallet;
       for (final w in ref.read(inputTransactionProvider).wallets) {
         if (w['id'] == _selectedWalletId) {
@@ -277,11 +285,17 @@ class _InputTransactionScreenState
         }
       }
       if (wallet != null) {
+        // Saat edit, provider mengembalikan dulu efek transaksi lama ke dompetnya.
+        var balance = (wallet['balance'] as num).toDouble();
+        final old = widget.transactionToEdit;
+        if (old != null && old.walletId == _selectedWalletId) {
+          balance += widget.initialIsExpense ? old.amount : -old.amount;
+        }
         final warning = minBalanceWarningMessage(
           walletName: wallet['name'].toString(),
-          balance: (wallet['balance'] as num).toDouble(),
+          balance: balance,
           minBalance: (wallet['min_balance'] as num?)?.toDouble() ?? 0,
-          amount: parseRupiah(_amountController.text).toDouble(),
+          amount: amount,
         );
         if (warning != null) {
           final ok = await showAppConfirmDialog(
