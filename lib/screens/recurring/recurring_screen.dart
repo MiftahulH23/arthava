@@ -143,7 +143,8 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
                   ),
                   AppListRow(
                     leading: const AppIconTile(icon: PhosphorIconsFill.calendarBlank, color: AppColors.tintRed),
-                    title: "Mulai Tanggal (Jatuh Tempo Pertama)",
+                    title: "Mulai Tanggal",
+                    subtitle: "Jatuh Tempo Pertama",
                     value: DateFormat('dd MMM yyyy', 'id_ID').format(selectedDate),
                     showChevron: true,
                     onTap: () async {

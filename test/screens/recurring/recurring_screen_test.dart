@@ -111,7 +111,8 @@ void main() {
     expect(find.text('Potong Dari Dompet Mana?'), findsOneWidget);
     expect(find.text('Kategori'), findsOneWidget);
     expect(find.text('Diulang Setiap'), findsOneWidget);
-    expect(find.text('Mulai Tanggal (Jatuh Tempo Pertama)'), findsOneWidget);
+    expect(find.text('Mulai Tanggal'), findsOneWidget);
+    expect(find.text('Jatuh Tempo Pertama'), findsOneWidget);
     expect(find.text('Simpan Jadwal'), findsOneWidget);
 
     await tester.tap(find.text('Pemasukan'));

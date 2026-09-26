@@ -37,7 +37,8 @@ class AppListRow extends StatelessWidget {
   /// satu baris — jadi judul pendek ("Tanggal") tidak memotong nilai panjang.
   double _valueMaxWidth(BuildContext context, double rowWidth) {
     final painter = TextPainter(
-      text: TextSpan(text: title, style: AppTextStyles.bodyStrong),
+      // Gaya yang sama dengan Text judul: termasuk turunan DefaultTextStyle (letterSpacing tema).
+      text: TextSpan(text: title, style: DefaultTextStyle.of(context).style.merge(AppTextStyles.bodyStrong)),
       maxLines: 1,
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),

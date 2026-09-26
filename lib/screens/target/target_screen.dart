@@ -294,7 +294,11 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
                   value: selectedWalletId,
                   options: [
                     for (final w in wallets)
-                      AppSelectOption(w['id'] as int, "${w['name']} (Sisa: ${formatRupiah(w['balance'] as num)})"),
+                      AppSelectOption(
+                        w['id'] as int,
+                        "${w['name']} (Sisa: ${formatRupiah(w['balance'] as num)})",
+                        shortLabel: "${w['name']}",
+                      ),
                   ],
                   onChanged: (val) => setSheetState(() => selectedWalletId = val),
                 ),

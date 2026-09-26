@@ -320,7 +320,7 @@ class _BudgetRow extends StatelessWidget {
                               children: [
                                 TextSpan(
                                   text: formatRupiah(spent),
-                                  style: AppTextStyles.amountRow.copyWith(color: color),
+                                  style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w700),
                                 ),
                                 TextSpan(text: " / ${formatRupiah(limit)}", style: AppTextStyles.caption),
                               ],

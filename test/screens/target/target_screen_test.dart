@@ -2,7 +2,6 @@ import 'package:catat_uang_app/models/target_model.dart';
 import 'package:catat_uang_app/providers/target_provider.dart';
 import 'package:catat_uang_app/screens/target/target_screen.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -117,7 +116,8 @@ void main() {
 
     expect(find.text('Nabung: Beli iPhone 15'), findsOneWidget);
     expect(find.text('Disimpan di: Dana Darurat'), findsOneWidget);
-    expect(find.textContaining('BCA (Sisa:'), findsOneWidget);
+    // Baris menampilkan nama dompet; "BCA (Sisa: …)" ada di sheet pemilih.
+    expect(find.text('BCA'), findsOneWidget);
     expect(find.text('Setor Tabungan'), findsOneWidget);
   });
 

@@ -245,7 +245,7 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
 
     return AppPageScaffold(
       title: widget.savingName,
-      backLabel: 'Buku Tabungan',
+      backLabel: 'Tabungan',
       children: [
         AppHeroCard(
           child: Row(

@@ -7,9 +7,15 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Satu opsi untuk [AppSelectRow].
 class AppSelectOption<T> {
-  const AppSelectOption(this.value, this.label);
+  const AppSelectOption(this.value, this.label, {this.shortLabel});
   final T value;
+
+  /// Teks di daftar sheet pemilih.
   final String label;
+
+  /// Teks ringkas di baris saat terpilih (mis. nama dompet tanpa "(Sisa: …)"
+  /// yang terpotong); default [label].
+  final String? shortLabel;
 }
 
 /// Baris grouped list yang membuka sheet pemilih (G17: daftar = sheet bawah).
@@ -60,7 +66,7 @@ class AppSelectRow<T> extends StatelessWidget {
     return AppListRow(
       leading: leading,
       title: title,
-      value: selected?.label ?? placeholder,
+      value: selected == null ? placeholder : (selected.shortLabel ?? selected.label),
       showChevron: true,
       onTap: options.isEmpty ? null : () => _open(context),
     );

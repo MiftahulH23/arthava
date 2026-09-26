@@ -103,4 +103,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsOneWidget);
   });
+
+  testWidgets('shortLabel tampil di baris; label lengkap tetap di sheet pemilih', (tester) async {
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: AppSelectRow<int>(
+          title: 'Dompet',
+          value: 1,
+          options: const [AppSelectOption(1, 'BCA (Sisa: Rp 9.300.000)', shortLabel: 'BCA')],
+          onChanged: (_) {},
+        ),
+      ),
+    );
+    expect(find.text('BCA'), findsOneWidget);
+    expect(find.text('BCA (Sisa: Rp 9.300.000)'), findsNothing);
+    await tester.tap(find.text('Dompet'));
+    await tester.pumpAndSettle();
+    expect(find.text('BCA (Sisa: Rp 9.300.000)'), findsOneWidget);
+  });
 }

@@ -1,7 +1,6 @@
 import 'package:catat_uang_app/models/saving_model.dart';
 import 'package:catat_uang_app/providers/savings_provider.dart';
 import 'package:catat_uang_app/screens/savings/savings_screen.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -103,7 +102,8 @@ void main() {
     expect(find.text('Contoh: Dana Darurat'), findsOneWidget);
     expect(find.text('Contoh: Bank BCA'), findsOneWidget);
     expect(find.text('Tulis catatan singkat...'), findsOneWidget);
-    expect(find.textContaining('BCA (Sisa:'), findsOneWidget);
+    // Baris menampilkan nama dompet; "BCA (Sisa: …)" ada di sheet pemilih.
+    expect(find.text('BCA'), findsOneWidget);
     expect(find.text('Setoran Awal (Opsional)'), findsOneWidget);
     expect(find.text('Simpan Tabungan'), findsOneWidget);
   });
