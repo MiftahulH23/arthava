@@ -10,6 +10,10 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'debt_detail_screen.dart';
+import 'package:catat_uang_app/screens/debt/widgets/debt_card.dart';
+import 'package:catat_uang_app/widgets/app_empty_state.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 
 class DebtScreen extends ConsumerStatefulWidget {
   const DebtScreen({super.key});
@@ -429,274 +433,60 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
     );
   }
 
-  Widget _buildDebtList(List<DebtModel> debts, String emptyMsg) {
-    if (debts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              PhosphorIconsRegular.handCoins,
-              size: 64,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              emptyMsg,
-              style: GoogleFonts.poppins(color: Colors.grey),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: debts.length,
-      itemBuilder: (context, index) {
-        final debt = debts[index];
-        final amount = debt.amount;
-        final remaining = debt.remainingAmount;
-        final paid = amount - remaining;
-        final percentage = amount > 0 ? (paid / amount) : 0.0;
-        final isPaid = debt.isPaidOff;
-
-        final isPayable = debt.isPayable;
-        final mainColor = isPayable ? Colors.red : Colors.green;
-        final label = isPayable ? "Saya berutang ke:" : "Piutang dari:";
-
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DebtDetailScreen(debtId: debt.id),
-              ),
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 15),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    if (isPaid)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "LUNAS",
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
-                          ),
-                        ),
-                      )
-                    else if (debt.dueDate != null)
-                      Text(
-                        "Tempo: ${DateFormat('dd MMM yyyy').format(debt.dueDate!)}",
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: Colors.orange.shade700,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  debt.name,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Total Uang",
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Text(
-                          currencyFormat.format(amount),
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          isPaid ? "Sudah lunas" : "Sisa Tagihan",
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Text(
-                          currencyFormat.format(remaining),
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: isPaid ? Colors.green : mainColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 15),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: percentage,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      isPaid ? Colors.green : mainColor,
-                    ),
-                    minHeight: 8,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final debtState = ref.watch(debtProvider);
+    final today = ref.watch(debtClockProvider)();
+    final debts = _isMyDebt ? debtState.myDebts(today) : debtState.theirDebts(today);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: Text(
-          "Utang & Piutang",
-          style: GoogleFonts.poppins(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+    return AppPageScaffold(
+      title: 'Utang & Piutang',
+      backLabel: 'Beranda',
+      actions: [
+        AppNavAction.add(onPressed: () => _showAddDebtSheet(context)),
+      ],
+      onRefresh: () => ref.read(debtProvider.notifier).fetchData(),
+      children: [
+        DebtTotalsRow(
+          totalPayable: debtState.totalPayable,
+          totalReceivable: debtState.totalReceivable,
         ),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Row(
-                children: [
-                  _buildToggleBtn("Utang Saya", true),
-                  _buildToggleBtn("Piutang", false),
-                ],
-              ),
+        AppSegmentedControl(
+          labels: const ['Utang Saya', 'Piutang'],
+          selectedIndex: _isMyDebt ? 0 : 1,
+          onChanged: (index) => setState(() => _isMyDebt = index == 0),
+        ),
+        if (debtState.isLoading)
+          const Padding(
+            padding: EdgeInsets.only(top: 80),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          )
+        else if (debts.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 60),
+            child: AppEmptyState(
+              icon: PhosphorIconsRegular.handCoins,
+              title: _isMyDebt
+                  ? 'Belum ada utang yang dicatat.\nAlhamdulillah!'
+                  : 'Belum ada orang yang ngutang ke kamu.',
             ),
-          ),
-          Expanded(
-            child: debtState.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildDebtList(
-                    _isMyDebt ? debtState.myDebts(DateTime.now()) : debtState.theirDebts(DateTime.now()),
-                    _isMyDebt
-                        ? "Belum ada utang yang dicatat.\nAlhamdulillah!"
-                        : "Belum ada orang yang ngutang ke kamu.",
-                  ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDebtSheet(context),
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(),
-        child: const Icon(PhosphorIconsBold.plus, color: Colors.white),
-      ),
+          )
+        else
+          for (final debt in debts)
+            DebtCard(
+              key: ValueKey('debt-${debt.id}'),
+              debt: debt,
+              today: today,
+              onTap: () => _openDetail(debt),
+            ),
+      ],
     );
   }
 
-  Widget _buildToggleBtn(String title, bool isMyDebtBtn) {
-    final bool isSelected = _isMyDebt == isMyDebtBtn;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          if (_isMyDebt != isMyDebtBtn) {
-            setState(() {
-              _isMyDebt = isMyDebtBtn;
-            });
-          }
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 5,
-                    ),
-                  ]
-                : [],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-              color: isSelected ? AppColors.primary : Colors.grey,
-            ),
-          ),
-        ),
-      ),
+  Future<void> _openDetail(DebtModel debt) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => DebtDetailScreen(debtId: debt.id)),
     );
   }
 }
