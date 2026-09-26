@@ -1,15 +1,35 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/models/saving_model.dart';
 import 'package:catat_uang_app/providers/savings_provider.dart';
 import 'package:catat_uang_app/screens/savings/saving_detail_screen.dart';
-import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_amount_display.dart';
+import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:catat_uang_app/widgets/app_dialogs.dart';
+import 'package:catat_uang_app/widgets/app_empty_state.dart';
+import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:catat_uang_app/widgets/app_hero_card.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_select_row.dart';
+import 'package:catat_uang_app/widgets/app_sheet.dart';
+import 'package:catat_uang_app/widgets/app_surface_card.dart';
+import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+Widget _fieldLabel(String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+      child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
+    );
+
+/// Label dompet sama persis dengan versi lama: "Nama (Sisa: 9.300.000)" tanpa "Rp".
+String _walletOptionLabel(Map<String, dynamic> w) =>
+    "${w['name']} (Sisa: ${NumberFormat.decimalPattern('id_ID').format((w['balance'] as num).round())})";
 
 class SavingsScreen extends ConsumerStatefulWidget {
   const SavingsScreen({super.key});
@@ -19,892 +39,319 @@ class SavingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SavingsScreenState extends ConsumerState<SavingsScreen> {
-  // --- [UX UPGRADE] Form Buat Tabungan Baru ---
   void _showAddTitleSheet() {
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     final notesController = TextEditingController();
-
     final amountController = TextEditingController();
-    final wallets = ref.read(savingsProvider).wallets;
-    int? selectedWalletId = wallets.isNotEmpty
-        ? wallets.first['id'] as int
-        : null;
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: '',
-      decimalDigits: 0,
-    );
+    final initialWallets = ref.read(savingsProvider).wallets;
+    int? selectedWalletId = initialWallets.isNotEmpty ? initialWallets.first['id'] as int : null;
 
-    showAppBottomSheet(
+    showAppFormSheet<void>(
       context: context,
+      title: 'Buat Tabungan',
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
           final wallets = ref.read(savingsProvider).wallets;
-          return Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _fieldLabel("Nama Tabungan"),
+              AppTextField(controller: nameController, hint: "Contoh: Dana Darurat", icon: PhosphorIconsFill.vault),
+              const SizedBox(height: 14),
+              _fieldLabel("Tempat Simpan (Opsional)"),
+              AppTextField(controller: locationController, hint: "Contoh: Bank BCA", icon: PhosphorIconsFill.bank),
+              const SizedBox(height: 14),
+              _fieldLabel("Catatan (Opsional)"),
+              AppTextField(controller: notesController, hint: "Tulis catatan singkat...", maxLines: 2),
+              const SizedBox(height: 14),
+              AppGroupedSection(
+                header: "Tarik Dari Dompet Mana?",
+                children: [
+                  AppSelectRow<int>(
+                    leading: const AppIconTile(icon: PhosphorIconsFill.wallet, color: AppColors.primary),
+                    title: "Dompet",
+                    placeholder: "Pilih Dompet",
+                    value: selectedWalletId,
+                    options: [for (final w in wallets) AppSelectOption(w['id'] as int, _walletOptionLabel(w))],
+                    onChanged: (v) => setSheetState(() => selectedWalletId = v),
+                  ),
+                ],
               ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 5,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Buat Tabungan",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.grey),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-
-                    Text(
-                      "Nama Tabungan",
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: nameController,
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: "Contoh: Dana Darurat",
-                        hintStyle: GoogleFonts.poppins(
-                          color: Colors.grey.shade400,
-                          fontSize: 14,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        prefixIcon: const Icon(
-                          PhosphorIconsFill.vault,
-                          color: Colors.grey,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: const BorderSide(color: Color(0xFF009688)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-
-                    Text(
-                      "Tempat Simpan (Opsional)",
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: locationController,
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: "Contoh: Bank BCA",
-                        hintStyle: GoogleFonts.poppins(
-                          color: Colors.grey.shade400,
-                          fontSize: 14,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        prefixIcon: const Icon(
-                          PhosphorIconsFill.bank,
-                          color: Colors.grey,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: const BorderSide(color: Color(0xFF009688)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-
-                    // [FIX] Catatan kembali normal 1 baris
-                    Text(
-                      "Catatan (Opsional)",
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: notesController,
-                      style: GoogleFonts.poppins(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: "Tulis catatan singkat...",
-                        hintStyle: GoogleFonts.poppins(
-                          color: Colors.grey.shade400,
-                          fontSize: 14,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        prefixIcon: const Icon(
-                          PhosphorIconsFill.notePencil,
-                          color: Colors.grey,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: const BorderSide(color: Color(0xFF009688)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-
-                    const Divider(),
-                    const SizedBox(height: 10),
-
-                    // [FIX] Dompet & Nominal Atas-Bawah (Bukan Sebelahan)
-                    Text(
-                      "Tarik Dari Dompet Mana?",
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: selectedWalletId,
-                          isExpanded: true,
-                          dropdownColor: Colors.white,
-                          icon: const Icon(
-                            PhosphorIconsRegular.caretDown,
-                            color: Colors.grey,
-                          ),
-                          items: wallets
-                              .map(
-                                (w) => DropdownMenuItem(
-                                  value: w['id'] as int,
-                                  child: Text(
-                                    "${w['name']} (Sisa: ${currencyFormat.format(w['balance'])})",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) =>
-                              setSheetState(() => selectedWalletId = v),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-
-                    Text(
-                      "Setoran Awal (Opsional)",
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: amountController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: const Color(0xFF009688),
-                      ),
-                      decoration: InputDecoration(
-                        hintText: "0",
-                        hintStyle: GoogleFonts.poppins(
-                          color: Colors.grey.shade400,
-                          fontWeight: FontWeight.normal,
-                          fontSize: 18,
-                        ),
-                        prefixIcon: Padding(
-                          padding: const EdgeInsets.all(15),
-                          child: Text(
-                            "Rp",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: const BorderSide(color: Color(0xFF009688)),
-                        ),
-                      ),
-                      onChanged: (s) {
-                        s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                        if (s.isNotEmpty) {
-                          amountController.value = TextEditingValue(
-                            text: currencyFormat.format(int.parse(s)),
-                            selection: TextSelection.collapsed(
-                              offset: currencyFormat.format(int.parse(s)).length,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 25),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF009688),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          elevation: 0,
-                        ),
-                        onPressed: () async {
-                          if (nameController.text.isEmpty) {
-                            AppNotification.error(
-                              context,
-                              "Nama tabungan tidak boleh kosong!",
-                            );
-                            return;
-                          }
-
-                          double amt = 0;
-                          if (amountController.text.isNotEmpty) {
-                            amt = double.parse(
-                              amountController.text.replaceAll(
-                                RegExp(r'[^0-9]'),
-                                '',
-                              ),
-                            );
-                          }
-
-                          if (amt > 0 && selectedWalletId == null) {
-                            AppNotification.error(
-                              context,
-                              "Pilih dompet untuk setoran awal!",
-                            );
-                            return;
-                          }
-
-                          try {
-                            if (amt > 0) {
-                              final error = await ref
-                                  .read(savingsProvider.notifier)
-                                  .processSavingTransaction(
-                                    isDeposit: true,
-                                    savingName: nameController.text.trim(),
-                                    amount: amt,
-                                    walletId: selectedWalletId!,
-                                    location: locationController.text.trim(),
-                                    notes: notesController.text.trim(),
-                                  );
-                              if (context.mounted) {
-                                if (error != null) {
-                                  AppNotification.error(context, error);
-                                } else {
-                                  AppNotification.success(
-                                    context,
-                                    "Berhasil Menabung!",
-                                  );
-                                }
-                              }
-                            } else {
-                              await ref
-                                  .read(savingsProvider.notifier)
-                                  .addEmptyGroup(
-                                    name: nameController.text.trim(),
-                                    location: locationController.text.trim(),
-                                    notes: notesController.text.trim(),
-                                  );
-                              if (context.mounted) {
-                                AppNotification.success(
-                                  context,
-                                  "Tabungan berhasil dibuat!",
-                                );
-                              }
-                            }
-                            if (context.mounted) Navigator.pop(context);
-                          } catch (e) {
-                            if (context.mounted)
-                              AppNotification.error(
-                                context,
-                                "Gagal membuat tabungan.",
-                              );
-                          }
-                        },
-                        child: Text(
-                          "Simpan Tabungan",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 14),
+              AppSurfaceCard(
+                child: AppAmountField(
+                  controller: amountController,
+                  label: "Setoran Awal (Opsional)",
+                  color: AppColors.primary,
                 ),
               ),
-            );
+              const SizedBox(height: 20),
+              AppPrimaryButton(
+                label: "Simpan Tabungan",
+                onPressed: () async {
+                  if (nameController.text.isEmpty) {
+                    AppNotification.error(context, "Nama tabungan tidak boleh kosong!");
+                    return;
+                  }
+
+                  double amt = 0;
+                  if (amountController.text.isNotEmpty) {
+                    amt = parseRupiah(amountController.text).toDouble();
+                  }
+
+                  if (amt > 0 && selectedWalletId == null) {
+                    AppNotification.error(context, "Pilih dompet untuk setoran awal!");
+                    return;
+                  }
+
+                  try {
+                    if (amt > 0) {
+                      final error = await ref.read(savingsProvider.notifier).processSavingTransaction(
+                            isDeposit: true,
+                            savingName: nameController.text.trim(),
+                            amount: amt,
+                            walletId: selectedWalletId!,
+                            location: locationController.text.trim(),
+                            notes: notesController.text.trim(),
+                          );
+                      if (context.mounted) {
+                        if (error != null) {
+                          AppNotification.error(context, error);
+                        } else {
+                          AppNotification.success(context, "Berhasil Menabung!");
+                        }
+                      }
+                    } else {
+                      await ref.read(savingsProvider.notifier).addEmptyGroup(
+                            name: nameController.text.trim(),
+                            location: locationController.text.trim(),
+                            notes: notesController.text.trim(),
+                          );
+                      if (context.mounted) {
+                        AppNotification.success(context, "Tabungan berhasil dibuat!");
+                      }
+                    }
+                    if (context.mounted) Navigator.pop(context);
+                  } catch (e) {
+                    if (context.mounted) AppNotification.error(context, "Gagal membuat tabungan.");
+                  }
+                },
+              ),
+            ],
+          );
         },
       ),
     );
   }
 
-  // --- Form Edit Tabungan ---
   void _showEditSheet(String oldName, String oldLocation, String oldNotes) {
     final nameController = TextEditingController(text: oldName);
     final locationController = TextEditingController(text: oldLocation);
     final notesController = TextEditingController(text: oldNotes);
 
-    showAppBottomSheet(
+    showAppFormSheet<void>(
       context: context,
-      builder: (context) => Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-          ),
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Edit Tabungan",
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.grey),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 15),
-
-                Text(
-                  "Nama Tabungan",
-                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: nameController,
-                  style: GoogleFonts.poppins(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    prefixIcon: const Icon(
-                      PhosphorIconsFill.vault,
-                      color: Colors.grey,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: const BorderSide(color: Color(0xFF009688)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                Text(
-                  "Tempat Simpan",
-                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: locationController,
-                  style: GoogleFonts.poppins(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    prefixIcon: const Icon(
-                      PhosphorIconsFill.bank,
-                      color: Colors.grey,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: const BorderSide(color: Color(0xFF009688)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                // [FIX] Catatan edit kembali normal 1 baris
-                Text(
-                  "Catatan",
-                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: notesController,
-                  style: GoogleFonts.poppins(
-                    color: Colors.black,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    prefixIcon: const Icon(
-                      PhosphorIconsFill.notePencil,
-                      color: Colors.grey,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: const BorderSide(color: Color(0xFF009688)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 25),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF009688),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () async {
-                      if (nameController.text.isEmpty) return;
-                      try {
-                        await ref.read(savingsProvider.notifier).renameGroup(
-                              oldName: oldName,
-                              newName: nameController.text.trim(),
-                              location: locationController.text.trim(),
-                              notes: notesController.text.trim(),
-                            );
-
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          AppNotification.success(
-                            context,
-                            "Berhasil diupdate!",
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted)
-                          AppNotification.error(
-                            context,
-                            "Gagal update tabungan.",
-                          );
-                      }
-                    },
-                    child: Text(
-                      "Simpan Perubahan",
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-    );
-  }
-
-  // --- Konfirmasi Hapus ---
-  void _confirmDelete(String groupName) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Hapus Tabungan?"),
-        content: Text(
-          "Anda yakin ingin menghapus '$groupName'? Semua riwayat di tabungan ini akan hilang (Saldo dompet TIDAK akan dikembalikan otomatis).",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
+      title: 'Edit Tabungan',
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _fieldLabel("Nama Tabungan"),
+          AppTextField(controller: nameController, icon: PhosphorIconsFill.vault),
+          const SizedBox(height: 14),
+          _fieldLabel("Tempat Simpan"),
+          AppTextField(controller: locationController, icon: PhosphorIconsFill.bank),
+          const SizedBox(height: 14),
+          _fieldLabel("Catatan"),
+          AppTextField(controller: notesController, maxLines: 2),
+          const SizedBox(height: 20),
+          AppPrimaryButton(
+            label: "Simpan Perubahan",
             onPressed: () async {
-              Navigator.pop(context);
-              await ref.read(savingsProvider.notifier).deleteGroup(groupName);
-              if (context.mounted)
-                AppNotification.success(context, "Tabungan dihapus");
+              if (nameController.text.isEmpty) return;
+              try {
+                await ref.read(savingsProvider.notifier).renameGroup(
+                      oldName: oldName,
+                      newName: nameController.text.trim(),
+                      location: locationController.text.trim(),
+                      notes: notesController.text.trim(),
+                    );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  AppNotification.success(context, "Berhasil diupdate!");
+                }
+              } catch (e) {
+                if (context.mounted) AppNotification.error(context, "Gagal update tabungan.");
+              }
             },
-            child: const Text(
-              "Hapus",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
           ),
         ],
       ),
     );
   }
 
-  // --- Form Setor/Tarik dari Card ---
+  Future<void> _confirmDelete(String groupName) async {
+    final confirmed = await showAppConfirmDialog(
+      context: context,
+      title: "Hapus Tabungan?",
+      message:
+          "Anda yakin ingin menghapus '$groupName'? Semua riwayat di tabungan ini akan hilang (Saldo dompet TIDAK akan dikembalikan otomatis).",
+    );
+    if (!confirmed || !mounted) return;
+    await ref.read(savingsProvider.notifier).deleteGroup(groupName);
+    if (mounted) AppNotification.success(context, "Tabungan dihapus");
+  }
+
   void _showTransactionSheet(String groupName, bool isDeposit) {
     final amountController = TextEditingController();
-    final wallets = ref.read(savingsProvider).wallets;
-    int? selectedWalletId = wallets.isNotEmpty
-        ? wallets.first['id'] as int
-        : null;
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: '',
-      decimalDigits: 0,
-    );
+    final initialWallets = ref.read(savingsProvider).wallets;
+    int? selectedWalletId = initialWallets.isNotEmpty ? initialWallets.first['id'] as int : null;
+    final actionColor = isDeposit ? AppColors.primary : AppColors.tintOrange;
 
-    showAppBottomSheet(
+    showAppFormSheet<void>(
       context: context,
+      title: isDeposit ? "Setor ke $groupName" : "Tarik dari $groupName",
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
           final wallets = ref.read(savingsProvider).wallets;
-          return Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppGroupedSection(
+                header: isDeposit ? "Tarik dari Dompet" : "Simpan ke Dompet",
                 children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          isDeposit
-                              ? "Setor ke $groupName"
-                              : "Tarik dari $groupName",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.grey),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-
-                  Text(
-                    isDeposit ? "Tarik dari Dompet" : "Simpan ke Dompet",
-                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: selectedWalletId,
-                        isExpanded: true,
-                        dropdownColor: Colors.white,
-                        icon: const Icon(
-                          PhosphorIconsRegular.caretDown,
-                          color: Colors.grey,
-                        ),
-                        items: wallets
-                            .map(
-                              (w) => DropdownMenuItem(
-                                value: w['id'] as int,
-                                child: Text(
-                                  "${w['name']} (Sisa: ${currencyFormat.format(w['balance'])})",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) =>
-                            setSheetState(() => selectedWalletId = v),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Text(
-                    "Nominal",
-                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: isDeposit ? const Color(0xFF009688) : Colors.orange,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: "0",
-                      hintStyle: GoogleFonts.poppins(
-                        color: Colors.grey.shade400,
-                        fontWeight: FontWeight.normal,
-                        fontSize: 18,
-                      ),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(15),
-                        child: Text(
-                          "Rp",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide(
-                          color: isDeposit
-                              ? const Color(0xFF009688)
-                              : Colors.orange,
-                        ),
-                      ),
-                    ),
-                    onChanged: (s) {
-                      s = s.replaceAll(RegExp(r'[^0-9]'), '');
-                      if (s.isNotEmpty) {
-                        amountController.value = TextEditingValue(
-                          text: currencyFormat.format(int.parse(s)),
-                          selection: TextSelection.collapsed(
-                            offset: currencyFormat.format(int.parse(s)).length,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 30),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDeposit
-                            ? const Color(0xFF009688)
-                            : Colors.orange,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: () {
-                        if (amountController.text.isEmpty ||
-                            selectedWalletId == null) {
-                          AppNotification.error(
-                            context,
-                            "Isi nominal dengan benar!",
-                          );
-                          return;
-                        }
-                        double amt = double.parse(
-                          amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-                        );
-                        ref
-                            .read(savingsProvider.notifier)
-                            .processSavingTransaction(
-                              isDeposit: isDeposit,
-                              savingName: groupName,
-                              amount: amt,
-                              walletId: selectedWalletId!,
-                            )
-                            .then((error) {
-                          if (!context.mounted) return;
-                          if (error != null) {
-                            AppNotification.error(context, error);
-                          } else {
-                            AppNotification.success(
-                              context,
-                              isDeposit ? "Berhasil Menabung!" : "Berhasil Dicairkan!",
-                            );
-                          }
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: Text(
-                        isDeposit ? "Konfirmasi Setoran" : "Konfirmasi Penarikan",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
+                  AppSelectRow<int>(
+                    leading: const AppIconTile(icon: PhosphorIconsFill.wallet, color: AppColors.primary),
+                    title: "Dompet",
+                    placeholder: "Pilih Dompet",
+                    value: selectedWalletId,
+                    options: [for (final w in wallets) AppSelectOption(w['id'] as int, _walletOptionLabel(w))],
+                    onChanged: (v) => setSheetState(() => selectedWalletId = v),
                   ),
                 ],
               ),
-            );
+              const SizedBox(height: 14),
+              AppSurfaceCard(
+                child: AppAmountField(controller: amountController, label: "Nominal", color: actionColor),
+              ),
+              const SizedBox(height: 20),
+              AppPrimaryButton(
+                label: isDeposit ? "Konfirmasi Setoran" : "Konfirmasi Penarikan",
+                color: actionColor,
+                onPressed: () {
+                  if (amountController.text.isEmpty || selectedWalletId == null) {
+                    AppNotification.error(context, "Isi nominal dengan benar!");
+                    return;
+                  }
+                  final double amt = parseRupiah(amountController.text).toDouble();
+                  // Sama seperti sebelumnya: tidak di-await, sheet langsung ditutup.
+                  ref
+                      .read(savingsProvider.notifier)
+                      .processSavingTransaction(
+                        isDeposit: isDeposit,
+                        savingName: groupName,
+                        amount: amt,
+                        walletId: selectedWalletId!,
+                      )
+                      .then((error) {
+                    if (!context.mounted) return;
+                    if (error != null) {
+                      AppNotification.error(context, error);
+                    } else {
+                      AppNotification.success(context, isDeposit ? "Berhasil Menabung!" : "Berhasil Dicairkan!");
+                    }
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
         },
+      ),
+    );
+  }
+
+  Widget _buildGroupCard(String groupName, List<SavingModel> items) {
+    final double groupTotal = items.fold(0, (sum, item) => sum + item.amount);
+    final String loc = items.last.location ?? '';
+    final String note = items.last.notes ?? '';
+
+    return AppSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => SavingDetailScreen(savingName: groupName)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AppIconTile(icon: PhosphorIconsFill.vault, color: AppColors.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(groupName, style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      if (loc.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              const Icon(PhosphorIconsFill.bank, size: 12, color: AppColors.textSecondary),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(loc, style: AppTextStyles.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                AppNavAction.icon(
+                  PhosphorIconsRegular.pencilSimple,
+                  color: AppColors.textSecondary,
+                  onPressed: () => _showEditSheet(groupName, loc, note),
+                ),
+                AppNavAction.icon(
+                  PhosphorIconsRegular.trash,
+                  color: AppColors.textSecondary,
+                  onPressed: () => _confirmDelete(groupName),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(formatRupiah(groupTotal), style: AppTextStyles.title.copyWith(color: AppColors.primary)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: AppPillButton(
+                  label: "Setor",
+                  icon: PhosphorIconsFill.downloadSimple,
+                  onPressed: () => _showTransactionSheet(groupName, true),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: AppPillButton(
+                  label: "Tarik",
+                  icon: PhosphorIconsFill.uploadSimple,
+                  color: AppColors.tintOrange,
+                  onPressed: () => _showTransactionSheet(groupName, false),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -916,349 +363,43 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
     final groupedSavings = savingsState.groupedSavings;
     final totalSavings = savingsState.totalSavings;
 
-    final currency = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          "Buku Tabungan",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF009688), Color(0xFF00796B)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF009688).withOpacity(0.4),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+    return AppPageScaffold(
+      title: 'Buku Tabungan',
+      backLabel: 'Beranda',
+      actions: [AppNavAction.add(onPressed: _showAddTitleSheet)],
+      children: [
+        AppHeroCard(
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Total Semua Tabungan",
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      currency.format(totalSavings),
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    const AppHeroLabel("Total Semua Tabungan"),
+                    const SizedBox(height: 6),
+                    AppHeroAmount(formatRupiah(totalSavings), fontSize: 28),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    PhosphorIconsFill.piggyBank,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : groupedSavings.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          PhosphorIconsFill.vault,
-                          size: 80,
-                          color: Colors.grey.shade300,
-                        ),
-                        const SizedBox(height: 15),
-                        Text(
-                          "Belum ada tabungan",
-                          style: GoogleFonts.poppins(
-                            color: Colors.grey,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: groupedSavings.length,
-                    itemBuilder: (context, index) {
-                      String groupName = groupedSavings.keys.elementAt(index);
-                      List<SavingModel> items = groupedSavings[groupName]!;
-                      double groupTotal = items.fold(
-                        0,
-                        (sum, item) => sum + item.amount,
-                      );
-
-                      String loc = items.last.location ?? '';
-                      String note = items.last.notes ?? '';
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 15),
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      SavingDetailScreen(savingName: groupName),
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF009688,
-                                      ).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: const Icon(
-                                      PhosphorIconsFill.vault,
-                                      color: Color(0xFF009688),
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 15),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          groupName,
-                                          style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          currency.format(groupTotal),
-                                          style: GoogleFonts.poppins(
-                                            color: const Color(0xFF009688),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        if (loc.isNotEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              top: 4,
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                const Icon(
-                                                  PhosphorIconsFill.bank,
-                                                  size: 12,
-                                                  color: Colors.blueGrey,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  loc,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 11,
-                                                    color: Colors.blueGrey,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      GestureDetector(
-                                        onTap: () => _showEditSheet(
-                                          groupName,
-                                          loc,
-                                          note,
-                                        ),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary
-                                                .withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.edit_outlined,
-                                            color: AppColors.primary,
-                                            size: 18,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      GestureDetector(
-                                        onTap: () => _confirmDelete(groupName),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.red.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.delete_outline,
-                                            color: Colors.red,
-                                            size: 18,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Divider(height: 1),
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextButton.icon(
-                                    onPressed: () =>
-                                        _showTransactionSheet(groupName, true),
-                                    icon: const Icon(
-                                      PhosphorIconsFill.downloadSimple,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      "Setor",
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: const Color(0xFF009688),
-                                      backgroundColor: const Color(
-                                        0xFF009688,
-                                      ).withOpacity(0.05),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: TextButton.icon(
-                                    onPressed: () =>
-                                        _showTransactionSheet(groupName, false),
-                                    icon: const Icon(
-                                      PhosphorIconsFill.uploadSimple,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      "Tarik",
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: Colors.orange,
-                                      backgroundColor: Colors.orange
-                                          .withOpacity(0.05),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'add_new_saving',
-        onPressed: () => _showAddTitleSheet(),
-        backgroundColor: const Color(0xFF009688),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          "Buat Tabungan",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+              ),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
+                child: const Icon(PhosphorIconsFill.piggyBank, color: Colors.white, size: 28),
+              ),
+            ],
           ),
         ),
-      ),
+        if (isLoading)
+          const Padding(
+            padding: EdgeInsets.only(top: 60),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          )
+        else if (groupedSavings.isEmpty)
+          const AppEmptyState(icon: PhosphorIconsFill.vault, title: "Belum ada tabungan")
+        else
+          for (final entry in groupedSavings.entries) _buildGroupCard(entry.key, entry.value),
+      ],
     );
   }
 }
