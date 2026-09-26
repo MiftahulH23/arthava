@@ -96,3 +96,49 @@ Widget _action(String label, {bool destructive = false, bool bold = false}) => T
         color: destructive ? AppColors.expense : AppColors.primary,
       ),
     );
+
+/// Loading gaya iOS (HUD) selama [task] berjalan. Tidak bisa ditutup pengguna;
+/// selalu dilepas setelah [task] selesai atau gagal (error diteruskan).
+/// Route dilepas lewat `removeRoute`, jadi aman walau [task] selesai sebelum
+/// HUD sempat tampil atau ada route lain di atasnya.
+Future<T> runWithAppLoading<T>(BuildContext context, Future<T> Function() task, {String? message}) async {
+  final navigator = Navigator.of(context);
+  final route = CupertinoDialogRoute<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => PopScope(canPop: false, child: _AppLoadingHud(message: message)),
+  );
+  navigator.push(route);
+  try {
+    return await task();
+  } finally {
+    if (route.isActive) navigator.removeRoute(route);
+  }
+}
+
+class _AppLoadingHud extends StatelessWidget {
+  const _AppLoadingHud({this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 120, maxWidth: 240),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CupertinoActivityIndicator(radius: 14),
+            if (message != null) ...[
+              const SizedBox(height: 12),
+              Text(message!, textAlign: TextAlign.center, style: AppTextStyles.subhead),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

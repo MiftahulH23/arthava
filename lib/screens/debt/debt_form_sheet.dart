@@ -10,6 +10,7 @@ import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_callout.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_pickers.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_switch.dart';
@@ -101,8 +102,9 @@ class _DebtFormState extends ConsumerState<_DebtForm> {
 
   Future<void> _pickLoanDate() async {
     final today = _today;
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
+      title: 'Tanggal Pinjam',
       initialDate: _loanDate.isAfter(today) ? today : _loanDate,
       firstDate: DateTime(2000),
       lastDate: today,
@@ -114,8 +116,9 @@ class _DebtFormState extends ConsumerState<_DebtForm> {
     final today = _today;
     final last = DateTime(today.year + 10, 12, 31);
     final initial = _dueDate ?? today;
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
+      title: 'Jatuh Tempo',
       initialDate: initial.isBefore(DateTime(2000)) ? today : initial,
       firstDate: DateTime(2000),
       lastDate: last,

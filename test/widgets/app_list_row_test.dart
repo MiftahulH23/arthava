@@ -66,4 +66,13 @@ void main() {
     expect(title.didExceedMaxLines, isFalse);
     expect(find.text('24 Sep 2026'), findsOneWidget);
   });
+
+  testWidgets('valueColor mewarnai value; default warna subhead', (tester) async {
+    await pumpApp(tester, const Scaffold(body: Column(children: [
+      AppListRow(title: 'Dari', value: '1 Sep 2026', valueColor: AppColors.primary),
+      AppListRow(title: 'Sampai', value: '10 Sep 2026'),
+    ])));
+    expect(tester.widget<Text>(find.text('1 Sep 2026')).style!.color, AppColors.primary);
+    expect(tester.widget<Text>(find.text('10 Sep 2026')).style!.color, isNot(AppColors.primary));
+  });
 }

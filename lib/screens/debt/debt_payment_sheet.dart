@@ -12,6 +12,7 @@ import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_callout.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_pickers.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:catat_uang_app/widgets/app_switch.dart';
@@ -108,8 +109,9 @@ class _DebtPaymentFormState extends ConsumerState<_DebtPaymentForm> {
     DateTime initial = _date;
     if (initial.isBefore(first)) initial = first;
     if (initial.isAfter(today)) initial = today;
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
+      title: 'Tanggal Bayar',
       initialDate: initial,
       firstDate: first,
       lastDate: today,

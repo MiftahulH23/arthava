@@ -5,16 +5,23 @@ import 'package:flutter_test/flutter_test.dart';
 /// Semua modal di app harus sama bentuknya (keputusan user 2026-09-26):
 /// - konfirmasi / pilihan → `showAppConfirmDialog` / `showAppChoiceDialog`
 ///   (lib/widgets/app_dialogs.dart, gaya dialog iOS);
-/// - form / daftar → `showAppFormSheet`.
+/// - form / daftar → `showAppFormSheet`;
+/// - tanggal / bulan / tahun / periode → `showApp*Picker` (lib/widgets/app_pickers.dart).
 /// Pemanggilan dialog/sheet mentah di layar dilarang.
 final _forbidden = RegExp(
   r'\b(showDialog|showAdaptiveDialog|showCupertinoDialog|showModalBottomSheet|showBottomSheet'
-  r'|showCupertinoModalPopup|showCupertinoSheet|showGeneralDialog|showAppBottomSheet)\s*[<(]'
+  r'|showCupertinoModalPopup|showCupertinoSheet|showGeneralDialog|showAppBottomSheet'
+  r'|showDatePicker|showDateRangePicker|showTimePicker)\s*[<(]'
   r'|\b(AlertDialog|CupertinoAlertDialog|SimpleDialog)(\.adaptive)?\s*\(',
 );
 
 /// File tempat komponen modal bersama didefinisikan.
-const _shared = {'lib/widgets/app_dialogs.dart', 'lib/widgets/app_sheet.dart', 'lib/widgets/app_bottom_sheet.dart'};
+const _shared = {
+  'lib/widgets/app_dialogs.dart',
+  'lib/widgets/app_sheet.dart',
+  'lib/widgets/app_bottom_sheet.dart',
+  'lib/widgets/app_pickers.dart',
+};
 
 /// Layar lama yang belum didesain ulang, dan plan yang wajib membersihkannya.
 /// Hapus entri saat plan-nya merapikan layar itu; daftar ini harus kosong di akhir Phase B.

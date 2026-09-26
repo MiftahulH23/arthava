@@ -54,6 +54,7 @@ fitur/data yang sudah ada**, sambil:
 | G14 | **Font** Plus Jakarta Sans lewat `AppTextStyles` (§5). Setiap screen yang disentuh WAJIB bersih dari `GoogleFonts.poppins`. | |
 | G15 | **Ikon** tetap `phosphor_flutter`: Regular untuk tidak aktif, Fill untuk aktif/emfasis. Jangan ganti library ikon. | |
 | G16 | **Empty state**: ikon abu besar + judul + (opsional) subjudul/aksi, di tengah area konten. **Loading**: `CircularProgressIndicator` warna primary di tengah. | |
+| G17 | **Semua modal satu bentuk** (keputusan user 2026-09-26): konfirmasi/pilihan = dialog iOS (`showAppConfirmDialog` / `showAppChoiceDialog`); form, daftar, dan pemilih tanggal/bulan/tahun/periode = sheet bawah (`showAppFormSheet`, `showAppDatePicker`, `showAppMonthPicker`, `showAppYearPicker`, `showAppDateRangePicker`) dengan tombol "Pilih"; loading yang memblokir = `runWithAppLoading`. `showDialog`, `AlertDialog`, `showDatePicker`, `showDateRangePicker`, `showModalBottomSheet` dilarang di screen (`test/architecture/modal_consistency_test.dart`). | Hapus Utang, Tanggal Pinjam |
 
 ## 4. Token desain (satuan Flutter)
 
@@ -334,6 +335,7 @@ dieksekusi berurutan, jadi plan berikutnya boleh mengandalkannya.
 | B1 | `AppNavAction.icon(tooltip:)` (polish B1 — B2/B6 cukup memakainya); `AppAmountField` mengecil untuk nominal panjang; `AppTextField.onChanged`, `AppTextField.inputFormatters`; `AppSwipeActions.deleteConfirmTitle` / `deleteConfirmMessage` (String, default `'Hapus?'` / `'Data ini akan dihapus permanen.'`); tooltip "Tambah" di `AppNavAction.add`; konstanta publik `AppPageScaffold.horizontalPadding` / `blockGap`; `AppProgressRingPainter` publik |
 | B2 | `showAppChoiceDialog` + `AppDialogChoice` (dialog iOS beberapa pilihan) dan teks semua dialog memakai `AppTextStyles`; `AppListRow` judul 2 baris (porsi 3:2), nilai rata kanan; `AppAmountField` "Rp" + angka dipusatkan bersama; harness screenshot `test/screenshots/` + `tool/screenshots/fetch_fonts.sh`; E2E `tool/e2e/debt_rpc_e2e.dart`; `lib/core/transaction_tags.dart` (`isSavingMutation`, `isDebtMutation`, `isInternalMutation`, `stripDebtTag`, `stripTransactionTags`, `debtTag`) — **satu-satunya** tempat deteksi tag; `lib/models/debt_model.dart` (`DebtType`, `DebtModel`, `DebtBadgeKind`), `debt_payment_model.dart`; `DebtApi` seam; `AppNavAction.icon(tooltip:)` (bila B1 belum punya) |
 | B3 | `AppPillButton.large` (tinggi 44, bulat penuh; pill Transfer · Tambah di Dompet — pilihan user 2026-09-26); `lib/core/wallet_rules.dart` (`homeWallets`, `spendableOf`, `spendableTotal`, `wouldBreachMinBalance`, `minBalanceWarningMessage`); `initialsOf` di `formatters.dart`; `AppColors.walletColorChoices` (List<String> hex) + `AppColors.fromWalletHex` + `heroStat*`; `userSettingsProvider`; `lib/providers/home_summary.dart`; `IncludeMinBalanceRow` |
+| B3b | `lib/widgets/app_pickers.dart` (`showAppDatePicker`, `showAppMonthPicker`, `showAppYearPicker`, `showAppDateRangePicker`); `runWithAppLoading` di `app_dialogs.dart`; `AppListRow.valueColor`; `test/architecture/modal_consistency_test.dart` (daftar `_legacy` dikosongkan oleh plan B4–B6) |
 | B4 | `AppPageScaffold.leading` (mengganti tombol kembali, mis. "Batal"); `lib/widgets/app_period_picker.dart` (`showAppPeriodPicker`); `lib/core/category_visuals.dart` (`categoryIcon`, `categoryColor`); `lib/screens/transaction_history/transaction_filter_sheet.dart` |
 | B5 | `AppSelectOption<T>` + `AppSelectRow<T>` (`lib/widgets/app_select_row.dart`); `AppTextField.focusNode` |
 | B6 | `AppWalletSelectRow` (`lib/widgets/app_wallet_select_row.dart`); `AppTextField.autofocus` / `textCapitalization`; `AppPageScaffold.scrollController`; `AppNavAction.icon(tooltip:)` |
@@ -412,12 +414,13 @@ Fitur baru yang disetujui:
 | — komponen bersama, formatter, text styles, hapus widget_test | `lib/widgets/*`, `lib/core/formatters.dart`, `lib/theme/app_text_styles.dart` | **B1** |
 | Utang & Piutang, Detail Utang, Form Catat Utang | `lib/screens/debt/*`, `lib/providers/debt_provider.dart`, SQL | **B2** |
 | Beranda (usulan baru), Semua Fitur, Dompet | `lib/screens/home/*`, `lib/screens/all_features/*` (baru), `lib/screens/wallet/*`, providers terkait, SQL | **B3** |
+| — pemilih & loading bersama, Utang memakai pemilih baru | `lib/widgets/app_pickers.dart`, `app_dialogs.dart`, `lib/screens/debt/*` | **B3b** |
 | Transaksi, Statistik, Tambah Transaksi | `lib/screens/transaction_history/*`, `lib/screens/stats/*`, `lib/screens/input_transaction/*` | **B4** |
 | Anggaran, Detail Anggaran, Target Keuangan, Buku Tabungan, Detail Tabungan, Tagihan & Pemasukan Rutin, Form Buat Anggaran | `lib/screens/budget/*`, `target/*`, `savings/*`, `recurring/*` | **B5** |
 | Investasi, Zakat & Sedekah, Kalender, Kelola Kategori, Export Laporan, AI Advisor | `investment/*`, `zakat_sedekah/*`, `calendar/*`, `manage_category/*`, `export/*`, `ai_advisor/*` | **B6** |
 | Login, Daftar Akun, Kunci Aplikasi, Pengaturan, Edit Profil + pembersihan akhir | `login/*`, `register/*`, `lock/*`, `settings/*`, `edit_profile/*` | **B7** |
 
-Urutan eksekusi: **B1 → B2 → B3 → B4 → B5 → B6 → B7.** B1 wajib selesai dulu (semua plan lain
+Urutan eksekusi: **B1 → B2 → B3 → B3b → B4 → B5 → B6 → B7.** B1 wajib selesai dulu (semua plan lain
 bergantung padanya). B2 didahulukan karena bug uang. B3 butuh B2 (widget Utang di Beranda).
 B4–B7 saling independen setelah B1 tetapi dijalankan berurutan supaya review mudah.
 Satu branch per plan: `redesign/phase-b1-components`, `redesign/phase-b2-debt`, dst., merge ke `main`

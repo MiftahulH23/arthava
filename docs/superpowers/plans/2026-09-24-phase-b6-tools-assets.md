@@ -2057,7 +2057,7 @@ EOF
 ## Task 5: Redesign Export Laporan
 
 **Files:**
-- Modify: `lib/screens/export/export_screen.dart` (baris 1–10 import, baris 20 seam, `_pickMonth` baris 37–186 restyle, `build` baris 372–657; `_pickDateRange` dan `_generatePdf` TIDAK diubah)
+- Modify: `lib/screens/export/export_screen.dart` (baris 1–10 import, baris 20 seam, `_pickMonth` baris 37–186 → pemilih bulan bersama, `_pickDateRange` baris 189–214 → pemilih periode bersama (Plan B3b, spec G17), `build` baris 372–657; `_generatePdf` TIDAK diubah)
 - Create: `test/screens/export/export_screen_test.dart`
 
 **Interfaces:**
@@ -2072,11 +2072,11 @@ EOF
 | 20 | `final SupabaseClient _supabase = Supabase.instance.client;` | getter (seam test) |
 | 22–25 | `_isCustomRange=false`, `_selectedMonth=now`, `_selectedDateRange`, `_isGenerating` | sama |
 | 27–35 | range awal: tanggal 1 bulan ini s/d hari ini | sama |
-| 37–39 | `_pickMonth`: tahun sekarang ±5 | sama |
+| 37–39 | `_pickMonth`: tahun sekarang ±5 | sama, lewat `showAppMonthPicker` (B3b). Beda perilaku (ruling B3b): dropdown tahun lama langsung mengubah bulan laporan; sekarang perubahan baru berlaku setelah "Pilih" |
+| 189–214 | `_pickDateRange`: rentang 2020–2030, awal = `_selectedDateRange` | sama, lewat `showAppDateRangePicker` (B3b) |
 | 56 | judul dialog "Pilih Periode" | sama (gaya `AppTextStyles.headline`) |
-| 73–109 | dropdown tahun → `setDialogState` + `setState` | sama persis |
-| 122–176 | grid 3×4 bulan (`'MMM', 'id_ID'`), terpilih = chip primary; tap → set bulan + pop | sama persis, warna netral dari `AppColors` |
-| 188–213 | `_pickDateRange` (2020–2030, tema primary) | tidak diubah |
+| 73–109 | dropdown tahun → `setDialogState` + `setState` | tahun ‹ › di `showAppMonthPicker`; berlaku setelah "Pilih" (ruling B3b) |
+| 122–176 | grid 3×4 bulan (`'MMM', 'id_ID'`), terpilih = chip primary; tap → set bulan + pop | grid 3×4 bulan yang sama di `showAppMonthPicker`; tap = tandai, "Pilih" = set bulan + tutup (ruling B3b) |
 | 215–370 | `_generatePdf` (query, filter mutasi tabungan, info dompet, PDF, `Printing.layoutPdf`, toast "Tidak ada transaksi di periode ini." / "Gagal membuat PDF: $e") | tidak diubah |
 | 379 | judul "Export Laporan" | `AppPageScaffold(title:)` |
 | 411–415 | ikon filePdf primary | `AppIconTile(size: 72)` |
@@ -2093,7 +2093,6 @@ EOF
 | `Colors.grey.shade100` (track toggle, pill tahun) | `AppColors.track` |
 | `Colors.grey.shade300` (border chip bulan, border baris) | `AppColors.separator` |
 | `Colors.grey*` (teks sekunder) | `AppTextStyles.caption/subhead` |
-| `Colors.black` (onSurface di `_pickDateRange`) | tidak diubah (method tidak disentuh) |
 | `AppColors.textPrimary` (latar tombol cetak) | `AppColors.primary` (mockup memakai tombol utama biru) |
 
 - [ ] **Step 1: Tulis test gagal**
@@ -2148,6 +2147,8 @@ void main() {
     expect(find.text('Pilih Periode'), findsOneWidget);
 
     await tester.tap(find.text('Jan'));
+    await tester.pump();
+    await tester.tap(find.text('Pilih')); // pemilih bersama (Plan B3b): ketuk bulan, lalu "Pilih"
     await tester.pumpAndSettle();
 
     expect(find.text(DateFormat('MMMM yyyy', 'id_ID').format(DateTime(DateTime.now().year, 1))), findsOneWidget);
@@ -2174,6 +2175,7 @@ import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_pickers.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:flutter/material.dart';
@@ -2185,114 +2187,35 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 2. Baris 20 → `SupabaseClient get _supabase => Supabase.instance.client;`
 
-3. Ganti `_pickMonth` (baris 37–186) dengan versi berikut. Logika identik; hanya gaya teks & warna yang berubah:
+3. Ganti `_pickMonth` (baris 37–186) dan `_pickDateRange` (baris 189–214) dengan pemilih bersama (Plan B3b, spec G17 — `test/architecture/modal_consistency_test.dart` menolak `showDialog`/`AlertDialog`/`showDateRangePicker`):
 
 ```dart
   Future<void> _pickMonth() async {
     final currentYear = DateTime.now().year;
-    final years = List.generate(11, (i) => (currentYear - 5) + i);
-
-    await showDialog(
+    final picked = await showAppMonthPicker(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Pilih Periode", style: AppTextStyles.headline),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.track,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: _selectedMonth.year,
-                        dropdownColor: Colors.white,
-                        isDense: true,
-                        icon: const Icon(PhosphorIconsRegular.caretDown, color: AppColors.primary, size: 16),
-                        items: years.map((year) {
-                          return DropdownMenuItem<int>(
-                            value: year,
-                            child: Text("$year", style: AppTextStyles.bodyStrong),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setDialogState(() => _selectedMonth = DateTime(val, _selectedMonth.month));
-                            setState(() => _selectedMonth = DateTime(val, _selectedMonth.month));
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: 300,
-                height: 300,
-                child: Column(
-                  children: [
-                    const Divider(color: AppColors.separator),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: GridView.builder(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          childAspectRatio: 1.5,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemCount: 12,
-                        itemBuilder: (context, index) {
-                          final int monthIndex = index + 1;
-                          final bool isSelected = _selectedMonth.month == monthIndex;
-
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(10),
-                            onTap: () {
-                              setState(() => _selectedMonth = DateTime(_selectedMonth.year, monthIndex));
-                              Navigator.pop(context);
-                            },
-                            child: Container(
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primary : Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: isSelected ? AppColors.primary : AppColors.separator),
-                              ),
-                              child: Text(
-                                DateFormat('MMM', 'id_ID').format(DateTime(2024, monthIndex)),
-                                style: AppTextStyles.body.copyWith(
-                                  color: isSelected ? Colors.white : AppColors.textPrimary,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      title: 'Pilih Periode',
+      initialMonth: _selectedMonth,
+      firstYear: currentYear - 5,
+      lastYear: currentYear + 5,
     );
+    if (picked == null || !mounted) return;
+    setState(() => _selectedMonth = picked);
+  }
+
+  Future<void> _pickDateRange() async {
+    final picked = await showAppDateRangePicker(
+      context: context,
+      initialRange: _selectedDateRange,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _selectedDateRange = picked);
   }
 ```
 
-4. `_pickDateRange` dan `_generatePdf` tidak disentuh.
+4. `_generatePdf` tidak disentuh.
 
 5. Ganti `build` (baris 372–657) dengan:
 
@@ -2376,7 +2299,7 @@ grep -c "GoogleFonts.poppins" lib/screens/export/export_screen.dart
 grep -nE "Color\(0x|Colors\.(blue|green|red|grey|indigo|purple|teal|orange)" lib/screens/export/export_screen.dart
 flutter analyze lib/screens/export
 ```
-Expected: `0`; grep warna hanya boleh menemukan `Colors.black` di `_pickDateRange` (baris lama 200, tidak disentuh — sebutkan di laporan); tanpa error/warning baru.
+Expected: `0`; grep warna tanpa hasil (`_pickDateRange` kini memakai `showAppDateRangePicker`, `Colors.black` lama ikut hilang); tanpa error/warning baru.
 
 - [ ] **Step 6: Checklist visual vs mockup "Export Laporan"**
 
@@ -2824,7 +2747,14 @@ EOF
 
 ## Task 7: Verifikasi menyeluruh & checkpoint screenshot user
 
-**Files:** tidak ada perubahan kode (kecuali perbaikan temuan).
+**Files:** `test/architecture/modal_consistency_test.dart` (hapus entri `_legacy` B6 — daftar jadi kosong); selain itu tidak ada perubahan kode (kecuali perbaikan temuan).
+
+- [ ] **Step 0: Kosongkan `_legacy`**
+
+Hapus tiga baris `'B6'` (`export_screen.dart`, `investment_screen.dart`, `manage_category_screen.dart`). `_legacy` sekarang kosong: ganti isinya menjadi `const _legacy = <String, String>{};` dan biarkan kedua test tetap ada sebagai pengaman.
+
+Run: `flutter test test/architecture/modal_consistency_test.dart`
+Expected: PASS. Bila gagal, baris yang disebut masih memanggil modal mentah — ganti dengan komponen bersama (spec G17), jangan kembalikan entri `_legacy`.
 
 - [ ] **Step 1: Analyze & test penuh**
 
@@ -2842,7 +2772,7 @@ Run:
 for f in lib/screens/investment/investment_screen.dart lib/screens/zakat_sedekah/zakat_sedekah_screen.dart lib/screens/calendar/calendar_screen.dart lib/screens/manage_category/manage_category_screen.dart lib/screens/export/export_screen.dart lib/screens/ai_advisor/ai_advisor_screen.dart; do echo "$f $(grep -c 'GoogleFonts.poppins' $f)"; done
 grep -nE "Color\(0x|Colors\.(blue|green|red|grey|indigo|purple|teal|orange|greenAccent|redAccent)" lib/screens/investment lib/screens/zakat_sedekah lib/screens/calendar lib/screens/manage_category lib/screens/export lib/screens/ai_advisor -r
 ```
-Expected: semua `0`; grep warna hanya `Colors.black` di `_pickDateRange` Export (tidak disentuh, sebutkan di laporan).
+Expected: semua `0`; grep warna tanpa hasil.
 
 - [ ] **Step 3: Cek diff tetap terarah**
 

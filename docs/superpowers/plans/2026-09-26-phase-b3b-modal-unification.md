@@ -881,9 +881,9 @@ Laporan akhir ke koordinator: daftar commit; hasil analyze/test; perubahan yang 
 
 ---
 
-## Perubahan plan lain (diterapkan ke file plan B4–B6 setelah plan ini disetujui user)
+## Perubahan plan lain (sudah diterapkan ke file plan B4–B6)
 
-Plan B4–B6 akan diperbarui supaya kode barunya memakai komponen di atas dan setiap plan mengosongkan entri `_legacy`-nya:
+Plan B4–B6 sudah diperbarui supaya kode barunya memakai komponen di atas dan setiap plan mengosongkan entri `_legacy`-nya:
 
 - **B4 Task 3** — `showAppPeriodPicker` tidak lagi membuat `AlertDialog`/`showDatePicker`/`showDateRangePicker`; ia memanggil `showAppDatePicker` (Harian), `showAppYearPicker` (Tahunan, hasil `DateTime(tahun, bulan lama)` seperti `YearPicker`), `showAppDateRangePicker` (Periode), `showAppMonthPicker` (Bulanan, tahun ±5). Perilaku berubah: item bulan/tahun diketuk lalu "Pilih" (ruling di atas).
 - **B4 Task 6** — `_pickDate` Tambah Transaksi memakai `showAppDatePicker`; `_processScanReceipts` memakai `runWithAppLoading(message: 'Membaca struk...')` sebagai pengganti `showDialog` spinner + `Navigator.pop` manual.
