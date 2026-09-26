@@ -133,29 +133,6 @@ class InputTransactionNotifier extends AutoDisposeNotifier<InputTransactionState
     } catch (e) {}
   }
 
-  Future<int> _getOrCreateWithdrawCategory() async {
-    final userId = _supabase.auth.currentUser!.id;
-    final checkRes = await _supabase
-        .from('categories')
-        .select('id')
-        .eq('is_expense', false)
-        .ilike('name', '%Cair%')
-        .eq('user_id', userId)
-        .maybeSingle();
-    if (checkRes != null) return checkRes['id'] as int;
-    final insertRes = await _supabase
-        .from('categories')
-        .insert({
-          'user_id': userId,
-          'name': 'Pencairan Tabungan',
-          'is_expense': false,
-          'icon_name': 'bank',
-        })
-        .select('id')
-        .single();
-    return insertRes['id'] as int;
-  }
-
   Future<TransactionSaveResult> saveTransaction({
     required String amountText,
     required String noteText,
@@ -197,7 +174,6 @@ class InputTransactionNotifier extends AutoDisposeNotifier<InputTransactionState
 
     final cleanAmount = amountText.replaceAll(RegExp(r'[^0-9]'), '');
     final amount = int.parse(cleanAmount);
-    final userId = _supabase.auth.currentUser!.id;
 
     if (isExpense && isFromSaving && transactionToEdit == null) {
       double currentBal = state.savingsBalances[selectedSavingName] ?? 0;
@@ -211,43 +187,25 @@ class InputTransactionNotifier extends AutoDisposeNotifier<InputTransactionState
       }
       state = state.copyWith(isSaving: true);
       try {
-        final insertedSaving = await _supabase
-            .from('savings')
-            .insert({
-              'user_id': userId,
-              'name': selectedSavingName,
-              'amount': -amount,
-              'notes': noteText.trim().isNotEmpty
-                  ? noteText.trim()
-                  : 'Dipakai untuk pengeluaran',
-            })
-            .select('id')
-            .single();
-
-        final savingId = insertedSaving['id'];
-        final noteMarker = "[SAVING_ID:$savingId]";
-        final incomeCatId = await _getOrCreateWithdrawCategory();
-
-        await _supabase.from('transactions').insert({
-          'user_id': userId,
-          'category_id': incomeCatId,
-          'amount': amount,
-          'date': DateFormat('yyyy-MM-dd').format(selectedDate),
-          'note': 'Pencairan otomatis $noteMarker',
-        });
-
-        String finalNote = noteText.trim();
-        finalNote = finalNote.isEmpty ? noteMarker : '$finalNote $noteMarker';
-
-        await _supabase.from('transactions').insert({
-          'user_id': userId,
-          'category_id': selectedCategoryId,
-          'amount': amount,
-          'date': DateFormat('yyyy-MM-dd').format(selectedDate),
-          'note': finalNote,
+        // Satu transaksi database (Plan B4b): kurangi tabungan + catat pencairan &
+        // pengeluaran bertanda [SAVING_ID:x]; sisa tabungan dicek ulang di server.
+        await _supabase.rpc('spend_from_saving', params: {
+          'p_saving_name': selectedSavingName,
+          'p_category_id': selectedCategoryId,
+          'p_amount': amount,
+          'p_date': DateFormat('yyyy-MM-dd').format(selectedDate),
+          'p_note': noteText,
         });
 
         return const TransactionSaveResult(true, "Berhasil! Uang dipotong dari tabungan.");
+      } on PostgrestException catch (e) {
+        const prefix = 'SAVING_INSUFFICIENT:';
+        if (e.message.startsWith(prefix)) {
+          final left = double.tryParse(e.message.substring(prefix.length)) ?? 0;
+          final limitRp = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(left);
+          return TransactionSaveResult(false, "Saldo tabungan tidak cukup! Sisa: $limitRp");
+        }
+        return const TransactionSaveResult(false, "Gagal memproses data.");
       } catch (e) {
         return const TransactionSaveResult(false, "Gagal memproses data.");
       } finally {
@@ -264,66 +222,22 @@ class InputTransactionNotifier extends AutoDisposeNotifier<InputTransactionState
             : '$finalNote $hiddenSavingMarker';
       }
 
-      final data = {
-        'user_id': userId,
-        'category_id': selectedCategoryId,
-        'amount': amount,
-        'date': DateFormat('yyyy-MM-dd').format(selectedDate),
-        'note': finalNote,
-        'wallet_id': selectedWalletId,
-      };
+      // Satu transaksi database (Plan B4b): catat/ubah transaksi dan saldo dompet
+      // sekaligus. Saat edit, efek lama dibalik berdasarkan kategori lama di server.
+      await _supabase.rpc('save_transaction', params: {
+        'p_id': transactionToEdit?.id,
+        'p_category_id': selectedCategoryId,
+        'p_wallet_id': selectedWalletId,
+        'p_amount': amount,
+        'p_date': DateFormat('yyyy-MM-dd').format(selectedDate),
+        'p_note': finalNote,
+      });
 
-      double balanceChange = isExpense ? -(amount.toDouble()) : amount.toDouble();
-
-      if (transactionToEdit == null) {
-        await _supabase.from('transactions').insert(data);
-        final currentWalletRes = await _supabase
-            .from('wallets')
-            .select('balance')
-            .eq('id', selectedWalletId!)
-            .single();
-        final currentBalance = (currentWalletRes['balance'] as num).toDouble();
-        await _supabase
-            .from('wallets')
-            .update({'balance': currentBalance + balanceChange})
-            .eq('id', selectedWalletId);
-
-        return const TransactionSaveResult(
-          true,
-          "Transaksi berhasil & Saldo dompet terupdate!",
-        );
-      } else {
-        final oldTrx = transactionToEdit;
-        final oldWalletRes = await _supabase
-            .from('wallets')
-            .select('balance')
-            .eq('id', oldTrx.walletId!)
-            .single();
-        final oldBalance = (oldWalletRes['balance'] as num).toDouble();
-
-        double reverseChange = initialIsExpense
-            ? oldTrx.amount.toDouble()
-            : -(oldTrx.amount.toDouble());
-        await _supabase
-            .from('wallets')
-            .update({'balance': oldBalance + reverseChange})
-            .eq('id', oldTrx.walletId!);
-
-        await _supabase.from('transactions').update(data).eq('id', oldTrx.id);
-
-        final newWalletRes = await _supabase
-            .from('wallets')
-            .select('balance')
-            .eq('id', selectedWalletId!)
-            .single();
-        final newBalance = (newWalletRes['balance'] as num).toDouble();
-        await _supabase
-            .from('wallets')
-            .update({'balance': newBalance + balanceChange})
-            .eq('id', selectedWalletId);
-
-        return const TransactionSaveResult(true, "Transaksi berhasil diperbarui!");
-      }
+      return transactionToEdit == null
+          ? const TransactionSaveResult(true, "Transaksi berhasil & Saldo dompet terupdate!")
+          : const TransactionSaveResult(true, "Transaksi berhasil diperbarui!");
+    } on PostgrestException catch (e) {
+      return TransactionSaveResult(false, "Gagal: ${e.message}");
     } catch (e) {
       return TransactionSaveResult(false, "Gagal: ${e.toString()}");
     } finally {

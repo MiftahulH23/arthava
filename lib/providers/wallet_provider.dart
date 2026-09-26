@@ -122,9 +122,19 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
     final error = validateTransfer(source: source, dest: dest, amount: amount);
     if (error != null) throw Exception(error);
 
+    // Validasi di atas memakai saldo di layar (umpan balik instan); server
+    // memeriksa ulang saldo terbaru dan memindahkan uang atomik (Plan B4b).
     try {
-      await _supabase.from('wallets').update({'balance': source.balance - amount}).eq('id', sourceId);
-      await _supabase.from('wallets').update({'balance': dest.balance + amount}).eq('id', destId);
+      await _supabase.rpc('transfer_between_wallets', params: {
+        'p_from': sourceId,
+        'p_to': destId,
+        'p_amount': amount,
+      });
+    } on PostgrestException catch (e) {
+      // Saldo di layar mungkin sudah basi (itulah sebab server menolak): segarkan.
+      await fetchWallets();
+      // P0001 = RAISE dari RPC kita (pesan Indonesia); galat lain tetap pesan umum.
+      throw Exception(e.code == 'P0001' ? e.message : 'Gagal memproses transfer.');
     } catch (e) {
       throw Exception('Gagal memproses transfer.');
     }

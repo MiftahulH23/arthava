@@ -223,24 +223,9 @@ class TransactionHistoryNotifier
       throw Exception('Transaksi ini dibuat dari fitur Utang & Piutang. Hapus lewat menu Utang & Piutang.');
     }
     try {
-      final walletId = trx.walletId;
-
-      if (walletId != null) {
-        final walletRes = await _supabase
-            .from('wallets')
-            .select('balance')
-            .eq('id', walletId)
-            .single();
-        double currentBal = (walletRes['balance'] as num).toDouble();
-
-        double newBalance = isExpense
-            ? currentBal + trx.amount
-            : currentBal - trx.amount;
-
-        await _supabase.from('wallets').update({'balance': newBalance}).eq('id', walletId);
-      }
-
-      await _supabase.from('transactions').delete().eq('id', trx.id);
+      // Satu transaksi database (Plan B4b): saldo dompet dikembalikan dan baris
+      // dihapus sekaligus; hapus ganda tidak mengembalikan saldo dua kali.
+      await _supabase.rpc('delete_transaction', params: {'p_id': trx.id});
 
       fetchWallets();
       fetchTransactions();

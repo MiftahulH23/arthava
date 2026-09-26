@@ -143,7 +143,22 @@ class _InputTransactionScreenState
     }
   }
 
+  /// Dua tap yang mendarat sebelum rebuild memanggil simpan dua kali; penjaga ini
+  /// (pola debt_form_sheet) membuat tap kedua diabaikan sampai simpan pertama selesai,
+  /// termasuk selama dialog saldo minimal terbuka.
+  bool _submitting = false;
+
   Future<void> _saveTransaction() async {
+    if (_submitting) return;
+    _submitting = true;
+    try {
+      await _submitTransaction();
+    } finally {
+      _submitting = false;
+    }
+  }
+
+  Future<void> _submitTransaction() async {
     // Peringatan saldo minimal (spec §7.3): pengeluaran dari dompet, baru atau diedit.
     // Hanya bila isian dasar lengkap, supaya validasi lama di provider tetap bicara
     // lebih dulu (urutan sama dengan Transfer).

@@ -90,73 +90,12 @@ class HomeNotifier extends AutoDisposeNotifier<HomeState> {
 
   Future<void> checkRecurringTransactions() async {
     try {
-      final userId = _supabase.auth.currentUser!.id;
-      final today = DateTime.now();
-      final todayStr = DateFormat('yyyy-MM-dd').format(today);
-
-      final response = await _supabase
-          .from('recurring_transactions')
-          .select('*, categories(is_expense)')
-          .eq('user_id', userId)
-          .eq('is_active', true)
-          .lte('next_run_date', todayStr);
-
-      final List<dynamic> dueTransactions = response;
-
-      for (var item in dueTransactions) {
-        DateTime nextRun = DateTime.parse(item['next_run_date']);
-        String freq = item['frequency'];
-        final walletId = item['wallet_id'];
-        final isExpense = item['categories']?['is_expense'] ?? true;
-        final amount = (item['amount'] as num).toDouble();
-        int executionCount = 0;
-
-        while (nextRun.isBefore(today) ||
-            nextRun.isAtSameMomentAs(
-              DateTime(today.year, today.month, today.day),
-            )) {
-          await _supabase.from('transactions').insert({
-            'user_id': item['user_id'],
-            'category_id': item['category_id'],
-            'wallet_id': walletId,
-            'amount': amount,
-            'date': DateFormat('yyyy-MM-dd').format(nextRun),
-            'note': '${item['note'] ?? ''} (Otomatis: $freq)'.trim(),
-          });
-          executionCount++;
-          if (freq == 'Harian') {
-            nextRun = nextRun.add(const Duration(days: 1));
-          } else if (freq == 'Mingguan') {
-            nextRun = nextRun.add(const Duration(days: 7));
-          } else if (freq == 'Bulanan') {
-            nextRun = DateTime(nextRun.year, nextRun.month + 1, nextRun.day);
-          } else if (freq == 'Tahunan') {
-            nextRun = DateTime(nextRun.year + 1, nextRun.month, nextRun.day);
-          }
-        }
-
-        if (executionCount > 0 && walletId != null) {
-          final walletRes = await _supabase
-              .from('wallets')
-              .select('balance')
-              .eq('id', walletId)
-              .single();
-          double currentBal = (walletRes['balance'] as num).toDouble();
-          double totalAmountToProcess = amount * executionCount;
-          double newBalance = isExpense
-              ? currentBal - totalAmountToProcess
-              : currentBal + totalAmountToProcess;
-          await _supabase
-              .from('wallets')
-              .update({'balance': newBalance})
-              .eq('id', walletId);
-        }
-
-        await _supabase
-            .from('recurring_transactions')
-            .update({'next_run_date': DateFormat('yyyy-MM-dd').format(nextRun)})
-            .eq('id', item['id']);
-      }
+      // Server menjalankan setiap jadwal jatuh tempo tepat sekali, termasuk saldo
+      // dompet dan next_run_date, dalam satu transaksi (Plan B4b).
+      // Tanggal perangkat (seperti kode lama); server membatasi maks +1 hari.
+      await _supabase.rpc('run_due_recurring', params: {
+        'p_today': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      });
     } catch (e) {
       debugPrint("Error Recurring Executor: $e");
     }

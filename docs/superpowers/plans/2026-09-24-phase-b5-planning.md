@@ -3588,6 +3588,21 @@ EOF
 
 ---
 
+### Task 7b: Backend terbukti jalan (E2E Supabase) + operasi uang atomik
+
+Aturan user 2026-09-26 (spec §10.5, AGENTS.md): plan tidak selesai sebelum backend fitur yang disentuhnya terbukti jalan ke Supabase sungguhan. Pola: `test/e2e/wallet_transaction_e2e_test.dart` (provider ASLI, akun tes lewat `E2E_EMAIL`/`E2E_PASSWORD`, data sementara bernama "E2E …" dibersihkan di `finally`, test di-skip tanpa env). Perubahan saldo dompet/tabungan wajib atomik di database (pola `wallet_add`/`lock_wallets` di `supabase/migrations/202609260004_atomic_money.sql`), bukan baca-saldo-lalu-tulis dari app.
+
+- [ ] **Step 1 (merah dulu):** tulis E2E di bawah, jalankan terhadap kode saat ini, catat di ledger mana yang gagal. Sertakan skenario **bersamaan** (`Future.wait` dua operasi uang pada dompet/tabungan yang sama) untuk setiap operasi uang.
+- [ ] **Step 2:** untuk setiap operasi uang yang masih baca-lalu-tulis, tulis migration RPC baru (`supabase/migrations/2026MMDDNNNN_<plan>_money.sql`, `security invoker`, cek `auth.uid()`, pesan error = pesan lama di app), commit, jalankan lewat `.superpowers/sdd/tools/supa_sql.sh`, verifikasi di `pg_proc`, dokumentasikan di `docs/database/schema.md`; provider memanggil RPC dengan pesan sukses/gagal lama.
+- [ ] **Step 3:** E2E hijau + E2E lama tetap hijau (`flutter test test/e2e/`, `dart run tool/e2e/debt_rpc_e2e.dart`) + cek sisa data "E2E" = 0. Laporkan jumlah PASS ke user sebelum minta merge.
+
+Cakupan E2E B5 (file `test/e2e/planning_e2e_test.dart`):
+- **Anggaran:** buat, ubah limit, hapus, salin dari bulan lalu (`copyFromLastMonth`); total terpakai bulan ini sesuai transaksi pengeluaran kategori itu.
+- **Target:** buat, edit (termasuk deadline lama yang sudah lewat), hapus; **Nabung ke target** memotong dompet, menambah `saved_amount`, dan mencatat baris `savings` — `target_provider.dart:200-245` saat ini baca-lalu-tulis → RPC atomik; dua nabung bersamaan tidak boleh kehilangan potongan.
+- **Tabungan:** buat, setor dari dompet, tarik ke dompet, edit setoran/tarikan, hapus (saldo dompet dikembalikan) — `savings_provider.dart:195-350` baca-lalu-tulis → RPC atomik; skenario bersamaan untuk setor dan tarik; tarik melebihi saldo tabungan ditolak.
+- **Tagihan rutin:** tambah, edit, nonaktifkan, hapus; jadwal jatuh tempo dijalankan tepat sekali lewat `run_due_recurring` (sudah atomik sejak B4b) dan saldo dompet benar.
+- **Detail Tabungan / Detail Anggaran:** data yang ditampilkan provider sama dengan isi tabel.
+
 ### Task 8: Verifikasi akhir + checkpoint screenshot user
 
 **Files:** `test/architecture/modal_consistency_test.dart` (hapus entri `_legacy` B5); selain itu tidak ada perubahan kode (kecuali perbaikan temuan).
