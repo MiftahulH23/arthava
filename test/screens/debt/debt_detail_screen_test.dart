@@ -98,4 +98,32 @@ void main() {
     expect(find.text('Utang tidak ditemukan.'), findsOneWidget);
     await flushToast(tester);
   });
+
+  testWidgets('hapus utang tidak memunculkan "tidak ditemukan" saat kembali', (tester) async {
+    final fake = _RemovingFake(state());
+    await pumpApp(tester, Builder(builder: (context) => Scaffold(body: TextButton(
+      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DebtDetailScreen(debtId: 1))),
+      child: const Text('buka'),
+    ))), overrides: debtOverrides(fake));
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Hapus utang'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Data utang tidak ditemukan.'), findsNothing);
+    await tester.pumpAndSettle();
+    await flushToast(tester);
+  });
+}
+
+class _RemovingFake extends FakeDebtNotifier {
+  _RemovingFake(super.initial);
+
+  @override
+  Future<void> deleteDebt(int debtId) async {
+    calls.add('deleteDebt:$debtId');
+    state = state.copyWith(debts: state.debts.where((d) => d.id != debtId).toList());
+  }
 }

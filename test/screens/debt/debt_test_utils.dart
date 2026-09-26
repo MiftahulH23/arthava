@@ -142,7 +142,7 @@ List<Override> debtOverrides(FakeDebtNotifier fake) => [
 Future<void> prewarmToastFont() async {
   await runZonedGuarded(() async {
     GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500).fontFamily;
-  }, (_, __) {});
+  }, (_, _) {});
 }
 
 /// Toast memakai Timer 3 detik + animasi 600 ms; habiskan supaya test tidak

@@ -118,6 +118,8 @@ class _DebtPaymentFormState extends ConsumerState<_DebtPaymentForm> {
   }
 
   Future<void> _submit() async {
+    // Dua tap yang mendarat sebelum rebuild memanggil ini dua kali.
+    if (_submitting) return;
     final error = validateDebtPayment(
       amountText: _amountController.text,
       maxAmount: _maxAmount,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:catat_uang_app/models/debt_model.dart';
 import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:catat_uang_app/screens/debt/debt_payment_sheet.dart';
+import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -131,6 +132,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fake.calls, contains('updatePayment:1:10:600000'));
+    await flushToast(tester);
+  });
+
+  test('cicilan bertransaksi tapi dompetnya sudah dihapus tidak menjanjikan saldo kembali', () {
+    final p = samplePayment(walletId: null, walletName: null, transactionId: 90);
+    expect(p.affectsWallet, isFalse);
+    expect(deletePaymentConfirmMessage(p), 'Sisa tagihan bertambah Rp 500.000.');
+  });
+
+  testWidgets('dua tap Simpan sebelum rebuild hanya mengirim satu pembayaran', (tester) async {
+    final debt = sampleDebt();
+    final fake = FakeDebtNotifier(DebtState(isLoading: false, debts: [debt]))..gate = Completer<void>();
+    await pumpApp(tester, opener(debt), overrides: debtOverrides(fake));
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '500000');
+    await tester.pump();
+    final button = tester.widget<AppPrimaryButton>(find.widgetWithText(AppPrimaryButton, 'Simpan'));
+    button.onPressed!();
+    button.onPressed!();
+    await tester.pump();
+    expect(fake.calls.where((c) => c.startsWith('addPayment')).length, 1);
+    fake.gate!.complete();
+    await tester.pumpAndSettle();
     await flushToast(tester);
   });
 }

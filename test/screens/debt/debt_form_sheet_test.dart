@@ -1,4 +1,3 @@
-import 'package:catat_uang_app/models/debt_model.dart';
 import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:catat_uang_app/screens/debt/debt_detail_screen.dart';
 import 'package:catat_uang_app/screens/debt/debt_form_sheet.dart';

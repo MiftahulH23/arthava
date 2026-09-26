@@ -35,5 +35,7 @@ class DebtPaymentModel {
     );
   }
 
-  bool get affectsWallet => transactionId != null;
+  /// Menghapus/mengedit cicilan hanya mengubah saldo bila cicilan tertaut ke
+  /// transaksi DAN dompetnya masih ada (FK wallet_id set null saat dompet dihapus).
+  bool get affectsWallet => transactionId != null && walletId != null;
 }

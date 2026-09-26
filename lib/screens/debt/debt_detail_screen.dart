@@ -40,6 +40,9 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
     Future.microtask(() => ref.read(debtProvider.notifier).fetchPayments(widget.debtId));
   }
 
+  DebtModel? _lastDebt;
+  bool _deleted = false;
+
   Future<void> _deleteDebt(DebtModel debt) async {
     final confirm = await showAppConfirmDialog(
       context: context,
@@ -49,11 +52,13 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
     );
     if (!confirm || !mounted) return;
     try {
+      _deleted = true;
       await ref.read(debtProvider.notifier).deleteDebt(debt.id);
       if (!mounted) return;
       Navigator.pop(context);
       AppNotification.success(context, 'Data berhasil dihapus!');
     } catch (e) {
+      _deleted = false;
       if (!mounted) return;
       AppNotification.error(context, e.toString().replaceFirst('Exception: ', ''));
     }
@@ -74,7 +79,11 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
   Widget build(BuildContext context) {
     final debtState = ref.watch(debtProvider);
     final today = ref.watch(debtClockProvider)();
-    final debt = debtState.debtById(widget.debtId);
+    final current = debtState.debtById(widget.debtId);
+    if (current != null) _lastDebt = current;
+    // Setelah hapus, refetch membuang utang ini sebelum Navigator.pop selesai;
+    // tampilkan data terakhir selama animasi kembali alih-alih "tidak ditemukan".
+    final debt = current ?? (_deleted ? _lastDebt : null);
 
     if (debt == null) {
       return AppPageScaffold(
@@ -236,7 +245,7 @@ class _DebtHeader extends StatelessWidget {
             width: 64,
             height: 64,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: color.withOpacity(0.14), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.14), shape: BoxShape.circle),
             child: Text(debtInitials(debt.name), style: AppTextStyles.title.copyWith(color: color)),
           ),
           const SizedBox(height: 10),
