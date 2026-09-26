@@ -13,6 +13,7 @@ class AppListRow extends StatelessWidget {
     this.subtitleWidget,
     this.trailing,
     this.value,
+    this.valueColor,
     this.showChevron = false,
     this.onTap,
     super.key,
@@ -25,6 +26,9 @@ class AppListRow extends StatelessWidget {
   final Widget? subtitleWidget;
   final Widget? trailing;
   final String? value;
+
+  /// Warna teks [value]; default warna `AppTextStyles.subhead`.
+  final Color? valueColor;
   final bool showChevron;
   final VoidCallback? onTap;
 
@@ -71,7 +75,7 @@ class AppListRow extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: Text(
                     value!,
-                    style: AppTextStyles.subhead,
+                    style: valueColor == null ? AppTextStyles.subhead : AppTextStyles.subhead.copyWith(color: valueColor),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
