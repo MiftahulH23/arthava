@@ -32,7 +32,7 @@ class WalletModel {
       balance: (json['balance'] as num).toDouble(),
       color: json['color'],
       icon: json['icon'],
-      // Kolom baru (migration 202609240002). Default dipakai bila kolom belum ada.
+      // Kolom baru (migration 202609260003). Default dipakai bila kolom belum ada.
       isFavorite: (json['is_favorite'] as bool?) ?? false,
       minBalance: (json['min_balance'] as num?)?.toDouble() ?? 0,
     );

@@ -1,7 +1,9 @@
+import 'package:catat_uang_app/models/recurring_transaction_model.dart';
 import 'package:catat_uang_app/models/wallet_model.dart';
 import 'package:catat_uang_app/providers/home_provider.dart';
 import 'package:catat_uang_app/providers/home_summary.dart';
 import 'package:catat_uang_app/screens/home/home_screen.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -115,5 +117,47 @@ void main() {
     expect(find.text('Semua Fitur'), findsOneWidget);
     expect(find.text('PERENCANAAN'), findsOneWidget);
     expect(find.text('Beranda'), findsOneWidget); // label NavigationRail
+  });
+
+  testWidgets('kartu Tagihan tanpa kategori memakai catatan', (tester) async {
+    await pumpHome(
+      tester,
+      HomeState(
+        isLoading: false,
+        wallets: [wallet(1, 'BCA', 100)],
+        summary: HomeSummary(
+          nextBill: RecurringTransactionModel(
+            id: 1,
+            userId: 'u',
+            categoryId: 3,
+            amount: 150000,
+            note: 'Internet rumah',
+            frequency: 'monthly',
+            startDate: DateTime(2026, 9, 1),
+            nextRunDate: DateTime(2026, 10, 1),
+            isActive: true,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Internet rumah'), findsOneWidget);
+  });
+
+  testWidgets('layout web: di ujung scroll, baris terakhir tidak tertutup tombol Tambah Transaksi', (tester) async {
+    await pumpApp(
+      tester,
+      const HomeScreen(),
+      overrides: [
+        homeProvider.overrideWith(
+          () => FakeHomeNotifier(HomeState(isLoading: false, wallets: [wallet(1, 'BCA', 100)])),
+        ),
+      ],
+      size: const Size(1280, 900),
+    );
+    await tester.drag(find.byType(SingleChildScrollView).first, const Offset(0, -5000));
+    await tester.pumpAndSettle();
+    final lastRow = tester.getRect(find.ancestor(of: find.text('Export Laporan'), matching: find.byType(AppListRow)));
+    final fab = tester.getRect(find.byType(FloatingActionButton));
+    expect(lastRow.bottom + 16, lessThanOrEqualTo(fab.top));
   });
 }

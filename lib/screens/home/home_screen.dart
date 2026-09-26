@@ -178,7 +178,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Text('Semua Fitur', style: AppTextStyles.title),
                 const SizedBox(height: 14),
                 AllFeaturesSections(query: '', onOpen: _openFeature),
-                const SizedBox(height: 50),
+                // Ruang untuk tombol "Tambah Transaksi" melayang di kanan bawah.
+                const SizedBox(height: 100),
               ],
             ),
           ),
@@ -253,7 +254,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -445,7 +446,7 @@ class _HomeHeroCard extends StatelessWidget {
             const AppHeroLabel('Sudah dikurangi saldo minimal'),
           ],
           const SizedBox(height: 16),
-          Container(height: 0.5, color: AppColors.heroLabel.withOpacity(0.3)),
+          Container(height: 0.5, color: AppColors.heroLabel.withValues(alpha: 0.3)),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -510,7 +511,7 @@ class _HeroStat extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.16),
+            color: Colors.white.withValues(alpha: 0.16),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 16),
@@ -685,7 +686,7 @@ class _HomeSummaryGrid extends StatelessWidget {
           ? [_emptyText('Tidak ada tagihan')]
           : [
               Text(
-                r.category?['name']?.toString() ?? 'Tagihan',
+                r.category?['name']?.toString() ?? ((r.note?.isNotEmpty ?? false) ? r.note! : 'Tagihan'),
                 style: AppTextStyles.bodyStrong,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
