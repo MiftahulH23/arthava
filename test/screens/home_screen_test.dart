@@ -98,4 +98,21 @@ void main() {
     expect(find.text('Rp 3,5 jt'), findsOneWidget);
     expect(find.text('dari Rp 5 jt bulan ini'), findsOneWidget);
   });
+
+  testWidgets('layout web: menampilkan grup Semua Fitur langsung, tanpa grid Menu & Fitur', (tester) async {
+    await pumpApp(
+      tester,
+      const HomeScreen(),
+      overrides: [
+        homeProvider.overrideWith(
+          () => FakeHomeNotifier(HomeState(isLoading: false, wallets: [wallet(1, 'BCA', 100)])),
+        ),
+      ],
+      size: const Size(1280, 2400),
+    );
+    expect(find.text('Menu & Fitur'), findsNothing);
+    expect(find.text('Semua Fitur'), findsOneWidget);
+    expect(find.text('PERENCANAAN'), findsOneWidget);
+    expect(find.text('Beranda'), findsOneWidget); // label NavigationRail
+  });
 }
