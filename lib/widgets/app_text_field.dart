@@ -15,6 +15,7 @@ class AppTextField extends StatelessWidget {
     this.readOnly = false,
     this.maxLines = 1,
     this.onTap,
+    this.focusNode,
     this.onChanged,
     this.inputFormatters,
     super.key,
@@ -29,6 +30,7 @@ class AppTextField extends StatelessWidget {
   final bool readOnly;
   final int maxLines;
   final VoidCallback? onTap;
+  final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
 
@@ -37,6 +39,7 @@ class AppTextField extends StatelessWidget {
     final radius = BorderRadius.circular(16);
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       obscureText: obscure,
       keyboardType: keyboardType,
       readOnly: readOnly,
