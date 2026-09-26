@@ -1,5 +1,6 @@
+import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/transaction_history/transaction_history_screen.dart';
-import 'package:catat_uang_app/widgets/app_tab_selector.dart';
+import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:flutter/material.dart';
 
 /// Wrapper yang menggabungkan tab Pemasukan & Pengeluaran ke dalam satu
@@ -7,7 +8,7 @@ import 'package:flutter/material.dart';
 /// bottom nav / rail hanya punya 3 destinasi alih-alih 4.
 ///
 /// Tidak mengubah [TransactionHistoryScreen] sama sekali — widget ini
-/// hanya menaruh [AppTabSelector] di atas dan menukar child mana yang
+/// hanya menaruh AppSegmentedControl di bawah judul TransactionHistoryScreen dan menukar child mana yang
 /// ditampilkan lewat kondisi sederhana (bukan IndexedStack/TabBarView,
 /// mengikuti pola sederhana yang sudah dipakai di codebase ini).
 class TransactionsTabScreen extends StatefulWidget {
@@ -39,34 +40,27 @@ class _TransactionsTabScreenState extends State<TransactionsTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: AppTabSelector(
-              labels: const ['Pemasukan', 'Pengeluaran'],
-              initialIndex: _tabIndex,
-              onChanged: (i) {
-                setState(() => _tabIndex = i);
-                widget.onActiveTabChanged?.call(i == 1);
-              },
-            ),
-          ),
-          Expanded(
-            child: _tabIndex == 0
-                ? TransactionHistoryScreen(
-                    key: ValueKey('pemasukan_${widget.refreshCounter}'),
-                    isExpense: false,
-                  )
-                : TransactionHistoryScreen(
-                    key: ValueKey('pengeluaran_${widget.refreshCounter}'),
-                    isExpense: true,
-                  ),
-          ),
-        ],
-      ),
+    final switcher = AppSegmentedControl(
+      labels: const ['Pemasukan', 'Pengeluaran'],
+      selectedIndex: _tabIndex,
+      selectedLabelColors: const [AppColors.income, AppColors.expense],
+      onChanged: (i) {
+        if (i == _tabIndex) return;
+        setState(() => _tabIndex = i);
+        widget.onActiveTabChanged?.call(i == 1);
+      },
     );
+
+    return _tabIndex == 0
+        ? TransactionHistoryScreen(
+            key: ValueKey('pemasukan_${widget.refreshCounter}'),
+            isExpense: false,
+            typeSwitcher: switcher,
+          )
+        : TransactionHistoryScreen(
+            key: ValueKey('pengeluaran_${widget.refreshCounter}'),
+            isExpense: true,
+            typeSwitcher: switcher,
+          );
   }
 }
