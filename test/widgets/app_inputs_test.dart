@@ -74,4 +74,15 @@ void main() {
     expect(rp.left, greaterThan(40));
     expect(390 - field.right, greaterThan(40));
   });
+
+  testWidgets('AppTextField meneruskan focusNode ke TextField', (tester) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    await pumpApp(
+      tester,
+      Scaffold(body: AppTextField(controller: TextEditingController(), focusNode: node)),
+    );
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.focusNode, same(node));
+  });
 }

@@ -112,4 +112,26 @@ void main() {
     // Satu baris: tinggi di bawah dua kali ukuran huruf.
     expect(title.size.height, lessThan(AppTextStyles.bodyStrong.fontSize! * 2));
   });
+
+  testWidgets('judul diukur dengan gaya turunan (letterSpacing tema) → tidak patah di tengah kata', (tester) async {
+    // Material 3 memberi letterSpacing lewat DefaultTextStyle; dulu judul diukur
+    // tanpa itu sehingga "Kategori" patah jadi "Kategor / i".
+    await pumpApp(
+      tester,
+      const Scaffold(
+        body: DefaultTextStyle(
+          style: TextStyle(letterSpacing: 1.5),
+          child: AppListRow(
+            leading: AppIconTile(icon: PhosphorIconsFill.tag, color: AppColors.primary),
+            title: 'Kategori',
+            value: 'Pilih Kategori Pengeluaran Yang Sangat Panjang Sekali',
+            showChevron: true,
+          ),
+        ),
+      ),
+      size: const Size(600, 400),
+    );
+    final title = tester.renderObject<RenderParagraph>(find.text('Kategori'));
+    expect(title.size.height, lessThan(AppTextStyles.bodyStrong.fontSize! * 2));
+  });
 }

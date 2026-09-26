@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/models/saving_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -110,29 +111,6 @@ class SavingsNotifier extends AutoDisposeNotifier<SavingsState> {
     }
   }
 
-  Future<int> _getOrCreateCategory(String name, bool isExpense) async {
-    final userId = _supabase.auth.currentUser!.id;
-    final res = await _supabase
-        .from('categories')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_expense', isExpense)
-        .ilike('name', '%$name%')
-        .maybeSingle();
-    if (res != null) return res['id'] as int;
-    final ins = await _supabase
-        .from('categories')
-        .insert({
-          'user_id': userId,
-          'name': name,
-          'is_expense': isExpense,
-          'icon_name': 'bank',
-        })
-        .select('id')
-        .single();
-    return ins['id'] as int;
-  }
-
   /// Setor/tarik dana untuk satu kelompok tabungan. Dipakai baik dari
   /// SavingsScreen (setoran awal & tombol Setor/Tarik di kartu) maupun
   /// alurnya sendiri. Mengembalikan pesan error yang persis sama dengan
@@ -146,73 +124,40 @@ class SavingsNotifier extends AutoDisposeNotifier<SavingsState> {
     String? location,
     String? notes,
   }) async {
+    // Satu transaksi database (RPC saving_transaction, migration 202609260006):
+    // cek saldo dompet/tabungan, baris tabungan, transaksi bertanda, saldo dompet.
     try {
-      final userId = _supabase.auth.currentUser!.id;
-
-      final catId = isDeposit
-          ? await _getOrCreateCategory('Tabungan', true)
-          : await _getOrCreateCategory('Pencairan Tabungan', false);
-
-      final wallet = state.wallets.firstWhere((w) => w['id'] == walletId);
-      final currentBalance = (wallet['balance'] as num).toDouble();
-
-      if (isDeposit && amount > currentBalance) {
-        return "Saldo dompet tidak cukup!";
-      }
-
-      String? savedLoc = location;
-      String? savedNote = notes;
-      if (savedLoc == null && savedNote == null) {
-        final existing = state.groupedSavings[savingName];
-        if (existing != null && existing.isNotEmpty) {
-          savedLoc = existing.last.location;
-          savedNote = existing.last.notes;
-        }
-      }
-
-      final finalAmount = isDeposit ? amount : -amount;
-      final insertedSaving = await _supabase
-          .from('savings')
-          .insert({
-            'user_id': userId,
-            'name': savingName,
-            'amount': finalAmount,
-            'location': savedLoc,
-            'notes': savedNote,
-          })
-          .select('id')
-          .single();
-
-      final noteMarker = "[SAVING_ID:${insertedSaving['id']}]";
-      await _supabase.from('transactions').insert({
-        'user_id': userId,
-        'category_id': catId,
-        'wallet_id': walletId,
-        'amount': amount,
-        'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'note':
-            (isDeposit
-                    ? "Nabung ke $savingName $noteMarker"
-                    : "Pencairan $savingName $noteMarker")
-                .trim(),
+      await _supabase.rpc('saving_transaction', params: {
+        'p_is_deposit': isDeposit,
+        'p_saving_name': savingName,
+        'p_amount': amount,
+        'p_wallet_id': walletId,
+        'p_location': location,
+        'p_notes': notes,
+        'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       });
-
-      final newBalance = isDeposit
-          ? currentBalance - amount
-          : currentBalance + amount;
-      await _supabase
-          .from('wallets')
-          .update({'balance': newBalance})
-          .eq('id', walletId);
-
-      // Sama seperti sebelum migrasi: refetch tidak ditunggu (fire-and-forget)
-      // supaya notifikasi sukses langsung tampil tanpa menunggu refresh.
-      fetchWallets();
-      fetchSavings();
-      return null;
+    } on PostgrestException catch (e) {
+      const prefix = 'SAVING_INSUFFICIENT:';
+      if (e.code == 'P0001' && e.message.startsWith(prefix)) {
+        fetchSavings();
+        final left = double.tryParse(e.message.substring(prefix.length)) ?? 0;
+        return "Saldo tabungan tidak cukup! Sisa: ${formatRupiah(left)}";
+      }
+      // Tolakan server lain (saldo dompet kurang, nominal 0, dompet terhapus).
+      if (e.code == 'P0001') {
+        fetchWallets();
+        return e.message;
+      }
+      return "Gagal menyimpan transaksi!";
     } catch (e) {
       return "Gagal menyimpan transaksi!";
     }
+
+    // Sama seperti sebelum migrasi: refetch tidak ditunggu (fire-and-forget)
+    // supaya notifikasi sukses langsung tampil tanpa menunggu refresh.
+    fetchWallets();
+    fetchSavings();
+    return null;
   }
 
   /// Membuat kelompok tabungan baru tanpa setoran awal (dari
@@ -273,46 +218,14 @@ class SavingsNotifier extends AutoDisposeNotifier<SavingsState> {
     required String location,
     required String notes,
   }) async {
-    final finalAmount = isDeposit ? rawAmount : -rawAmount;
-    final noteMarker = "[SAVING_ID:${saving.id}]";
-    final trxRes = await _supabase
-        .from('transactions')
-        .select('id, amount, wallet_id')
-        .like('note', '%$noteMarker%')
-        .maybeSingle();
-
-    if (trxRes != null && trxRes['wallet_id'] != null) {
-      final walletId = trxRes['wallet_id'];
-      final oldTrxAmount = (trxRes['amount'] as num).toDouble();
-
-      final walletRes = await _supabase
-          .from('wallets')
-          .select('balance')
-          .eq('id', walletId)
-          .single();
-      double currentBal = (walletRes['balance'] as num).toDouble();
-
-      double revertAmount = saving.amount > 0 ? oldTrxAmount : -oldTrxAmount;
-      double balanceAfterRevert = currentBal + revertAmount;
-
-      double applyAmount = isDeposit ? rawAmount : -rawAmount;
-      double finalWalletBalance = balanceAfterRevert - applyAmount;
-
-      await _supabase
-          .from('wallets')
-          .update({'balance': finalWalletBalance})
-          .eq('id', walletId);
-    }
-
-    await _supabase
-        .from('savings')
-        .update({'amount': finalAmount, 'location': location, 'notes': notes})
-        .eq('id', saving.id);
-
-    await _supabase
-        .from('transactions')
-        .update({'amount': rawAmount})
-        .like('note', '%$noteMarker%');
+    // Atomik di database (RPC edit_saving_item, migration 202609260006).
+    await _supabase.rpc('edit_saving_item', params: {
+      'p_saving_id': saving.id,
+      'p_amount': rawAmount,
+      'p_is_deposit': isDeposit,
+      'p_location': location,
+      'p_notes': notes,
+    });
 
     await fetchSavings();
     await fetchWallets();
@@ -321,34 +234,9 @@ class SavingsNotifier extends AutoDisposeNotifier<SavingsState> {
   /// Menghapus satu baris riwayat setor/tarik dan mengembalikan saldo
   /// dompet terkait (dari `_deleteSaving` di SavingDetailScreen).
   Future<void> deleteSavingItem(SavingModel item) async {
-    final noteMarker = "[SAVING_ID:${item.id}]";
-
-    final trxRes = await _supabase
-        .from('transactions')
-        .select('id, amount, wallet_id')
-        .like('note', '%$noteMarker%')
-        .maybeSingle();
-
-    if (trxRes != null && trxRes['wallet_id'] != null) {
-      final walletId = trxRes['wallet_id'];
-      final trxAmount = (trxRes['amount'] as num).toDouble();
-
-      final walletRes = await _supabase
-          .from('wallets')
-          .select('balance')
-          .eq('id', walletId)
-          .single();
-      double currentBal = (walletRes['balance'] as num).toDouble();
-
-      double refundAmount = item.amount > 0 ? trxAmount : -trxAmount;
-      await _supabase
-          .from('wallets')
-          .update({'balance': currentBal + refundAmount})
-          .eq('id', walletId);
-    }
-
-    await _supabase.from('transactions').delete().like('note', '%$noteMarker%');
-    await _supabase.from('savings').delete().eq('id', item.id);
+    // Atomik di database (RPC delete_saving_item, migration 202609260006);
+    // juga baris "pakai tabungan" yang punya dua transaksi bertanda sama.
+    await _supabase.rpc('delete_saving_item', params: {'p_saving_id': item.id});
 
     await fetchSavings();
     await fetchWallets();
