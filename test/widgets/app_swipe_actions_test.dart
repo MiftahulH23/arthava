@@ -139,4 +139,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(deleted, isTrue);
   });
+
+  testWidgets('saat tertutup tombol aksi tidak dilukis (tidak ada garis merah di tepi)', (tester) async {
+    await pumpRow(tester, onEdit: () {}, onDelete: () {});
+    expect(find.text('Hapus'), findsNothing);
+    expect(find.text('Edit'), findsNothing);
+    await tester.drag(find.text('Makan'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus'), findsOneWidget);
+    await tester.tap(find.text('Makan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus'), findsNothing);
+  });
 }

@@ -141,18 +141,24 @@ class _AppSwipeActionsState extends State<AppSwipeActions> with SingleTickerProv
       child: ClipRect(
       child: Stack(
         children: [
+          // Tombol aksi hanya dilukis saat baris bergeser: bila selalu ada di
+          // belakang, tepi anti-alias sudut kartu memperlihatkan garis merah tipis.
           Positioned.fill(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (widget.onEdit != null)
-                    _action(color: AppColors.tintBlue, icon: PhosphorIconsRegular.pencilSimple, label: 'Edit', onTap: _handleEdit),
-                  if (widget.onDelete != null)
-                    _action(color: AppColors.expense, icon: PhosphorIconsRegular.trash, label: 'Hapus', onTap: _handleDelete),
-                ],
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) => _controller.value == 0 ? const SizedBox.shrink() : child!,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (widget.onEdit != null)
+                      _action(color: AppColors.tintBlue, icon: PhosphorIconsRegular.pencilSimple, label: 'Edit', onTap: _handleEdit),
+                    if (widget.onDelete != null)
+                      _action(color: AppColors.expense, icon: PhosphorIconsRegular.trash, label: 'Hapus', onTap: _handleDelete),
+                  ],
+                ),
               ),
             ),
           ),
