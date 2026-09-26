@@ -104,7 +104,7 @@ class BudgetScreen extends ConsumerWidget {
                 AppSelectRow<int>(
                   leading: const AppIconTile(icon: PhosphorIconsFill.tag, color: AppColors.expense),
                   title: 'Kategori',
-                  placeholder: 'Pilih Kategori Pengeluaran',
+                  placeholder: 'Pilih Kategori',
                   value: selectedCatId,
                   options: [for (final c in allCategories) AppSelectOption(c.id, c.name)],
                   onChanged: (v) => setSheetState(() => selectedCatId = v),

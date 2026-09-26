@@ -95,7 +95,7 @@ void main() {
     expect(find.text('Batal'), findsOneWidget);
     expect(find.text('Periode Anggaran'), findsOneWidget);
     expect(find.text('Kategori'), findsOneWidget);
-    expect(find.text('Pilih Kategori Pengeluaran'), findsOneWidget);
+    expect(find.text('Pilih Kategori'), findsOneWidget);
     expect(find.text('Batas Maksimal (Limit)'), findsOneWidget);
     expect(find.text('Simpan Anggaran'), findsOneWidget);
   });
