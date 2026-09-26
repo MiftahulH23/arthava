@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/core/transaction_tags.dart';
 
 /// State gabungan untuk BudgetScreen (daftar anggaran per bulan) dan
 /// BudgetDetailScreen (edit limit satu anggaran). Keduanya berbagi provider
@@ -139,7 +140,7 @@ class BudgetNotifier extends AutoDisposeNotifier<BudgetState> {
       for (var item in trxRes) {
         final noteStr = item['note']?.toString() ?? '';
         // [FIX] Celah gaib ditutup. Tabungan nggak akan ngurangin budget lu!
-        if (noteStr.contains('[SAVING_ID:')) continue;
+        if (noteStr.contains('[SAVING_ID:') || isDebtMutation(noteStr)) continue;
 
         final catId = item['category_id'] as int;
         final amount = (item['amount'] as num).toDouble();

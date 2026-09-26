@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/core/transaction_tags.dart';
 
 class StatsState {
   final bool isLoading;
@@ -193,9 +194,7 @@ class StatsNotifier extends AutoDisposeNotifier<StatsState> {
 
         final note = item['note']?.toString() ?? '';
         final catName = item['categories']['name']?.toString().toLowerCase() ?? '';
-        final isPureMutation =
-            note.contains('[SAVING_ID:') &&
-            (catName.contains('tabung') || catName.contains('cair'));
+        final isPureMutation = isInternalMutation(note, catName);
 
         if (isPureMutation) continue;
 

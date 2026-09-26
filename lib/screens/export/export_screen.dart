@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/core/transaction_tags.dart';
 
 class ExportScreen extends StatefulWidget {
   const ExportScreen({super.key});
@@ -280,8 +281,7 @@ class _ExportScreenState extends State<ExportScreen> {
 
         String noteStr = itemData['note']?.toString() ?? '';
         final catStr = itemData['categories']?['name']?.toString().toLowerCase() ?? '';
-        final isSystemCat = catStr.contains('tabung') || catStr.contains('cair');
-        final isPureMutation = noteStr.contains('[SAVING_ID:') && isSystemCat;
+        final isPureMutation = isInternalMutation(noteStr, catStr);
 
         if (!isPureMutation) {
           final match = RegExp(r'\[SAVING_ID:(\d+)\]').firstMatch(noteStr);

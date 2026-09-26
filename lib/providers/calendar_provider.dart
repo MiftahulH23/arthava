@@ -2,6 +2,7 @@ import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/core/transaction_tags.dart';
 
 DateTime normalizeCalendarDate(DateTime date) {
   return DateTime(date.year, date.month, date.day);
@@ -115,11 +116,8 @@ class CalendarNotifier extends AutoDisposeNotifier<CalendarState> {
         final trx = TransactionModel.fromJson(item);
         final normalizedDate = normalizeCalendarDate(trx.date);
 
-        final catName = trx.category?.name.toLowerCase() ?? '';
         final note = trx.note ?? '';
-        final isSystemCat =
-            catName.contains('tabung') || catName.contains('cair');
-        final isPureMutation = note.contains('[SAVING_ID:') && isSystemCat;
+        final isPureMutation = isInternalMutation(note, trx.category?.name);
 
         if (!isPureMutation) {
           if (tempGroups[normalizedDate] == null) {

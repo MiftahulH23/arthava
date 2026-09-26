@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:catat_uang_app/core/transaction_tags.dart';
 
 class TransactionHistoryScreen extends ConsumerStatefulWidget {
   final bool isExpense;
@@ -684,11 +685,9 @@ class _TransactionHistoryScreenState
                     itemBuilder: (context, index) {
                       final trx = state.transactions[index];
                       final noteStr = trx.note?.toString() ?? '';
-                      final catStr = trx.category?.name.toLowerCase() ?? '';
-                      final isSystemCat =
-                          catStr.contains('tabung') || catStr.contains('cair');
+                      final isDebtRow = isDebtMutation(noteStr);
                       final isPureMutation =
-                          noteStr.contains('[SAVING_ID:') && isSystemCat;
+                          isInternalMutation(noteStr, trx.category?.name);
 
                       final walletId = trx.walletId;
                       final walletName = state.walletNames[walletId];
@@ -825,12 +824,7 @@ class _TransactionHistoryScreenState
                                       Padding(
                                         padding: const EdgeInsets.only(top: 2),
                                         child: Text(
-                                          trx.note!
-                                              .replaceAll(
-                                                RegExp(r'\[SAVING_ID:\d+\]'),
-                                                '',
-                                              )
-                                              .trim(),
+                                          stripTransactionTags(trx.note),
                                           style: GoogleFonts.poppins(
                                             color: isPureMutation
                                                 ? Colors.teal
@@ -855,7 +849,7 @@ class _TransactionHistoryScreenState
                                           ),
                                         ),
                                         child: Text(
-                                          "Mutasi Internal",
+                                          isDebtRow ? "Utang/Piutang" : "Mutasi Internal",
                                           style: GoogleFonts.poppins(
                                             fontSize: 10,
                                             color: Colors.teal,
