@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class AppNotification {
@@ -158,8 +159,8 @@ class _ToastWidgetState extends State<_ToastWidget>
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: widget.isError
-                          ? const Color(0xFFFEE2E2)
-                          : const Color(0xFFD1FAE5), // Merah Muda / Hijau Muda
+                          ? AppColors.expenseSoft
+                          : AppColors.incomeSoft, // Merah Muda / Hijau Muda
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -167,8 +168,8 @@ class _ToastWidgetState extends State<_ToastWidget>
                           ? PhosphorIcons.warning(PhosphorIconsStyle.bold)
                           : PhosphorIcons.check(PhosphorIconsStyle.bold),
                       color: widget.isError
-                          ? const Color(0xFFEF4444)
-                          : const Color(0xFF10B981),
+                          ? AppColors.expense
+                          : AppColors.income,
                       size: 20,
                     ),
                   ),
@@ -176,10 +177,9 @@ class _ToastWidgetState extends State<_ToastWidget>
                   Expanded(
                     child: Text(
                       widget.message,
-                      style: GoogleFonts.poppins(
+                      style: AppTextStyles.body.copyWith(
                         fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF1F2937),
+                        color: AppColors.textPrimary,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
