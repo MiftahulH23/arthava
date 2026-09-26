@@ -45,6 +45,15 @@ TransactionHistoryState _history() {
     selectedDate: DateTime(2026, 9, 24),
     walletNames: const {1: 'BCA', 2: 'GoPay'},
     walletColors: const {1: Color(0xFF1E3A8A), 2: Color(0xFFE65100)},
+    // Di app diisi fetchCategories() dari tabel categories (per jenis transaksi).
+    categories: const [
+      {'id': 1, 'name': 'Makan', 'is_expense': true},
+      {'id': 2, 'name': 'Transportasi', 'is_expense': true},
+      {'id': 5, 'name': 'Belanja', 'is_expense': true},
+      {'id': 6, 'name': 'Tagihan', 'is_expense': true},
+      {'id': 7, 'name': 'Hiburan', 'is_expense': true},
+    ],
+    selectedCategoryIds: const [1],
   );
 }
 
