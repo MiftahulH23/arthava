@@ -1,0 +1,106 @@
+import 'package:catat_uang_app/models/wallet_model.dart';
+import 'package:catat_uang_app/providers/user_settings_provider.dart';
+import 'package:catat_uang_app/providers/wallet_provider.dart';
+import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import '../helpers/pump_app.dart';
+
+class FakeWalletNotifier extends WalletNotifier {
+  FakeWalletNotifier(this.initial);
+  final List<WalletModel> initial;
+  int? favoriteId;
+  bool? favoriteValue;
+
+  @override
+  WalletState build() => WalletState(wallets: initial, isLoading: false);
+
+  @override
+  Future<void> setFavorite(int id, bool isFavorite) async {
+    favoriteId = id;
+    favoriteValue = isFavorite;
+  }
+}
+
+class FakeUserSettingsNotifier extends UserSettingsNotifier {
+  FakeUserSettingsNotifier(this.include);
+  final bool include;
+
+  @override
+  UserSettingsState build() => UserSettingsState(includeMinBalance: include, isLoading: false);
+}
+
+List<WalletModel> sample() => [
+      WalletModel(id: 1, userId: 'u', name: 'BCA', balance: 9300000, color: '#1E3A8A', isFavorite: true, minBalance: 50000),
+      WalletModel(id: 2, userId: 'u', name: 'GoPay', balance: 1850000, color: '#E65100'),
+      WalletModel(id: 3, userId: 'u', name: 'Tunai', balance: 1300000, color: '#00796B'),
+    ];
+
+Future<FakeWalletNotifier> pumpWallet(WidgetTester tester, List<WalletModel> wallets, {bool include = true}) async {
+  final fake = FakeWalletNotifier(wallets);
+  await pumpApp(
+    tester,
+    const WalletScreen(),
+    overrides: [
+      walletProvider.overrideWith(() => fake),
+      userSettingsProvider.overrideWith(() => FakeUserSettingsNotifier(include)),
+    ],
+    size: const Size(390, 1200),
+  );
+  return fake;
+}
+
+void main() {
+  testWidgets('kartu bertumpuk menampilkan nama huruf besar, saldo, bintang favorit, dan pill', (tester) async {
+    await pumpWallet(tester, sample());
+    expect(find.text('Dompet Saya'), findsOneWidget);
+    expect(find.text('BCA'), findsOneWidget);
+    expect(find.text('GOPAY'), findsOneWidget);
+    expect(find.text('Rp 9.300.000'), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsFill.star), findsOneWidget);
+    expect(find.text('Transfer'), findsOneWidget);
+    expect(find.text('Tambah'), findsOneWidget);
+    expect(find.textContaining('Bisa dipakai'), findsNothing); // pengaturan aktif
+  });
+
+  testWidgets('pengaturan nonaktif: kartu menampilkan Bisa dipakai', (tester) async {
+    await pumpWallet(tester, sample(), include: false);
+    expect(find.text('Bisa dipakai Rp 9.250.000'), findsOneWidget);
+  });
+
+  testWidgets('ketuk kartu membuka sheet aksi; Jadikan Favorit memanggil setFavorite', (tester) async {
+    final fake = await pumpWallet(tester, sample());
+    await tester.tap(find.text('GOPAY'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit'), findsOneWidget);
+    expect(find.text('Jadikan Favorit'), findsOneWidget);
+    expect(find.text('Hapus'), findsOneWidget);
+    await tester.tap(find.text('Jadikan Favorit'));
+    await tester.pumpAndSettle();
+    expect(fake.favoriteId, 2);
+    expect(fake.favoriteValue, isTrue);
+  });
+
+  testWidgets('kosong: empty state dan pill hanya Tambah', (tester) async {
+    await pumpWallet(tester, []);
+    expect(find.text('Belum ada dompet'), findsOneWidget);
+    expect(find.text('Tambah'), findsOneWidget);
+    expect(find.text('Transfer'), findsNothing);
+  });
+
+  testWidgets('satu dompet: tombol Transfer tidak tampil', (tester) async {
+    await pumpWallet(tester, [sample().first]);
+    expect(find.text('Transfer'), findsNothing);
+  });
+
+  testWidgets('sheet Tambah Dompet punya isian Saldo Minimal (Opsional)', (tester) async {
+    await pumpWallet(tester, sample());
+    await tester.tap(find.text('Tambah'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tambah Dompet'), findsOneWidget);
+    expect(find.text('Saldo Minimal (Opsional)'), findsOneWidget);
+    expect(find.text('Pilih Warna'), findsOneWidget);
+  });
+}
