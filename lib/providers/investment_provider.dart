@@ -83,113 +83,55 @@ class InvestmentNotifier extends AutoDisposeNotifier<InvestmentState> {
     }
   }
 
-  Future<int> _getOrCreateCategory(String userId, String name, bool isExpense) async {
-    final res = await _supabase
-        .from('categories')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_expense', isExpense)
-        .ilike('name', '%$name%')
-        .maybeSingle();
-    if (res != null) return res['id'] as int;
-
-    final ins = await _supabase.from('categories').insert({
-      'user_id': userId,
-      'name': name,
-      'is_expense': isExpense,
-      'icon_name': 'chart-line-up',
-    }).select('id').single();
-    return ins['id'] as int;
+  /// Menjalankan RPC uang; tolakan server (P0001) dilempar sebagai [Exception]
+  /// dengan pesan aslinya, sama seperti validasi lama di app.
+  Future<void> _rpc(String fn, Map<String, dynamic> params) async {
+    try {
+      await _supabase.rpc(fn, params: params);
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0001') {
+        fetchData();
+        throw Exception(e.message);
+      }
+      rethrow;
+    }
   }
 
-  /// Membeli aset investasi baru, dari `_showAddInvestmentSheet`. Melempar
-  /// [Exception] dengan pesan yang sama persis dengan sebelum migrasi kalau
-  /// saldo dompet tidak mencukupi.
+  /// Membeli aset investasi baru, dari `_showAddInvestmentSheet`. Atomik di
+  /// database (RPC buy_investment, migration 202609260008); melempar
+  /// [Exception] "Saldo dompet tidak mencukupi!" bila saldo kurang.
   Future<void> buyInvestment({
     required String name,
     required String type,
     required double amount,
     required int walletId,
   }) async {
-    final userId = _supabase.auth.currentUser!.id;
-    final wallet = state.wallets.firstWhere((w) => w['id'] == walletId);
-    if (amount > (wallet['balance'] as num).toDouble()) {
-      throw Exception("Saldo dompet tidak mencukupi!");
-    }
-
-    final catId = await _getOrCreateCategory(userId, 'Investasi', true);
-
-    // Insert Investment
-    await _supabase.from('investments').insert({
-      'user_id': userId,
-      'name': name,
-      'type': type,
-      'capital_amount': amount,
-      'current_value': amount,
-    }).select().single();
-
-    // Insert Transaction
-    await _supabase.from('transactions').insert({
-      'user_id': userId,
-      'wallet_id': walletId,
-      'category_id': catId,
-      'amount': amount,
-      'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'note': 'Beli Aset: $name',
+    await _rpc('buy_investment', {
+      'p_name': name,
+      'p_type': type,
+      'p_amount': amount,
+      'p_wallet_id': walletId,
+      'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     });
-
-    // Update Wallet
-    await _supabase.from('wallets').update({'balance': (wallet['balance'] as num).toDouble() - amount}).eq('id', walletId);
-
     await fetchData();
   }
 
   /// Top up (`isBuy: true`) atau jual (`isBuy: false`) sebagian aset, dari
-  /// `_showBuySellSheet`. Melempar [Exception] dengan pesan yang sama persis
-  /// dengan sebelum migrasi untuk kasus validasi.
+  /// `_showBuySellSheet`. Atomik di database (RPC buy_sell_investment);
+  /// pesan tolakan sama dengan validasi lama.
   Future<void> buySellInvestment({
     required InvestmentModel inv,
     required bool isBuy,
     required double amount,
     required int walletId,
   }) async {
-    final userId = _supabase.auth.currentUser!.id;
-    final wallet = state.wallets.firstWhere((w) => w['id'] == walletId);
-
-    if (isBuy && amount > (wallet['balance'] as num).toDouble()) {
-      throw Exception("Saldo dompet tidak mencukupi!");
-    }
-    if (!isBuy && amount > inv.currentValue) {
-      throw Exception("Nominal penarikan melebihi nilai aset saat ini!");
-    }
-
-    final catId = isBuy
-        ? await _getOrCreateCategory(userId, 'Investasi', true)
-        : await _getOrCreateCategory(userId, 'Hasil Jual Investasi', false);
-
-    // Update Investment
-    final newCapital = isBuy ? inv.capitalAmount + amount : (inv.capitalAmount - amount < 0 ? 0 : inv.capitalAmount - amount);
-    final newValue = isBuy ? inv.currentValue + amount : (inv.currentValue - amount < 0 ? 0 : inv.currentValue - amount);
-
-    await _supabase.from('investments').update({
-      'capital_amount': newCapital,
-      'current_value': newValue,
-    }).eq('id', inv.id);
-
-    // Insert Transaction
-    await _supabase.from('transactions').insert({
-      'user_id': userId,
-      'wallet_id': walletId,
-      'category_id': catId,
-      'amount': amount,
-      'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'note': isBuy ? 'Top Up Aset: ${inv.name}' : ' Jual Aset: ${inv.name}',
+    await _rpc('buy_sell_investment', {
+      'p_investment_id': inv.id,
+      'p_is_buy': isBuy,
+      'p_amount': amount,
+      'p_wallet_id': walletId,
+      'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     });
-
-    // Update Wallet
-    final newBalance = isBuy ? (wallet['balance'] as num).toDouble() - amount : (wallet['balance'] as num).toDouble() + amount;
-    await _supabase.from('wallets').update({'balance': newBalance}).eq('id', walletId);
-
     await fetchData();
   }
 

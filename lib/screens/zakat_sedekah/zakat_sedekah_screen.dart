@@ -1,6 +1,7 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/core/formatters.dart';
+import 'package:catat_uang_app/services/zakat_service.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_amount_display.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
@@ -13,7 +14,6 @@ import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:catat_uang_app/widgets/app_wallet_select_row.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -87,34 +87,6 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
     }
   }
 
-  Future<int> _getOrCreateCategory(String categoryName, String iconName) async {
-    final userId = _supabase.auth.currentUser!.id;
-    // Check if exists
-    final checkRes = await _supabase
-        .from('categories')
-        .select('id')
-        .eq('is_expense', true)
-        .ilike('name', '%$categoryName%')
-        .eq('user_id', userId)
-        .maybeSingle();
-        
-    if (checkRes != null) return checkRes['id'] as int;
-    
-    // Create new
-    final insertRes = await _supabase
-        .from('categories')
-        .insert({
-          'user_id': userId,
-          'name': categoryName,
-          'is_expense': true,
-          'icon_name': iconName,
-        })
-        .select('id')
-        .single();
-        
-    return insertRes['id'] as int;
-  }
-
   Future<void> _processPayment({required bool isZakat}) async {
     if (_wallets.isEmpty) {
       AppNotification.error(context, "Anda belum membuat dompet.");
@@ -128,7 +100,6 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
     double amountToPay = 0;
     String note = "";
     String categoryName = "";
-    String iconName = "";
 
     if (isZakat) {
       if (_calculatedZakat <= 0) {
@@ -138,7 +109,6 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
       amountToPay = _calculatedZakat;
       note = "Pembayaran Zakat Maal (2.5% dari harta)";
       categoryName = "Zakat";
-      iconName = "hand-heart";
     } else {
       final cleanAmount = _sedekahAmountController.text.replaceAll(RegExp(r'[^0-9]'), '');
       if (cleanAmount.isEmpty || double.parse(cleanAmount) <= 0) {
@@ -148,7 +118,6 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
       amountToPay = double.parse(cleanAmount);
       note = _sedekahNoteController.text.trim().isNotEmpty ? _sedekahNoteController.text.trim() : "Sedekah";
       categoryName = "Sedekah";
-      iconName = "hand-coins";
     }
 
     // Cek saldo dompet
@@ -162,31 +131,29 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userId = _supabase.auth.currentUser!.id;
-      final categoryId = await _getOrCreateCategory(categoryName, iconName);
-
-      // Insert transaction
-      await _supabase.from('transactions').insert({
-        'user_id': userId,
-        'category_id': categoryId,
-        'amount': amountToPay,
-        'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'note': note,
-        'wallet_id': _selectedWalletId,
-      });
-
-      // Update wallet balance
-      await _supabase
-          .from('wallets')
-          .update({'balance': currentBalance - amountToPay})
-          .eq('id', _selectedWalletId!);
+      // Atomik di database (RPC pay_zakat_sedekah, migration 202609260008):
+      // kategori, transaksi, dan potong saldo sekaligus.
+      await ZakatService(_supabase).pay(
+        isZakat: isZakat,
+        walletId: _selectedWalletId!,
+        amount: amountToPay,
+        note: note,
+      );
 
       if (mounted) {
         AppNotification.success(context, "$categoryName berhasil dibayarkan! Semoga berkah.");
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted) AppNotification.error(context, "Gagal memproses pembayaran: $e");
+      // Tolakan server (mis. saldo berubah sejak layar dibuka) memakai pesan aslinya.
+      final message = e.toString().replaceFirst('Exception: ', '');
+      if (mounted) {
+        AppNotification.error(
+          context,
+          message == 'Saldo dompet tidak mencukupi!' ? message : "Gagal memproses pembayaran: $e",
+        );
+      }
+      if (mounted) _fetchWallets();
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
