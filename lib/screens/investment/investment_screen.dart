@@ -380,7 +380,8 @@ class _InvestmentRow extends StatelessWidget {
     return AppListRow(
       leading: const AppIconTile(icon: PhosphorIconsFill.chartLineUp, color: AppColors.primary),
       title: inv.name,
-      subtitle: '${inv.type} · Modal: ${formatRupiah(inv.capitalAmount)}',
+      // Spasi tak-putus: "Rp" tidak terpisah dari angkanya saat subjudul turun baris.
+      subtitle: '${inv.type} · Modal: ${formatRupiah(inv.capitalAmount).replaceFirst(' ', ' ')}',
       trailing: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,

@@ -138,4 +138,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(fake.calls, contains('delete:1'));
   });
+
+  testWidgets('subjudul modal tidak memisah "Rp" dari angkanya', (tester) async {
+    await pumpApp(tester, const InvestmentScreen(),
+        overrides: [investmentProvider.overrideWith(() => FakeInvestmentNotifier(_state()))]);
+    await tester.pumpAndSettle();
+    expect(find.text('Saham · Modal: Rp 8.000.000'), findsOneWidget);
+  });
 }
