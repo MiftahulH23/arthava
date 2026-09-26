@@ -21,14 +21,17 @@ void main() {
     expect(filterFeatures('xyz'), isEmpty);
   });
 
-  test('refreshAfter sesuai tabel grid lama', () {
+  test('refreshAfter sesuai tabel grid lama + kartu ringkasan', () {
     expect(AppFeature.recurring.refreshAfter, HomeRefreshAfter.homeDataAndTabs);
     expect(AppFeature.savings.refreshAfter, HomeRefreshAfter.homeDataAndTabs);
     expect(AppFeature.debt.refreshAfter, HomeRefreshAfter.homeDataAndTabs);
     expect(AppFeature.wallet.refreshAfter, HomeRefreshAfter.homeData);
     expect(AppFeature.investment.refreshAfter, HomeRefreshAfter.homeData);
     expect(AppFeature.zakat.refreshAfter, HomeRefreshAfter.homeData);
-    for (final f in [AppFeature.budget, AppFeature.target, AppFeature.category,
+    // Baru di B3: kartu ringkasan Anggaran & Target di Beranda harus ikut segar.
+    expect(AppFeature.budget.refreshAfter, HomeRefreshAfter.homeData);
+    expect(AppFeature.target.refreshAfter, HomeRefreshAfter.homeData);
+    for (final f in [AppFeature.category,
         AppFeature.exportReport, AppFeature.aiAdvisor, AppFeature.calendar]) {
       expect(f.refreshAfter, HomeRefreshAfter.none, reason: f.name);
     }

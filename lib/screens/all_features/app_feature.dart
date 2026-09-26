@@ -25,15 +25,16 @@ enum AppFeatureGroup {
 }
 
 /// Refresh Beranda yang dijalankan setelah layar fitur ditutup — dipindahkan
-/// persis dari callback grid Beranda lama (lihat tabel di Plan B3 Task 4).
+/// persis dari callback grid Beranda lama (lihat tabel di Plan B3 Task 4), kecuali
+/// Anggaran & Target yang kini me-refresh karena Beranda punya kartu ringkasannya.
 enum HomeRefreshAfter { none, homeData, homeDataAndTabs }
 
 enum AppFeature {
   wallet('Dompet', PhosphorIconsFill.wallet, AppColors.tintBrown, AppFeatureGroup.harian, HomeRefreshAfter.homeData),
   calendar('Kalender', PhosphorIconsFill.calendar, AppColors.tintPink, AppFeatureGroup.harian, HomeRefreshAfter.none),
   category('Kategori', PhosphorIconsFill.squaresFour, AppColors.tintOrange, AppFeatureGroup.harian, HomeRefreshAfter.none),
-  budget('Anggaran', PhosphorIconsFill.chartDonut, AppColors.tintIndigo, AppFeatureGroup.perencanaan, HomeRefreshAfter.none),
-  target('Target Keuangan', PhosphorIconsFill.target, AppColors.tintGreen, AppFeatureGroup.perencanaan, HomeRefreshAfter.none),
+  budget('Anggaran', PhosphorIconsFill.chartDonut, AppColors.tintIndigo, AppFeatureGroup.perencanaan, HomeRefreshAfter.homeData),
+  target('Target Keuangan', PhosphorIconsFill.target, AppColors.tintGreen, AppFeatureGroup.perencanaan, HomeRefreshAfter.homeData),
   savings('Buku Tabungan', PhosphorIconsFill.piggyBank, AppColors.tintTeal, AppFeatureGroup.perencanaan, HomeRefreshAfter.homeDataAndTabs),
   recurring('Tagihan & Pemasukan Rutin', PhosphorIconsFill.calendarPlus, AppColors.tintRed, AppFeatureGroup.perencanaan, HomeRefreshAfter.homeDataAndTabs),
   investment('Investasi', PhosphorIconsFill.chartLineUp, AppColors.tintAmber, AppFeatureGroup.asetKewajiban, HomeRefreshAfter.homeData),
