@@ -13,6 +13,7 @@ import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_hero_card.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_searchable_group.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
@@ -42,19 +43,20 @@ class WalletScreen extends ConsumerWidget {
     return showAppFormSheet<int>(
       context: context,
       title: title,
-      builder: (sheetContext) => AppGroupedSection(
-        children: [
-          for (final w in wallets)
-            AppListRow(
-              leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: w.displayColor, filled: true),
-              title: w.name,
-              value: showBalance ? formatRupiah(w.balance) : null,
-              trailing: w.id == selectedId
-                  ? const Icon(PhosphorIconsBold.check, color: AppColors.primary, size: 18)
-                  : null,
-              onTap: () => Navigator.pop(sheetContext, w.id),
-            ),
-        ],
+      builder: (sheetContext) => AppSearchableGroup<WalletModel>(
+        items: wallets,
+        searchText: (w) => w.name,
+        hint: 'Cari dompet',
+        rowBuilder: (_, w) =>
+          AppListRow(
+            leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: w.displayColor, filled: true),
+            title: w.name,
+            value: showBalance ? formatRupiah(w.balance) : null,
+            trailing: w.id == selectedId
+                ? const Icon(PhosphorIconsBold.check, color: AppColors.primary, size: 18)
+                : null,
+            onTap: () => Navigator.pop(sheetContext, w.id),
+          ),
       ),
     );
   }

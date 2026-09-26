@@ -14,6 +14,7 @@ import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_pickers.dart';
+import 'package:catat_uang_app/widgets/app_searchable_group.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
@@ -295,20 +296,21 @@ class _InputTransactionScreenState
     showAppFormSheet<void>(
       context: context,
       title: "Pilih Dompet",
-      builder: (sheetContext) => AppGroupedSection(
-        children: [
-          for (final wallet in wallets)
-            AppListRow(
-              leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: _walletColor(wallet), filled: true),
-              title: wallet['name'].toString(),
-              value: formatRupiah(wallet['balance'] as num),
-              trailing: wallet['id'] == _selectedWalletId ? _checkIcon : null,
-              onTap: () {
-                Navigator.pop(sheetContext);
-                setState(() => _selectedWalletId = wallet['id'] as int);
-              },
-            ),
-        ],
+      builder: (sheetContext) => AppSearchableGroup<Map<String, dynamic>>(
+        items: wallets,
+        searchText: (wallet) => wallet['name'].toString(),
+        hint: 'Cari dompet',
+        rowBuilder: (_, wallet) =>
+          AppListRow(
+            leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: _walletColor(wallet), filled: true),
+            title: wallet['name'].toString(),
+            value: formatRupiah(wallet['balance'] as num),
+            trailing: wallet['id'] == _selectedWalletId ? _checkIcon : null,
+            onTap: () {
+              Navigator.pop(sheetContext);
+              setState(() => _selectedWalletId = wallet['id'] as int);
+            },
+          ),
       ),
     );
   }
@@ -317,20 +319,21 @@ class _InputTransactionScreenState
     showAppFormSheet<void>(
       context: context,
       title: "Pilih Tabungan",
-      builder: (sheetContext) => AppGroupedSection(
-        children: [
-          for (final savingName in state.savingNamesList)
-            AppListRow(
-              leading: const AppIconTile(icon: PhosphorIconsFill.piggyBank, color: AppColors.primary),
-              title: savingName,
-              value: "Sisa: ${formatRupiah(state.savingsBalances[savingName] ?? 0)}",
-              trailing: savingName == _selectedSavingName ? _checkIcon : null,
-              onTap: () {
-                Navigator.pop(sheetContext);
-                setState(() => _selectedSavingName = savingName);
-              },
-            ),
-        ],
+      builder: (sheetContext) => AppSearchableGroup<String>(
+        items: state.savingNamesList,
+        searchText: (savingName) => savingName,
+        hint: 'Cari tabungan',
+        rowBuilder: (_, savingName) =>
+          AppListRow(
+            leading: const AppIconTile(icon: PhosphorIconsFill.piggyBank, color: AppColors.primary),
+            title: savingName,
+            value: "Sisa: ${formatRupiah(state.savingsBalances[savingName] ?? 0)}",
+            trailing: savingName == _selectedSavingName ? _checkIcon : null,
+            onTap: () {
+              Navigator.pop(sheetContext);
+              setState(() => _selectedSavingName = savingName);
+            },
+          ),
       ),
     );
   }
@@ -339,22 +342,23 @@ class _InputTransactionScreenState
     showAppFormSheet<void>(
       context: context,
       title: "Pilih Kategori",
-      builder: (sheetContext) => AppGroupedSection(
-        children: [
-          for (final cat in categories)
-            AppListRow(
-              leading: AppIconTile(
-                icon: categoryIcon(cat['name'].toString()),
-                color: categoryColor(cat['name'].toString()),
-              ),
-              title: cat['name'].toString(),
-              trailing: cat['id'] == _selectedCategoryId ? _checkIcon : null,
-              onTap: () {
-                Navigator.pop(sheetContext);
-                setState(() => _selectedCategoryId = cat['id'] as int);
-              },
+      builder: (sheetContext) => AppSearchableGroup<Map<String, dynamic>>(
+        items: categories,
+        searchText: (cat) => cat['name'].toString(),
+        hint: 'Cari kategori',
+        rowBuilder: (_, cat) =>
+          AppListRow(
+            leading: AppIconTile(
+              icon: categoryIcon(cat['name'].toString()),
+              color: categoryColor(cat['name'].toString()),
             ),
-        ],
+            title: cat['name'].toString(),
+            trailing: cat['id'] == _selectedCategoryId ? _checkIcon : null,
+            onTap: () {
+              Navigator.pop(sheetContext);
+              setState(() => _selectedCategoryId = cat['id'] as int);
+            },
+          ),
       ),
     );
   }

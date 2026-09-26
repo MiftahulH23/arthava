@@ -174,4 +174,41 @@ void main() {
     await tester.pumpAndSettle();
     await saveScreenshot(tester, 'b4_07_input_readonly');
   }, skip: skip);
+
+  testWidgets('08 pilih kategori, banyak data + cari', (tester) async {
+    await loadRealFonts(tester);
+    await pumpScreen(
+      tester,
+      const InputTransactionScreen(initialIsExpense: true),
+      overrides: [inputTransactionProvider.overrideWith(_ManyCategories.new)],
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kategori'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Cari kategori'), 'ka');
+    await tester.pumpAndSettle();
+    await saveScreenshot(tester, 'b4_08_category_search');
+  }, skip: skip);
+}
+
+const _manyNames = ['Makan', 'Transportasi', 'Belanja Bulanan', 'Tagihan Listrik', 'Hiburan', 'Kesehatan',
+  'Pendidikan Anak', 'Kopi', 'Pulsa & Internet', 'Donasi', 'Olahraga', 'Hadiah', 'Perawatan Diri',
+  'Hewan Peliharaan', 'Servis Motor', 'Bensin', 'Parkir', 'Tol', 'Asuransi', 'Pajak', 'Cicilan Rumah',
+  'Langganan Streaming', 'Laundry', 'Jajan', 'Arisan', 'Kondangan', 'Liburan', 'Elektronik', 'Pakaian', 'Kado'];
+
+class _ManyCategories extends InputTransactionNotifier {
+  @override
+  InputTransactionState build() {
+    Future.microtask(
+      () => state = InputTransactionState(
+        wallets: const [
+          {'id': 1, 'name': 'BCA', 'balance': 9300000, 'color': '#1E3A8A'},
+        ],
+        categories: [
+          for (var i = 0; i < _manyNames.length; i++) {'id': i + 1, 'name': _manyNames[i], 'is_expense': true},
+        ],
+      ),
+    );
+    return const InputTransactionState();
+  }
 }

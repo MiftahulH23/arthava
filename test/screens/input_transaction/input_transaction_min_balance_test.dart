@@ -164,4 +164,42 @@ void main() {
     final row = find.ancestor(of: find.text('Kategori'), matching: find.byType(AppListRow));
     expect(find.descendant(of: row, matching: find.byIcon(PhosphorIconsRegular.caretRight)), findsNothing);
   });
+
+  testWidgets('Pilih Kategori dengan banyak kategori: ada kolom cari yang menyaring', (tester) async {
+    await pumpApp(
+      tester,
+      const InputTransactionScreen(initialIsExpense: true),
+      overrides: [inputTransactionProvider.overrideWith(_ManyCategoriesNotifier.new)],
+      size: const Size(600, 1400),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kategori'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cari kategori'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Cari kategori'), 'kategori 1');
+    await tester.pump();
+    // "Kategori 1" dan "Kategori 10".."Kategori 19" cocok; "Kategori 2" tidak.
+    expect(find.text('Kategori 2'), findsNothing);
+    await tester.tap(find.text('Kategori 12'));
+    await tester.pumpAndSettle();
+    final row = find.ancestor(of: find.text('Kategori'), matching: find.byType(AppListRow));
+    expect(find.descendant(of: row, matching: find.text('Kategori 12')), findsOneWidget);
+  });
+}
+
+class _ManyCategoriesNotifier extends InputTransactionNotifier {
+  @override
+  InputTransactionState build() {
+    Future.microtask(
+      () => state = InputTransactionState(
+        wallets: const [
+          {'id': 1, 'name': 'BCA', 'balance': 100000, 'min_balance': 0},
+        ],
+        categories: [
+          for (var i = 1; i <= 30; i++) {'id': i, 'name': 'Kategori $i', 'is_expense': true},
+        ],
+      ),
+    );
+    return const InputTransactionState();
+  }
 }

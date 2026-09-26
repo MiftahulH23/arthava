@@ -1,8 +1,8 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/models/wallet_model.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_searchable_group.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -42,19 +42,20 @@ class DebtWalletPickerRow extends StatelessWidget {
     final picked = await showAppFormSheet<int>(
       context: context,
       title: 'Pilih Dompet',
-      builder: (sheetContext) => AppGroupedSection(
-        children: [
-          for (final w in wallets)
-            AppListRow(
-              leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: walletColorOf(w), filled: true),
-              title: w.name,
-              value: formatRupiah(w.balance),
-              trailing: w.id == selectedWalletId
-                  ? const Icon(PhosphorIconsBold.check, color: AppColors.primary, size: 18)
-                  : null,
-              onTap: () => Navigator.pop(sheetContext, w.id),
-            ),
-        ],
+      builder: (sheetContext) => AppSearchableGroup<WalletModel>(
+        items: wallets,
+        searchText: (w) => w.name,
+        hint: 'Cari dompet',
+        rowBuilder: (_, w) =>
+          AppListRow(
+            leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: walletColorOf(w), filled: true),
+            title: w.name,
+            value: formatRupiah(w.balance),
+            trailing: w.id == selectedWalletId
+                ? const Icon(PhosphorIconsBold.check, color: AppColors.primary, size: 18)
+                : null,
+            onTap: () => Navigator.pop(sheetContext, w.id),
+          ),
       ),
     );
     if (picked != null) onSelected(picked);
