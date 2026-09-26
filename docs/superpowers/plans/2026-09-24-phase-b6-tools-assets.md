@@ -2075,9 +2075,8 @@ EOF
 | 37–39 | `_pickMonth`: tahun sekarang ±5 | sama, lewat `showAppMonthPicker` (B3b). Beda perilaku (ruling B3b): dropdown tahun lama langsung mengubah bulan laporan; sekarang perubahan baru berlaku setelah "Pilih" |
 | 189–214 | `_pickDateRange`: rentang 2020–2030, awal = `_selectedDateRange` | sama, lewat `showAppDateRangePicker` (B3b) |
 | 56 | judul dialog "Pilih Periode" | sama (gaya `AppTextStyles.headline`) |
-| 73–109 | dropdown tahun → `setDialogState` + `setState` | sama persis |
-| 122–176 | grid 3×4 bulan (`'MMM', 'id_ID'`), terpilih = chip primary; tap → set bulan + pop | sama persis, warna netral dari `AppColors` |
-| 188–213 | `_pickDateRange` (2020–2030, tema primary) | tidak diubah |
+| 73–109 | dropdown tahun → `setDialogState` + `setState` | tahun ‹ › di `showAppMonthPicker`; berlaku setelah "Pilih" (ruling B3b) |
+| 122–176 | grid 3×4 bulan (`'MMM', 'id_ID'`), terpilih = chip primary; tap → set bulan + pop | grid 3×4 bulan yang sama di `showAppMonthPicker`; tap = tandai, "Pilih" = set bulan + tutup (ruling B3b) |
 | 215–370 | `_generatePdf` (query, filter mutasi tabungan, info dompet, PDF, `Printing.layoutPdf`, toast "Tidak ada transaksi di periode ini." / "Gagal membuat PDF: $e") | tidak diubah |
 | 379 | judul "Export Laporan" | `AppPageScaffold(title:)` |
 | 411–415 | ikon filePdf primary | `AppIconTile(size: 72)` |
@@ -2094,7 +2093,6 @@ EOF
 | `Colors.grey.shade100` (track toggle, pill tahun) | `AppColors.track` |
 | `Colors.grey.shade300` (border chip bulan, border baris) | `AppColors.separator` |
 | `Colors.grey*` (teks sekunder) | `AppTextStyles.caption/subhead` |
-| `Colors.black` (onSurface di `_pickDateRange`) | tidak diubah (method tidak disentuh) |
 | `AppColors.textPrimary` (latar tombol cetak) | `AppColors.primary` (mockup memakai tombol utama biru) |
 
 - [ ] **Step 1: Tulis test gagal**
@@ -2149,6 +2147,8 @@ void main() {
     expect(find.text('Pilih Periode'), findsOneWidget);
 
     await tester.tap(find.text('Jan'));
+    await tester.pump();
+    await tester.tap(find.text('Pilih')); // pemilih bersama (Plan B3b): ketuk bulan, lalu "Pilih"
     await tester.pumpAndSettle();
 
     expect(find.text(DateFormat('MMMM yyyy', 'id_ID').format(DateTime(DateTime.now().year, 1))), findsOneWidget);
@@ -2299,7 +2299,7 @@ grep -c "GoogleFonts.poppins" lib/screens/export/export_screen.dart
 grep -nE "Color\(0x|Colors\.(blue|green|red|grey|indigo|purple|teal|orange)" lib/screens/export/export_screen.dart
 flutter analyze lib/screens/export
 ```
-Expected: `0`; grep warna hanya boleh menemukan `Colors.black` di `_pickDateRange` (baris lama 200, tidak disentuh — sebutkan di laporan); tanpa error/warning baru.
+Expected: `0`; grep warna tanpa hasil (`_pickDateRange` kini memakai `showAppDateRangePicker`, `Colors.black` lama ikut hilang); tanpa error/warning baru.
 
 - [ ] **Step 6: Checklist visual vs mockup "Export Laporan"**
 
@@ -2772,7 +2772,7 @@ Run:
 for f in lib/screens/investment/investment_screen.dart lib/screens/zakat_sedekah/zakat_sedekah_screen.dart lib/screens/calendar/calendar_screen.dart lib/screens/manage_category/manage_category_screen.dart lib/screens/export/export_screen.dart lib/screens/ai_advisor/ai_advisor_screen.dart; do echo "$f $(grep -c 'GoogleFonts.poppins' $f)"; done
 grep -nE "Color\(0x|Colors\.(blue|green|red|grey|indigo|purple|teal|orange|greenAccent|redAccent)" lib/screens/investment lib/screens/zakat_sedekah lib/screens/calendar lib/screens/manage_category lib/screens/export lib/screens/ai_advisor -r
 ```
-Expected: semua `0`; grep warna hanya `Colors.black` di `_pickDateRange` Export (tidak disentuh, sebutkan di laporan).
+Expected: semua `0`; grep warna tanpa hasil.
 
 - [ ] **Step 3: Cek diff tetap terarah**
 

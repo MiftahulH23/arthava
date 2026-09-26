@@ -382,7 +382,7 @@ EOF
 | # | Kode lama (`budget_screen.dart`) | Perilaku | Di layout baru |
 |---|---|---|---|
 | 1 | :17-19 `_changeMonth(ref, offset)` | `ref.read(budgetProvider.notifier).changeMonth(offset)` | Pill chevron kiri (-1) / kanan (+1) di baris pemilih bulan |
-| 2 | :21-91 `_showMonthYearPicker` dialog "Pilih Periode" (dropdown bulan `MMMM id_ID`, dropdown tahun now-5..now+5, tombol "Tampilkan" → `setMonth(DateTime(tempYear, tempMonth))` lalu pop) | ganti periode | Pill tengah (kalender + "MMMM yyyy" + caret) → `_pickPeriod` = sheet "Pilih Periode" berisi `AppSelectRow` Bulan & Tahun + tombol "Tampilkan"; hasil → `setMonth` |
+| 2 | :21-91 `_showMonthYearPicker` dialog "Pilih Periode" (dropdown bulan `MMMM id_ID`, dropdown tahun now-5..now+5, tombol "Tampilkan" → `setMonth(DateTime(tempYear, tempMonth))` lalu pop) | ganti periode | Pill tengah (kalender + "MMMM yyyy" + caret) → `_pickPeriod` = `showAppMonthPicker(title: 'Pilih Periode')` (Plan B3b): tahun ‹ › + grid 12 bulan + tombol "Pilih"; hasil → `setMonth` |
 | 3 | :93-104 `_copyFromLastMonth` | toast error "Tidak ada data anggaran bulan lalu." / sukses "Berhasil menyalin anggaran!" / error "Gagal menyalin: $e" | Sama persis, dipanggil dari tombol "Salin Bulan Lalu" di empty state |
 | 4 | :106-108 `_deleteBudget` | `deleteBudget(id)` tanpa toast | `AppSwipeActions.onDelete` pada baris anggaran |
 | 5 | :409-418 dialog "Hapus?" / "Yakin hapus anggaran ini?" (Batal / Hapus merah) | konfirmasi hapus | `AppSwipeActions(deleteConfirmTitle: 'Hapus?', deleteConfirmMessage: 'Yakin hapus anggaran ini?')` |
@@ -821,7 +821,7 @@ Jalankan skill `run-and-screenshot`, buka Beranda → Anggaran, cocokkan:
 - [ ] Geser baris ke kiri → tombol hapus merah → dialog iOS "Hapus?" / "Yakin hapus anggaran ini?".
 - [ ] Empty state: ikon donut abu + "Belum ada anggaran" + tombol pill "Salin Bulan Lalu".
 - [ ] Tekan `+` → sheet dengan grabber, header "Batal · Buat Anggaran", grup "Periode Anggaran ›" + "Kategori ›", kartu nominal besar biru "Batas Maksimal (Limit)", tombol biru "Simpan Anggaran".
-- [ ] Pill bulan → sheet "Pilih Periode" dengan baris Bulan & Tahun + tombol "Tampilkan".
+- [ ] Pill bulan → sheet "Pilih Periode" (pemilih bulan bersama): tahun ‹ 2026 ›, grid 12 bulan, tombol "Pilih".
 
 - [ ] **Step 8: Commit**
 
@@ -1430,7 +1430,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(DatePickerDialog), findsOneWidget);
+    // Pemilih tanggal bersama (Plan B3b), bukan DatePickerDialog Material.
+    expect(find.byType(CalendarDatePicker), findsOneWidget);
+    expect(find.text('Pilih Tanggal'), findsOneWidget);
   });
 
   testWidgets('Nabung membuka sheet dengan info lokasi dan dompet default', (tester) async {
