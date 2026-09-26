@@ -20,7 +20,7 @@ class AppBottomNavItem {
 
 /// Floating pill bottom navigation standar aplikasi.
 ///
-/// Beda dari AppCard/AppButton/dll, widget ini TIDAK membungkus primitive
+/// Widget ini TIDAK membungkus primitive
 /// forui tertentu — dibangun dari widget Flutter dasar (Container + Row),
 /// karena forui 0.17.0 tidak punya primitive floating-bottom-nav siap
 /// pakai (diverifikasi terhadap source forui yang terpasang saat komponen
