@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/providers/input_transaction_provider.dart';
 import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
@@ -11,6 +13,9 @@ import '../../helpers/pump_app.dart';
 
 class FakeInputNotifier extends InputTransactionNotifier {
   int saveCalls = 0;
+
+  /// Bila diisi, saveTransaction menunggu gate ini (meniru jaringan lambat).
+  Completer<void>? gate;
 
   @override
   InputTransactionState build() {
@@ -45,6 +50,7 @@ class FakeInputNotifier extends InputTransactionNotifier {
     required bool initialIsExpense,
   }) async {
     saveCalls++;
+    if (gate != null) await gate!.future;
     return const TransactionSaveResult(false, 'uji');
   }
 }
@@ -184,6 +190,19 @@ void main() {
     await tester.pumpAndSettle();
     final row = find.ancestor(of: find.text('Kategori'), matching: find.byType(AppListRow));
     expect(find.descendant(of: row, matching: find.text('Kategori 12')), findsOneWidget);
+  });
+
+  testWidgets('tap Simpan dua kali cepat hanya menyimpan sekali', (tester) async {
+    final fake = await pumpInput(tester, '40000');
+    fake.gate = Completer<void>();
+    await tester.ensureVisible(find.text('Simpan Transaksi'));
+    await tester.tap(find.text('Simpan Transaksi'));
+    await tester.tap(find.text('Simpan Transaksi'));
+    await tester.pump();
+    fake.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(fake.saveCalls, 1);
+    await tester.pump(const Duration(seconds: 4)); // tutup toast
   });
 }
 
