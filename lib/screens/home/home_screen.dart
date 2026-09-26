@@ -418,7 +418,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       itemCount: homeState.wallets.length,
                       itemBuilder: (context, index) {
                         final wallet = homeState.wallets[index];
-                        final colorHex = wallet['color'] ?? '#1E3A8A';
+                        final colorHex = wallet.color ?? '#1E3A8A';
                         final walletColor = Color(
                           int.parse(colorHex.replaceFirst('#', '0xFF')),
                         );
@@ -451,7 +451,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      wallet['name'],
+                                      wallet.name,
                                       style: GoogleFonts.poppins(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,
@@ -464,7 +464,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ],
                               ),
                               Text(
-                                currencyFormat.format(wallet['balance']),
+                                currencyFormat.format(wallet.balance),
                                 style: GoogleFonts.poppins(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -917,7 +917,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               itemCount: homeState.wallets.length > 4 ? 4 : homeState.wallets.length,
                               itemBuilder: (context, index) {
                                 final wallet = homeState.wallets[index];
-                                final colorHex = wallet['color'] ?? '#1E3A8A';
+                                final colorHex = wallet.color ?? '#1E3A8A';
                                 final walletColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
                                 return Container(
                                   padding: const EdgeInsets.all(15),
@@ -942,7 +942,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
-                                              wallet['name'],
+                                              wallet.name,
                                               style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -951,7 +951,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         ],
                                       ),
                                       Text(
-                                        currencyFormat.format(wallet['balance']),
+                                        currencyFormat.format(wallet.balance),
                                         style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
