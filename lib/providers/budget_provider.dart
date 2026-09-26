@@ -1,3 +1,6 @@
+import 'dart:ui' show Color;
+
+import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/budget_model.dart';
 import 'package:catat_uang_app/models/category_model.dart';
 import 'package:flutter/foundation.dart';
@@ -235,3 +238,88 @@ class BudgetNotifier extends AutoDisposeNotifier<BudgetState> {
 }
 
 final budgetProvider = NotifierProvider.autoDispose<BudgetNotifier, BudgetState>(BudgetNotifier.new);
+
+/// Kunci [budgetDetailProvider]: kategori + bulan + tahun anggaran yang dibuka.
+/// Record punya equality berbasis nilai, jadi layar yang sama memakai
+/// instance provider yang sama.
+typedef BudgetDetailKey = ({int categoryId, int month, int year});
+
+/// Data layar Detail Anggaran. Dipindahkan dari `_BudgetDetailScreenState`
+/// (_fetchWallets & _fetchTransactions) tanpa mengubah query/filter, supaya
+/// layar itu bisa dites dengan override provider.
+class BudgetDetailData {
+  const BudgetDetailData({
+    this.transactions = const [],
+    this.totalSpent = 0,
+    this.walletNames = const {},
+    this.walletColors = const {},
+  });
+
+  final List<Map<String, dynamic>> transactions;
+  final double totalSpent;
+  final Map<int, String> walletNames;
+  final Map<int, Color> walletColors;
+}
+
+final budgetDetailProvider =
+    FutureProvider.autoDispose.family<BudgetDetailData, BudgetDetailKey>((ref, key) async {
+  final supabase = Supabase.instance.client;
+
+  Future<(Map<int, String>, Map<int, Color>)> wallets() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final res = await supabase.from('wallets').select().eq('user_id', userId);
+      final names = <int, String>{};
+      final colors = <int, Color>{};
+      for (var w in res as List) {
+        names[w['id']] = w['name'].toString();
+        colors[w['id']] = AppColors.fromWalletHex(w['color']?.toString());
+      }
+      return (names, colors);
+    } catch (e) {
+      debugPrint("Error wallets: $e");
+      return (<int, String>{}, <int, Color>{});
+    }
+  }
+
+  Future<(List<Map<String, dynamic>>, double)> transactions() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final startMonth = DateFormat('yyyy-MM-01').format(DateTime(key.year, key.month));
+      final nextMonth = DateFormat('yyyy-MM-01').format(DateTime(key.year, key.month + 1));
+
+      final res = await supabase
+          .from('transactions')
+          .select('id, amount, note, date, category_id, wallet_id')
+          .eq('user_id', userId)
+          .gte('date', startMonth)
+          .lt('date', nextMonth)
+          .order('date', ascending: false);
+
+      double spent = 0;
+      final List<Map<String, dynamic>> filteredData = [];
+      for (var item in res) {
+        final catId = item['category_id'] as int;
+        final noteStr = item['note']?.toString() ?? '';
+        if (noteStr.contains('[SAVING_ID:') || isDebtMutation(noteStr)) continue;
+        if (catId == key.categoryId) {
+          spent += (item['amount'] as num).toDouble();
+          filteredData.add(item);
+        }
+      }
+      return (filteredData, spent);
+    } catch (e) {
+      return (<Map<String, dynamic>>[], 0.0);
+    }
+  }
+
+  // Dulu kedua fetch dipanggil dari initState tanpa saling menunggu —
+  // tetap paralel di sini.
+  final (walletData, trxData) = await (wallets(), transactions()).wait;
+  return BudgetDetailData(
+    transactions: trxData.$1,
+    totalSpent: trxData.$2,
+    walletNames: walletData.$1,
+    walletColors: walletData.$2,
+  );
+});
