@@ -156,4 +156,18 @@ void main() {
     final range = result! as DateTimeRange;
     expect(range.start, range.end);
   });
+
+  testWidgets('kalender memakai font aplikasi (Plus Jakarta Sans), bukan Roboto bawaan', (tester) async {
+    await pumpOpener(
+      tester,
+      (c) => showAppDatePicker(context: c, initialDate: DateTime(2026, 9, 26), firstDate: DateTime(2020), lastDate: DateTime(2030)),
+      (_) {},
+    );
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    final day = tester.widget<Text>(find.text('15'));
+    final style = DefaultTextStyle.of(tester.element(find.text('15'))).style.merge(day.style);
+    // google_fonts memberi nama family per bobot, mis. PlusJakartaSans_500.
+    expect(style.fontFamily, startsWith('PlusJakartaSans'));
+  });
 }

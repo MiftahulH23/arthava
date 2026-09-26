@@ -24,6 +24,10 @@ Widget _calendarCard(BuildContext context, Widget calendar) {
   return Theme(
     data: Theme.of(context).copyWith(
       colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppColors.primary, onPrimary: Colors.white, surface: AppColors.surface),
+      // Font aplikasi (spec G14): kalender Material tidak boleh jatuh ke Roboto bila
+      // tema pemanggil tidak menyetelnya. Family diambil dari AppTextStyles (dibuat
+      // sekali), bukan GoogleFonts di build() yang memicu pemuatan font tiap rebuild.
+      textTheme: Theme.of(context).textTheme.apply(fontFamily: AppTextStyles.body.fontFamily),
     ),
     child: Container(
       decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(20)),
