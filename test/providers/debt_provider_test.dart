@@ -123,7 +123,7 @@ void main() {
       debtApiProvider.overrideWithValue(api),
     ]);
     addTearDown(container.dispose);
-    container.listen(debtProvider, (_, __) {}, fireImmediately: true);
+    container.listen(debtProvider, (_, _) {}, fireImmediately: true);
   });
 
   test('build() tidak menyentuh state sinkron dan memuat dompet lalu utang berurutan', () async {
@@ -212,7 +212,7 @@ void main() {
   test('menulis state setelah provider dibuang tidak melempar', () async {
     final ownApi = FakeDebtApi();
     final own = ProviderContainer(overrides: [debtApiProvider.overrideWithValue(ownApi)]);
-    final sub = own.listen(debtProvider, (_, __) {}, fireImmediately: true);
+    final sub = own.listen(debtProvider, (_, _) {}, fireImmediately: true);
     await _settle();
     ownApi.gate = Completer<void>();
     final pending = own.read(debtProvider.notifier).fetchPayments(1);

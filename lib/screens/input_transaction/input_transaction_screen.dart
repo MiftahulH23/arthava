@@ -11,7 +11,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:catat_uang_app/core/transaction_tags.dart';
 
 class InputTransactionScreen extends ConsumerStatefulWidget {
   final TransactionModel? transactionToEdit;
