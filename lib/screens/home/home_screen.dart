@@ -617,12 +617,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           icon: PhosphorIconsFill.handCoins,
                           label: "Utang",
                           color: Colors.teal,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DebtScreen(),
-                            ),
-                          ),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const DebtScreen(),
+                              ),
+                            );
+                            if (!mounted) return;
+                            ref.read(homeProvider.notifier).refreshData();
+                            _bumpRefreshCounter();
+                          },
                         ),
                         _buildFeatureButton(
                           icon: PhosphorIconsFill.chartLineUp,
@@ -1011,7 +1016,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.handCoins, label: "Utang", color: Colors.teal,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DebtScreen())),
+                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const DebtScreen())); if (!mounted) return; ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
                     ),
                     _buildWebFeatureButton(
                       icon: PhosphorIconsFill.chartLineUp,
