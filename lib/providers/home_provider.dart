@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:catat_uang_app/core/transaction_tags.dart';
+import 'package:catat_uang_app/models/debt_model.dart';
+import 'package:catat_uang_app/models/recurring_transaction_model.dart';
+import 'package:catat_uang_app/models/target_model.dart';
+import 'package:catat_uang_app/models/wallet_model.dart';
+import 'package:catat_uang_app/providers/home_summary.dart';
 
 /// State untuk tab "Home" HomeScreen: profil singkat, ringkasan saldo
 /// bulan berjalan, total tabungan/investasi, dan daftar dompet. Tidak
@@ -15,9 +20,12 @@ class HomeState {
   final double monthlyExpense;
   final double totalSavings;
   final double totalInvestments;
-  final List<Map<String, dynamic>> wallets;
+  final List<WalletModel> wallets;
   final double totalWalletBalance;
   final bool isLoading;
+  /// profiles.include_min_balance — true = saldo minimal ikut dihitung (perilaku lama).
+  final bool includeMinBalance;
+  final HomeSummary summary;
 
   const HomeState({
     this.userName = "Memuat...",
@@ -28,6 +36,8 @@ class HomeState {
     this.wallets = const [],
     this.totalWalletBalance = 0,
     this.isLoading = true,
+    this.includeMinBalance = true,
+    this.summary = const HomeSummary(),
   });
 
   HomeState copyWith({
@@ -36,9 +46,11 @@ class HomeState {
     double? monthlyExpense,
     double? totalSavings,
     double? totalInvestments,
-    List<Map<String, dynamic>>? wallets,
+    List<WalletModel>? wallets,
     double? totalWalletBalance,
     bool? isLoading,
+    bool? includeMinBalance,
+    HomeSummary? summary,
   }) {
     return HomeState(
       userName: userName ?? this.userName,
@@ -49,6 +61,8 @@ class HomeState {
       wallets: wallets ?? this.wallets,
       totalWalletBalance: totalWalletBalance ?? this.totalWalletBalance,
       isLoading: isLoading ?? this.isLoading,
+      includeMinBalance: includeMinBalance ?? this.includeMinBalance,
+      summary: summary ?? this.summary,
     );
   }
 }
@@ -71,7 +85,7 @@ class HomeNotifier extends AutoDisposeNotifier<HomeState> {
   /// Future.wait.
   Future<void> refreshData() async {
     await checkRecurringTransactions();
-    await Future.wait([getUserProfile(), fetchHomeData()]);
+    await Future.wait([getUserProfile(), fetchHomeData(), fetchSummary()]);
   }
 
   Future<void> checkRecurringTransactions() async {
@@ -161,6 +175,8 @@ class HomeNotifier extends AutoDisposeNotifier<HomeState> {
         userName: data != null
             ? data['name']
             : (user.userMetadata?['name'] ?? "User"),
+        // Kolom migration 202609260003; default true bila belum ada.
+        includeMinBalance: (data?['include_min_balance'] as bool?) ?? true,
       );
     } catch (e) {
       debugPrint("Error user: $e");
@@ -231,12 +247,69 @@ class HomeNotifier extends AutoDisposeNotifier<HomeState> {
         monthlyExpense: displayExpense,
         totalSavings: tempTotalSavings,
         totalInvestments: tempTotalInv,
-        wallets: List<Map<String, dynamic>>.from(walletsResponse),
+        wallets: (walletsResponse as List).map((e) => WalletModel.fromJson(e)).toList(),
         totalWalletBalance: tempTotalWallet,
         isLoading: false,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false);
+    }
+  }
+
+  /// Data empat kartu ringkasan Beranda. Lima query independen dijalankan paralel.
+  Future<void> fetchSummary() async {
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final now = DateTime.now();
+      final startMonth = DateFormat('yyyy-MM-01').format(now);
+      final nextMonth = DateFormat('yyyy-MM-01').format(DateTime(now.year, now.month + 1, 1));
+
+      final results = await Future.wait<dynamic>([
+        _supabase
+            .from('budgets')
+            .select('category_id, amount')
+            .eq('user_id', userId)
+            .eq('month', now.month)
+            .eq('year', now.year),
+        _supabase
+            .from('transactions')
+            .select('amount, category_id, note, categories(is_expense)')
+            .eq('user_id', userId)
+            .gte('date', startMonth)
+            .lt('date', nextMonth),
+        _supabase.from('targets').select().eq('user_id', userId),
+        _supabase
+            .from('recurring_transactions')
+            .select('*, categories(name, is_expense)')
+            .eq('user_id', userId)
+            .eq('is_active', true),
+        _supabase
+            .from('debts')
+            .select()
+            .eq('user_id', userId)
+            .eq('type', 'payable')
+            .eq('status', 'active'),
+      ]);
+
+      state = state.copyWith(
+        summary: HomeSummary(
+          budget: summarizeBudgets(
+            budgets: List<Map<String, dynamic>>.from(results[0] as List),
+            monthTransactions: List<Map<String, dynamic>>.from(results[1] as List),
+          ),
+          target: pickTarget(
+            (results[2] as List).map((e) => TargetModel.fromJson(e)).toList(),
+          ),
+          nextBill: pickNextBill(
+            (results[3] as List).map((e) => RecurringTransactionModel.fromJson(e)).toList(),
+          ),
+          debt: pickDebt(
+            (results[4] as List).map((e) => DebtModel.fromJson(e)).toList(),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error home summary: $e");
     }
   }
 }

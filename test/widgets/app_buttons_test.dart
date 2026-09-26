@@ -39,6 +39,17 @@ void main() {
     expect(tester.getSize(find.widgetWithText(AppPillButton, 'Setor')).height, 36);
   });
 
+  testWidgets('AppPillButton large: tinggi 44 dan bulat penuh', (tester) async {
+    await pumpApp(tester, Scaffold(body: Row(children: [
+      AppPillButton(label: 'Tambah', filled: true, large: true, onPressed: () {}),
+    ])));
+    expect(tester.getSize(find.widgetWithText(AppPillButton, 'Tambah')).height, 44);
+    final material = tester.widget<Material>(
+      find.descendant(of: find.byType(AppPillButton), matching: find.byType(Material)).first,
+    );
+    expect(material.borderRadius, BorderRadius.circular(999));
+  });
+
   testWidgets('AppPill menampilkan badge dan memanggil onTap', (tester) async {
     var taps = 0;
     await pumpApp(tester, Scaffold(body: AppPill(

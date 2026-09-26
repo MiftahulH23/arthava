@@ -1,6 +1,8 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/edit_profile/edit_profile_screen.dart';
 import 'package:catat_uang_app/screens/login/login_screen.dart';
+import 'package:catat_uang_app/screens/settings/include_min_balance_row.dart';
+import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -73,6 +75,12 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 );
               },
+            ),
+            // Sementara (layar ini didesain ulang di Plan B7): baris pengaturan
+            // saldo minimal di grup "Umum".
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: AppGroupedSection(children: [IncludeMinBalanceRow()]),
             ),
 
 

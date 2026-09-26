@@ -1,0 +1,59 @@
+import 'package:catat_uang_app/core/formatters.dart';
+import 'package:catat_uang_app/models/wallet_model.dart';
+
+const int kHomeFavoriteLimit = 5;
+const int kHomeTopWalletCount = 3;
+
+/// Dompet yang tampil di Beranda (spec §7.2): semua favorit (maks 5) bila ada;
+/// bila tidak ada favorit, 3 dompet dengan saldo terbesar.
+({List<WalletModel> shown, int hiddenCount}) homeWallets(List<WalletModel> wallets) {
+  final favorites = wallets.where((w) => w.isFavorite).toList();
+  final List<WalletModel> shown;
+  if (favorites.isNotEmpty) {
+    shown = favorites.take(kHomeFavoriteLimit).toList();
+  } else {
+    final sorted = [...wallets]
+      ..sort((a, b) {
+        final byBalance = b.balance.compareTo(a.balance);
+        return byBalance != 0 ? byBalance : a.id.compareTo(b.id);
+      });
+    shown = sorted.take(kHomeTopWalletCount).toList();
+  }
+  return (shown: shown, hiddenCount: wallets.length - shown.length);
+}
+
+/// Uang yang benar-benar bisa dipakai dari satu dompet: saldo − saldo minimal, minimal 0.
+double spendableOf(WalletModel w) {
+  final value = w.balance - w.minBalance;
+  return value < 0 ? 0 : value;
+}
+
+/// Total saldo di Beranda. `includeMinBalance == true` = perilaku lama (jumlah saldo apa adanya).
+double spendableTotal(List<WalletModel> wallets, {required bool includeMinBalance}) {
+  var total = 0.0;
+  for (final w in wallets) {
+    total += includeMinBalance ? w.balance : spendableOf(w);
+  }
+  return total;
+}
+
+bool wouldBreachMinBalance({
+  required double balance,
+  required double minBalance,
+  required double amount,
+}) {
+  return amount > 0 && minBalance > 0 && balance - amount < minBalance;
+}
+
+/// Pesan dialog peringatan (spec §7.3), atau null bila tidak perlu peringatan.
+String? minBalanceWarningMessage({
+  required String walletName,
+  required double balance,
+  required double minBalance,
+  required double amount,
+}) {
+  if (!wouldBreachMinBalance(balance: balance, minBalance: minBalance, amount: amount)) {
+    return null;
+  }
+  return 'Saldo $walletName akan di bawah saldo minimal (${formatRupiah(minBalance)}). Lanjutkan?';
+}

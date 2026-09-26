@@ -70,6 +70,7 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
     required String name,
     required double balance,
     required String color,
+    double minBalance = 0,
   }) async {
     final userId = _supabase.auth.currentUser!.id;
     await _supabase.from('wallets').insert({
@@ -78,6 +79,7 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
       'balance': balance,
       'color': color,
       'icon': 'wallet',
+      'min_balance': minBalance,
     });
     await fetchWallets();
   }
@@ -87,18 +89,25 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
     required String name,
     required double balance,
     required String color,
+    double minBalance = 0,
   }) async {
     await _supabase.from('wallets').update({
       'name': name,
       'balance': balance,
       'color': color,
       'icon': 'wallet',
+      'min_balance': minBalance,
     }).eq('id', id);
     await fetchWallets();
   }
 
   Future<void> deleteWallet(int id) async {
     await _supabase.from('wallets').delete().eq('id', id);
+    await fetchWallets();
+  }
+
+  Future<void> setFavorite(int id, bool isFavorite) async {
+    await _supabase.from('wallets').update({'is_favorite': isFavorite}).eq('id', id);
     await fetchWallets();
   }
 

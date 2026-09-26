@@ -1,30 +1,30 @@
-import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/providers/home_provider.dart';
 import 'package:catat_uang_app/providers/stats_provider.dart';
 import 'package:catat_uang_app/providers/transaction_history_provider.dart';
 import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
-import 'package:catat_uang_app/screens/manage_category/manage_category_screen.dart';
 import 'package:catat_uang_app/screens/settings/settings_screen.dart';
 import 'package:catat_uang_app/screens/stats/stats_screen.dart';
 import 'package:catat_uang_app/screens/transaction_history/transactions_tab_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:catat_uang_app/screens/export/export_screen.dart';
-import 'package:catat_uang_app/screens/budget/budget_screen.dart';
-import 'package:catat_uang_app/screens/target/target_screen.dart';
-import 'package:catat_uang_app/screens/savings/savings_screen.dart';
-import 'package:catat_uang_app/screens/recurring/recurring_screen.dart';
-import 'package:catat_uang_app/screens/ai_advisor/ai_advisor_screen.dart';
-import 'package:catat_uang_app/screens/calendar/calendar_screen.dart';
 import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
-import 'package:catat_uang_app/screens/debt/debt_screen.dart';
-import 'package:catat_uang_app/screens/zakat_sedekah/zakat_sedekah_screen.dart';
-import 'package:catat_uang_app/screens/investment/investment_screen.dart';
 import 'package:catat_uang_app/widgets/app_bottom_nav.dart';
+import 'package:catat_uang_app/core/formatters.dart';
+import 'package:catat_uang_app/core/wallet_rules.dart';
+import 'package:catat_uang_app/models/wallet_model.dart';
+import 'package:catat_uang_app/providers/home_summary.dart';
+import 'package:catat_uang_app/screens/all_features/all_features_screen.dart';
+import 'package:catat_uang_app/screens/all_features/app_feature.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:catat_uang_app/widgets/app_hero_card.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_progress.dart';
+import 'package:catat_uang_app/widgets/app_summary_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -55,670 +55,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   int _refreshCounter = 0;
 
-  // Tombol Coming Soon
-  void _showComingSoon(BuildContext context, String feature) {
-    AppNotification.success(context, "Fitur $feature sedang dikembangkan! 👨‍💻");
-  }
-
-  Widget _buildCardStatItem({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required double amount,
-    required NumberFormat currencyFormat,
-  }) {
-    return Expanded(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(color: AppColors.heroLabel, fontSize: 10),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  currencyFormat.format(amount),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+  Future<void> _openSettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
     );
+    if (!mounted) return;
+    ref.read(homeProvider.notifier).getUserProfile();
   }
 
-  Widget _buildFeatureButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: color, size: 26),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
+  Future<void> _openWallets() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const WalletScreen()),
+    );
+    if (!mounted) return;
+    ref.read(homeProvider.notifier).refreshData();
+  }
+
+  /// Pengganti 12 callback grid lama. Refresh setelah kembali mengikuti
+  /// AppFeature.refreshAfter (tabel Plan B3 Task 4).
+  Future<void> _openFeature(AppFeature feature) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => feature.buildScreen()),
+    );
+    if (!mounted) return;
+    switch (feature.refreshAfter) {
+      case HomeRefreshAfter.none:
+        break;
+      case HomeRefreshAfter.homeData:
+        ref.read(homeProvider.notifier).refreshData();
+      case HomeRefreshAfter.homeDataAndTabs:
+        ref.read(homeProvider.notifier).refreshData();
+        _bumpRefreshCounter();
+    }
+  }
+
+  Future<void> _openAllFeatures() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AllFeaturesScreen(onOpen: _openFeature)),
     );
   }
 
   Widget _buildMobileHomeContent() {
     final homeState = ref.watch(homeProvider);
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
 
     if (homeState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return SafeArea(
-      bottom: false,
-      child: RefreshIndicator(
-        onRefresh: () => ref.read(homeProvider.notifier).refreshData(),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              20 + MediaQuery.of(context).padding.bottom,
-            ), // [FIX] Margin X Global Sejajar
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // HEADER PROFIL
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Halo, Bos!",
-                          style: GoogleFonts.poppins(
-                            color: Colors.grey,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          homeState.userName,
-                          style: GoogleFonts.poppins(
-                            color: Colors.black,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsScreen(),
-                          ),
-                        );
-                        ref.read(homeProvider.notifier).getUserProfile();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.settings_outlined,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 25),
-
-                // CARD SALDO
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.heroGradientStart, AppColors.heroGradientEnd],
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.35),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Total Saldo Keseluruhan",
-                            style: GoogleFonts.poppins(
-                              color: AppColors.heroLabel,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const Icon(
-                            PhosphorIconsFill.wallet,
-                            color: Colors.white54,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        currencyFormat.format(homeState.totalWalletBalance),
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.only(top: 15),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            top: BorderSide(
-                              color: Colors.white.withOpacity(0.1),
-                            ),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                _buildCardStatItem(
-                                  icon: PhosphorIconsFill.arrowDown,
-                                  color: AppColors.income,
-                                  title: "Masuk",
-                                  amount: homeState.monthlyIncome,
-                                  currencyFormat: currencyFormat,
-                                ),
-                                _buildCardStatItem(
-                                  icon: PhosphorIconsFill.arrowUp,
-                                  color: AppColors.expense,
-                                  title: "Keluar",
-                                  amount: homeState.monthlyExpense,
-                                  currencyFormat: currencyFormat,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 15),
-                            Row(
-                              children: [
-                                _buildCardStatItem(
-                                  icon: PhosphorIconsFill.piggyBank,
-                                  color: Colors.tealAccent,
-                                  title: "Tabungan",
-                                  amount: homeState.totalSavings,
-                                  currencyFormat: currencyFormat,
-                                ),
-                                _buildCardStatItem(
-                                  icon: PhosphorIconsFill.chartLineUp,
-                                  color: Colors.orangeAccent,
-                                  title: "Investasi",
-                                  amount: homeState.totalInvestments,
-                                  currencyFormat: currencyFormat,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // SLIDER DOMPET
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Dompet Saya",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const WalletScreen(),
-                          ),
-                        );
-                        ref.read(homeProvider.notifier).refreshData();
-                      },
-                      child: Text(
-                        "Kelola",
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 15),
-                if (homeState.wallets.isEmpty)
-                  GestureDetector(
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const WalletScreen(),
-                        ),
-                      );
-                      ref.read(homeProvider.notifier).refreshData();
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            PhosphorIconsRegular.plusCircle,
-                            color: AppColors.primary,
-                            size: 30,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Buat Dompet Pertama",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: homeState.wallets.length,
-                      itemBuilder: (context, index) {
-                        final wallet = homeState.wallets[index];
-                        final colorHex = wallet['color'] ?? '#1E3A8A';
-                        final walletColor = Color(
-                          int.parse(colorHex.replaceFirst('#', '0xFF')),
-                        );
-                        return Container(
-                          width: 150,
-                          margin: const EdgeInsets.only(right: 15),
-                          padding: const EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: walletColor,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: walletColor.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    PhosphorIconsFill.wallet,
-                                    color: Colors.white70,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      wallet['name'],
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                currencyFormat.format(wallet['balance']),
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                const SizedBox(height: 35),
-
-                // ==========================================
-                // GRID MENU (SIMETRIS)
-                // ==========================================
-                Column(
-                  children: [
-                    // ROW 1
-                    Row(
-                      children: [
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.calendarPlus,
-                          label: "Tagihan",
-                          color: Colors.redAccent,
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RecurringScreen(),
-                              ),
-                            );
-                            ref.read(homeProvider.notifier).refreshData();
-                            _bumpRefreshCounter();
-                          },
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.piggyBank,
-                          label: "Tabungan",
-                          color: const Color(0xFF009688),
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const SavingsScreen(),
-                              ),
-                            );
-                            ref.read(homeProvider.notifier).refreshData();
-                            _bumpRefreshCounter();
-                          },
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.chartDonut,
-                          label: "Anggaran",
-                          color: Colors.purple,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const BudgetScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.target,
-                          label: "Target",
-                          color: Colors.green,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const TargetScreen(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 25),
-                    // ROW 2
-                    Row(
-                      children: [
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.squaresFour,
-                          label: "Kategori",
-                          color: Colors.orange,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const ManageCategoryScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.filePdf,
-                          label: "Export",
-                          color: Colors.blue,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ExportScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.robot,
-                          label: "AI Advisor",
-                          color: Colors.indigo,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AiAdvisorScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.calendar,
-                          label: "Kalender",
-                          color: Colors.pinkAccent,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const CalendarScreen(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 25),
-                    // ROW 3 (DOMPET & COMING SOON)
-                    Row(
-                      children: [
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.wallet,
-                          label: "Dompet",
-                          color: Colors.brown,
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const WalletScreen(),
-                              ),
-                            );
-                            ref.read(homeProvider.notifier).refreshData();
-                          },
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.handCoins,
-                          label: "Utang",
-                          color: Colors.teal,
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const DebtScreen(),
-                              ),
-                            );
-                            if (!mounted) return;
-                            ref.read(homeProvider.notifier).refreshData();
-                            _bumpRefreshCounter();
-                          },
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.chartLineUp,
-                          label: "Investasi",
-                          color: Colors.orangeAccent,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const InvestmentScreen(),
-                              ),
-                            ).then((_) => ref.read(homeProvider.notifier).refreshData());
-                          },
-                        ),
-                        _buildFeatureButton(
-                          icon: PhosphorIconsFill.handHeart,
-                          label: "Zakat",
-                          color: Colors.green.shade700,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ZakatSedekahScreen(),
-                            ),
-                          ).then((_) => ref.read(homeProvider.notifier).refreshData()),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 30),
-              ],
-            ),
-          ),
+    return AppPageScaffold(
+      title: 'Beranda',
+      embedded: true,
+      titleWidget: _HomeHeader(userName: homeState.userName, onOpenSettings: _openSettings),
+      onRefresh: () => ref.read(homeProvider.notifier).refreshData(),
+      children: [
+        _HomeHeroCard(state: homeState),
+        _HomeWalletSection(
+          wallets: homeState.wallets,
+          includeMinBalance: homeState.includeMinBalance,
+          onOpenWallets: _openWallets,
         ),
-      ),
-    );
-  }
-
-  Widget _buildWebFeatureButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 110,
-        child: Column(
+        _HomeSummaryGrid(summary: homeState.summary, onOpen: _openFeature),
+        AppGroupedSection(
           children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.06),
-                    blurRadius: 14,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+            AppListRow(
+              leading: const AppIconTile(
+                icon: PhosphorIconsFill.squaresFour,
+                color: AppColors.primary,
+                filled: true,
               ),
-              child: Icon(icon, color: color, size: 30),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              title: 'Semua Fitur',
+              subtitle: 'Anggaran, target, tabungan, dan 9 lainnya',
+              showChevron: true,
+              onTap: _openAllFeatures,
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildWebHomeContent() {
     final homeState = ref.watch(homeProvider);
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
 
     if (homeState.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -732,317 +153,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // HEADER PROFIL
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Halo, Bos!",
-                          style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16),
-                        ),
-                        Text(
-                          homeState.userName,
-                          style: GoogleFonts.poppins(
-                            color: Colors.black,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: () async {
-                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-                        ref.read(homeProvider.notifier).getUserProfile();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.settings_outlined, color: Colors.black, size: 28),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
-
-                // TOP SECTION: ROW (Card Saldo + Dompet)
+                _HomeHeader(userName: homeState.userName, onOpenSettings: _openSettings),
+                const SizedBox(height: 32),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // SALDO CARD
-                    Expanded(
-                      flex: 5,
-                      child: Container(
-                        padding: const EdgeInsets.all(30),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [AppColors.heroGradientStart, AppColors.heroGradientEnd],
-                          ),
-                          borderRadius: BorderRadius.circular(32),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.35),
-                              blurRadius: 24,
-                              offset: const Offset(0, 12),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Total Saldo Keseluruhan",
-                                  style: GoogleFonts.poppins(color: AppColors.heroLabel, fontSize: 16),
-                                ),
-                                const Icon(PhosphorIconsFill.wallet, color: Colors.white54, size: 28),
-                              ],
-                            ),
-                            const SizedBox(height: 15),
-                            Text(
-                              currencyFormat.format(homeState.totalWalletBalance),
-                              style: GoogleFonts.poppins(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 30),
-                            Container(
-                              padding: const EdgeInsets.only(top: 20),
-                              decoration: BoxDecoration(
-                                border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      _buildCardStatItem(
-                                        icon: PhosphorIconsFill.arrowDown, color: AppColors.income, title: "Masuk", amount: homeState.monthlyIncome, currencyFormat: currencyFormat,
-                                      ),
-                                      _buildCardStatItem(
-                                        icon: PhosphorIconsFill.arrowUp, color: AppColors.expense, title: "Keluar", amount: homeState.monthlyExpense, currencyFormat: currencyFormat,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 15),
-                                  Row(
-                                    children: [
-                                      _buildCardStatItem(
-                                        icon: PhosphorIconsFill.piggyBank, color: Colors.tealAccent, title: "Tabungan", amount: homeState.totalSavings, currencyFormat: currencyFormat,
-                                      ),
-                                      _buildCardStatItem(
-                                        icon: PhosphorIconsFill.chartLineUp, color: Colors.orangeAccent, title: "Investasi", amount: homeState.totalInvestments, currencyFormat: currencyFormat,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 40),
-                    // DOMPET LIST
+                    Expanded(flex: 5, child: _HomeHeroCard(state: homeState)),
+                    const SizedBox(width: 32),
                     Expanded(
                       flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Dompet Saya",
-                                style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                              ),
-                              GestureDetector(
-                                onTap: () async {
-                                  await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen()));
-                                  ref.read(homeProvider.notifier).refreshData();
-                                },
-                                child: Text(
-                                  "Kelola",
-                                  style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primary),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          if (homeState.wallets.isEmpty)
-                            GestureDetector(
-                              onTap: () async {
-                                await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen()));
-                                ref.read(homeProvider.notifier).refreshData();
-                              },
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                                ),
-                                child: Column(
-                                  children: [
-                                    const Icon(PhosphorIconsRegular.plusCircle, color: AppColors.primary, size: 40),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      "Buat Dompet Pertama",
-                                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          else
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 1.8,
-                                crossAxisSpacing: 15,
-                                mainAxisSpacing: 15,
-                              ),
-                              itemCount: homeState.wallets.length > 4 ? 4 : homeState.wallets.length,
-                              itemBuilder: (context, index) {
-                                final wallet = homeState.wallets[index];
-                                final colorHex = wallet['color'] ?? '#1E3A8A';
-                                final walletColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
-                                return Container(
-                                  padding: const EdgeInsets.all(15),
-                                  decoration: BoxDecoration(
-                                    color: walletColor,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: walletColor.withOpacity(0.3),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(PhosphorIconsFill.wallet, color: Colors.white70, size: 20),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              wallet['name'],
-                                              style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Text(
-                                        currencyFormat.format(wallet['balance']),
-                                        style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                        ],
+                      child: _HomeWalletSection(
+                        wallets: homeState.wallets,
+                        includeMinBalance: homeState.includeMinBalance,
+                        onOpenWallets: _openWallets,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 50),
-
-                // GRID MENU (WEB VERSION)
-                Text(
-                  "Menu & Fitur",
-                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                const SizedBox(height: 25),
-                Wrap(
-                  spacing: 25,
-                  runSpacing: 25,
-                  children: [
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.calendarPlus, label: "Tagihan", color: Colors.redAccent,
-                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const RecurringScreen())); ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.piggyBank, label: "Tabungan", color: const Color(0xFF009688),
-                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const SavingsScreen())); ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.chartDonut, label: "Anggaran", color: Colors.purple,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BudgetScreen())),
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.target, label: "Target", color: Colors.green,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TargetScreen())),
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.squaresFour, label: "Kategori", color: Colors.orange,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageCategoryScreen())),
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.filePdf, label: "Export", color: Colors.blue,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ExportScreen())),
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.robot, label: "AI Advisor", color: Colors.indigo,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AiAdvisorScreen())),
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.calendar, label: "Kalender", color: Colors.pinkAccent,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CalendarScreen())),
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.wallet, label: "Dompet", color: Colors.brown,
-                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const WalletScreen())); ref.read(homeProvider.notifier).refreshData(); },
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.handCoins, label: "Utang", color: Colors.teal,
-                      onTap: () async { await Navigator.push(context, MaterialPageRoute(builder: (context) => const DebtScreen())); if (!mounted) return; ref.read(homeProvider.notifier).refreshData(); _bumpRefreshCounter(); },
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.chartLineUp,
-                      label: "Investasi",
-                      color: Colors.orangeAccent,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const InvestmentScreen(),
-                          ),
-                        ).then((_) => ref.read(homeProvider.notifier).refreshData());
-                      },
-                    ),
-                    _buildWebFeatureButton(
-                      icon: PhosphorIconsFill.handHeart, label: "Zakat", color: Colors.green.shade700,
-                      onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ZakatSedekahScreen(),
-                            ),
-                          ).then((_) => ref.read(homeProvider.notifier).refreshData()),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 50),
+                const SizedBox(height: 32),
+                _HomeSummaryGrid(summary: homeState.summary, onOpen: _openFeature),
+                const SizedBox(height: 32),
+                Text('Semua Fitur', style: AppTextStyles.title),
+                const SizedBox(height: 14),
+                AllFeaturesSections(query: '', onOpen: _openFeature),
+                // Ruang untuk tombol "Tambah Transaksi" melayang di kanan bawah.
+                const SizedBox(height: 100),
               ],
             ),
           ),
@@ -1117,7 +254,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -1136,7 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildWebLayout() {
     final activeColor = AppColors.primary;
-    final inactiveColor = Colors.grey;
+    final inactiveColor = AppColors.textSecondary;
     final List<Widget> pages = [
       _buildWebHomeContent(),
       TransactionsTabScreen(
@@ -1163,13 +300,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             minExtendedWidth: 250,
             backgroundColor: Colors.white,
             selectedIconTheme: IconThemeData(color: activeColor),
-            selectedLabelTextStyle: GoogleFonts.poppins(color: activeColor, fontWeight: FontWeight.bold),
+            selectedLabelTextStyle: AppTextStyles.bodyStrong.copyWith(color: activeColor, fontWeight: FontWeight.w700),
             unselectedIconTheme: IconThemeData(color: inactiveColor),
-            unselectedLabelTextStyle: GoogleFonts.poppins(color: inactiveColor, fontWeight: FontWeight.w500),
+            unselectedLabelTextStyle: AppTextStyles.body.copyWith(color: inactiveColor),
             leading: Column(
               children: [
                 const SizedBox(height: 20),
-                Text("DompetKu", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: activeColor)),
+                Text("DompetKu", style: AppTextStyles.title.copyWith(fontSize: 24, color: activeColor)),
                 const SizedBox(height: 30),
               ],
             ),
@@ -1218,7 +355,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: Text("Tambah Transaksi", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: Text("Tambah Transaksi", style: AppTextStyles.button),
         elevation: 8,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -1234,6 +371,396 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
         return _buildMobileLayout();
       },
+    );
+  }
+}
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({required this.userName, required this.onOpenSettings});
+
+  final String userName;
+  final VoidCallback onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Halo, Bos!', style: AppTextStyles.subhead),
+              Text(
+                userName,
+                style: AppTextStyles.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        Semantics(
+          button: true,
+          label: 'Pengaturan',
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onOpenSettings,
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: AppColors.primary,
+              child: Text(
+                initialsOf(userName),
+                style: AppTextStyles.bodyStrong.copyWith(color: Colors.white, fontSize: 14),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeHeroCard extends StatelessWidget {
+  const _HomeHeroCard({required this.state});
+
+  final HomeState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = spendableTotal(state.wallets, includeMinBalance: state.includeMinBalance);
+    return AppHeroCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AppHeroLabel('Total Saldo Keseluruhan'),
+              Icon(PhosphorIconsFill.wallet, color: AppColors.heroLabel, size: 20),
+            ],
+          ),
+          const SizedBox(height: 6),
+          AppHeroAmount(formatRupiah(total)),
+          if (!state.includeMinBalance) ...[
+            const SizedBox(height: 2),
+            const AppHeroLabel('Sudah dikurangi saldo minimal'),
+          ],
+          const SizedBox(height: 16),
+          Container(height: 0.5, color: AppColors.heroLabel.withValues(alpha: 0.3)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroStat(
+                  icon: PhosphorIconsFill.arrowDown,
+                  color: AppColors.heroStatIncome,
+                  label: 'Masuk',
+                  amount: state.monthlyIncome,
+                ),
+              ),
+              Expanded(
+                child: _HeroStat(
+                  icon: PhosphorIconsFill.arrowUp,
+                  color: AppColors.heroStatExpense,
+                  label: 'Keluar',
+                  amount: state.monthlyExpense,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroStat(
+                  icon: PhosphorIconsFill.piggyBank,
+                  color: AppColors.heroStatSavings,
+                  label: 'Tabungan',
+                  amount: state.totalSavings,
+                ),
+              ),
+              Expanded(
+                child: _HeroStat(
+                  icon: PhosphorIconsFill.chartLineUp,
+                  color: AppColors.heroStatInvest,
+                  label: 'Investasi',
+                  amount: state.totalInvestments,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({required this.icon, required this.color, required this.label, required this.amount});
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final double amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.16),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 16),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppHeroLabel(label),
+              Text(
+                formatRupiah(amount),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.amountRow.copyWith(color: Colors.white, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeWalletSection extends StatelessWidget {
+  const _HomeWalletSection({
+    required this.wallets,
+    required this.includeMinBalance,
+    required this.onOpenWallets,
+  });
+
+  final List<WalletModel> wallets;
+  final bool includeMinBalance;
+  final VoidCallback onOpenWallets;
+
+  @override
+  Widget build(BuildContext context) {
+    if (wallets.isEmpty) {
+      return AppGroupedSection(
+        header: 'Dompet',
+        headerAction: 'Kelola',
+        onHeaderAction: onOpenWallets,
+        children: [
+          AppListRow(
+            leading: const AppIconTile(icon: PhosphorIconsRegular.plusCircle, color: AppColors.primary),
+            title: 'Buat Dompet Pertama',
+            titleColor: AppColors.primary,
+            showChevron: true,
+            onTap: onOpenWallets,
+          ),
+        ],
+      );
+    }
+
+    final view = homeWallets(wallets);
+    return AppGroupedSection(
+      header: 'Dompet',
+      headerAction: 'Kelola',
+      onHeaderAction: onOpenWallets,
+      children: [
+        for (final w in view.shown)
+          AppListRow(
+            leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: w.displayColor, filled: true),
+            title: w.name,
+            subtitle: includeMinBalance || w.minBalance <= 0
+                ? null
+                : 'Bisa dipakai ${formatRupiah(spendableOf(w)).replaceFirst(' ', ' ')}',
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (w.isFavorite)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 6),
+                    child: Icon(PhosphorIconsFill.star, size: 14, color: AppColors.tintAmber),
+                  ),
+                Text(formatRupiah(w.balance), style: AppTextStyles.amountRow),
+              ],
+            ),
+            onTap: onOpenWallets,
+          ),
+        if (view.hiddenCount > 0)
+          AppListRow(
+            title: 'Lihat semua (${wallets.length} dompet)',
+            titleColor: AppColors.primary,
+            showChevron: true,
+            onTap: onOpenWallets,
+          ),
+      ],
+    );
+  }
+}
+
+class _HomeSummaryGrid extends StatelessWidget {
+  const _HomeSummaryGrid({required this.summary, required this.onOpen});
+
+  final HomeSummary summary;
+  final ValueChanged<AppFeature> onOpen;
+
+  static Color _budgetColor(double ratio) {
+    if (ratio > 1) return AppColors.expense;
+    if (ratio > 0.8) return AppColors.tintOrange;
+    return AppColors.primary;
+  }
+
+  Widget _emptyText(String text, {bool withAction = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(text, style: AppTextStyles.bodyStrong, maxLines: 2),
+        if (withAction)
+          Text(
+            'Buat',
+            style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
+          ),
+      ],
+    );
+  }
+
+  Widget _budget() {
+    final b = summary.budget;
+    return AppSummaryWidget(
+      icon: PhosphorIconsFill.chartDonut,
+      label: 'Anggaran',
+      color: AppColors.primary,
+      onTap: () => onOpen(AppFeature.budget),
+      children: b == null
+          ? [_emptyText('Belum ada anggaran', withAction: true)]
+          : [
+              Text(formatRupiahCompact(b.totalSpent), style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text('dari ${formatRupiahCompact(b.totalBudget)} bulan ini', style: AppTextStyles.caption, maxLines: 2),
+              const SizedBox(height: 4),
+              AppProgressBar(value: b.ratio, color: _budgetColor(b.ratio), height: 6),
+            ],
+    );
+  }
+
+  Widget _target() {
+    final t = summary.target;
+    return AppSummaryWidget(
+      icon: PhosphorIconsFill.target,
+      label: 'Target',
+      color: AppColors.tintGreen,
+      onTap: () => onOpen(AppFeature.target),
+      children: t == null
+          ? [_emptyText('Belum ada target', withAction: true)]
+          : [
+              Text(t.name, style: AppTextStyles.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(
+                '${formatRupiahCompact(t.savedAmount)} / ${formatRupiahCompact(t.targetAmount)}',
+                style: AppTextStyles.caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              AppProgressBar(
+                value: t.targetAmount <= 0 ? 0 : t.savedAmount / t.targetAmount,
+                color: AppColors.income,
+                height: 6,
+              ),
+            ],
+    );
+  }
+
+  Widget _bill() {
+    final r = summary.nextBill;
+    return AppSummaryWidget(
+      icon: PhosphorIconsFill.calendarPlus,
+      label: 'Tagihan',
+      color: AppColors.tintOrange,
+      onTap: () => onOpen(AppFeature.recurring),
+      children: r == null
+          ? [_emptyText('Tidak ada tagihan')]
+          : [
+              Text(
+                r.category?['name']?.toString() ?? ((r.note?.isNotEmpty ?? false) ? r.note! : 'Tagihan'),
+                style: AppTextStyles.bodyStrong,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(DateFormat('d MMM yyyy', 'id_ID').format(r.nextRunDate), style: AppTextStyles.caption),
+              Text('-${formatRupiahCompact(r.amount)}', style: AppTextStyles.amountRow.copyWith(color: AppColors.expense)),
+            ],
+    );
+  }
+
+  Widget _debt() {
+    final d = summary.debt;
+    final late = d == null ? 0 : d.overdueDays(DateTime.now());
+    final String dueText;
+    if (d == null) {
+      dueText = '';
+    } else if (late > 0) {
+      dueText = 'Terlambat $late hari';
+    } else if (d.dueDate != null) {
+      dueText = 'Tempo: ${DateFormat('d MMM yyyy', 'id_ID').format(d.dueDate!)}';
+    } else {
+      dueText = 'Tanpa jatuh tempo';
+    }
+    return AppSummaryWidget(
+      icon: PhosphorIconsFill.handCoins,
+      label: 'Utang',
+      color: AppColors.expense,
+      onTap: () => onOpen(AppFeature.debt),
+      children: d == null
+          ? [_emptyText('Bebas utang')]
+          : [
+              Text(d.name, style: AppTextStyles.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(
+                dueText,
+                style: late > 0
+                    ? AppTextStyles.caption.copyWith(color: AppColors.expense, fontWeight: FontWeight.w700)
+                    : AppTextStyles.caption,
+              ),
+              Text(formatRupiahCompact(d.remainingAmount), style: AppTextStyles.amountRow),
+            ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text('RINGKASAN', style: AppTextStyles.groupLabel),
+        ),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _budget()),
+              const SizedBox(width: 10),
+              Expanded(child: _target()),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _bill()),
+              const SizedBox(width: 10),
+              Expanded(child: _debt()),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,9 +1,12 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/core/formatters.dart';
+import 'package:catat_uang_app/core/wallet_rules.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/providers/input_transaction_provider.dart';
 import 'package:catat_uang_app/services/gemini_service.dart';
 import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
+import 'package:catat_uang_app/widgets/app_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -264,6 +267,48 @@ class _InputTransactionScreenState
   }
 
   Future<void> _saveTransaction() async {
+    // Peringatan saldo minimal (spec §7.3): pengeluaran dari dompet, baru atau diedit.
+    // Hanya bila isian dasar lengkap, supaya validasi lama di provider tetap bicara
+    // lebih dulu (urutan sama dengan Transfer).
+    final amount = parseRupiah(_amountController.text).toDouble();
+    if (_isExpense &&
+        !_isFromSaving &&
+        !_isReadOnly &&
+        _selectedWalletId != null &&
+        _selectedCategoryId != null &&
+        amount > 0) {
+      Map<String, dynamic>? wallet;
+      for (final w in ref.read(inputTransactionProvider).wallets) {
+        if (w['id'] == _selectedWalletId) {
+          wallet = w;
+          break;
+        }
+      }
+      if (wallet != null) {
+        // Saat edit, provider mengembalikan dulu efek transaksi lama ke dompetnya.
+        var balance = (wallet['balance'] as num).toDouble();
+        final old = widget.transactionToEdit;
+        if (old != null && old.walletId == _selectedWalletId) {
+          balance += widget.initialIsExpense ? old.amount : -old.amount;
+        }
+        final warning = minBalanceWarningMessage(
+          walletName: wallet['name'].toString(),
+          balance: balance,
+          minBalance: (wallet['min_balance'] as num?)?.toDouble() ?? 0,
+          amount: amount,
+        );
+        if (warning != null) {
+          final ok = await showAppConfirmDialog(
+            context: context,
+            title: 'Di bawah saldo minimal',
+            message: warning,
+            confirmLabel: 'Lanjutkan',
+            destructive: false,
+          );
+          if (!ok || !mounted) return;
+        }
+      }
+    }
     final notifier = ref.read(inputTransactionProvider.notifier);
     final result = await notifier.saveTransaction(
       amountText: _amountController.text,
