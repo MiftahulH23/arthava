@@ -1,12 +1,14 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/services/gemini_service.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:catat_uang_app/core/transaction_tags.dart';
 
 class AiSessionManager {
@@ -33,7 +35,7 @@ class AiAdvisorScreen extends StatefulWidget {
 class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final SupabaseClient _supabase = Supabase.instance.client;
+  SupabaseClient get _supabase => Supabase.instance.client;
 
   final List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
@@ -237,6 +239,7 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
     _scrollToBottom();
 
     final response = await GeminiService.askFinancialAdvisor(text, _financialContext);
+    if (!mounted) return;
 
     setState(() {
       _isLoading = false;
@@ -262,155 +265,173 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
     });
   }
 
+  void _resetSession() {
+    setState(() {
+      _session.clearSession();
+      _messages.clear();
+      _loadChatSession();
+    });
+    AppNotification.success(context, "Sesi chat diulang!");
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.indigo.withOpacity(0.1), shape: BoxShape.circle),
-              child: const Icon(PhosphorIconsFill.robot, color: Colors.indigo, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("AI Advisor", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black), overflow: TextOverflow.ellipsis),
-                  Text("Gemi - Siap bantu atur duitmu!", style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey), overflow: TextOverflow.ellipsis),
-                ],
+    return AppPageScaffold(
+      title: 'AI Advisor',
+      backLabel: '',
+      largeTitle: false,
+      navTitleWidget: const _GemiTitle(),
+      scrollController: _scrollController,
+      actions: [
+        AppNavAction.icon(
+          PhosphorIconsRegular.broom,
+          onPressed: _resetSession,
+          tooltip: "Mulai Chat Baru",
+        ),
+      ],
+      bottomBar: _buildComposer(),
+      children: [
+        for (final msg in _messages)
+          _ChatBubble(text: msg['text'] as String, isUser: msg['isUser'] as bool),
+        if (_isLoading) const _TypingBubble(),
+      ],
+    );
+  }
+
+  Widget _buildComposer() {
+    return Row(
+      children: [
+        Expanded(
+          // Composer chat khusus layar ini (pill, tombol kirim terpisah) —
+          // AppTextField berbentuk kotak radius 16 dan tidak cocok untuk input chat.
+          child: TextField(
+            controller: _chatController,
+            style: AppTextStyles.body.copyWith(fontSize: 15),
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) => _sendMessage(),
+            decoration: InputDecoration(
+              hintText: "Tanya soal keuanganmu...",
+              hintStyle: AppTextStyles.body.copyWith(fontSize: 15, color: AppColors.textSecondary),
+              filled: true,
+              fillColor: AppColors.surface,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide.none,
               ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Semantics(
+          button: true,
+          label: 'Kirim',
+          child: GestureDetector(
+            onTap: _isLoading ? null : _sendMessage,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _isLoading ? AppColors.textSecondary : AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(PhosphorIconsFill.paperPlaneRight, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GemiTitle extends StatelessWidget {
+  const _GemiTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const AppIconTile(icon: PhosphorIconsFill.robot, color: AppColors.primary, round: true, size: 30),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("AI Advisor", style: AppTextStyles.bodyStrong.copyWith(fontSize: 15), overflow: TextOverflow.ellipsis),
+            Text(
+              "Gemi - Siap bantu atur duitmu!",
+              style: AppTextStyles.caption.copyWith(fontSize: 11),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
-        backgroundColor: Colors.white,
-        elevation: 1,
-        iconTheme: const IconThemeData(color: Colors.black),
-        actions: [
-          IconButton(
-            icon: const Icon(PhosphorIconsRegular.broom),
-            tooltip: "Mulai Chat Baru",
-            onPressed: () {
-              setState(() {
-                _session.clearSession();
-                _messages.clear();
-                _loadChatSession();
-              });
-              AppNotification.success(context, "Sesi chat diulang!");
-            },
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(20),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final isUser = msg['isUser'];
+        ),
+      ],
+    );
+  }
+}
 
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 15),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-                    decoration: BoxDecoration(
-                      color: isUser ? AppColors.primary : Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(20),
-                        topRight: const Radius.circular(20),
-                        bottomLeft: Radius.circular(isUser ? 20 : 5),
-                        bottomRight: Radius.circular(isUser ? 5 : 20),
-                      ),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2)),
-                      ],
-                    ),
-                    child: isUser 
-                      ? Text(
-                          msg['text'],
-                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.white),
-                        )
-                      : MarkdownBody(
-                          data: msg['text'],
-                          styleSheet: MarkdownStyleSheet(
-                            p: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
-                            strong: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black),
-                            listBullet: GoogleFonts.poppins(fontSize: 14, color: Colors.black87),
-                          ),
-                        ),
-                  ),
-                );
-              },
-            ),
+class _ChatBubble extends StatelessWidget {
+  const _ChatBubble({required this.text, required this.isUser});
+
+  final String text;
+  final bool isUser;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+        decoration: BoxDecoration(
+          color: isUser ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isUser ? 20 : 6),
+            bottomRight: Radius.circular(isUser ? 6 : 20),
           ),
-          
-          if (_isLoading)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10, left: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.indigo)),
-                      const SizedBox(width: 10),
-                      Text("Gemi sedang menganalisa...", style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
+        ),
+        child: isUser
+            ? Text(text, style: AppTextStyles.body.copyWith(fontSize: 15, color: Colors.white))
+            : MarkdownBody(
+                data: text,
+                styleSheet: MarkdownStyleSheet(
+                  p: AppTextStyles.body.copyWith(fontSize: 15),
+                  strong: AppTextStyles.body.copyWith(fontSize: 15, fontWeight: FontWeight.w800),
+                  listBullet: AppTextStyles.body.copyWith(fontSize: 15),
                 ),
               ),
-            ),
+      ),
+    );
+  }
+}
 
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.black12))),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _chatController,
-                      style: GoogleFonts.poppins(fontSize: 14),
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                      decoration: InputDecoration(
-                        hintText: "Tanya soal keuanganmu...",
-                        hintStyle: GoogleFonts.poppins(color: Colors.grey),
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: _isLoading ? null : _sendMessage,
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: _isLoading ? Colors.grey : Colors.indigo,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.send, color: Colors.white, size: 20),
-                    ),
-                  ),
-                ],
-              ),
+class _TypingBubble extends StatelessWidget {
+  const _TypingBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(20)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 15,
+              height: 15,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            Text("Gemi sedang menganalisa...", style: AppTextStyles.caption),
+          ],
+        ),
       ),
     );
   }
