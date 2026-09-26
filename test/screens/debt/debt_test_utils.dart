@@ -128,7 +128,8 @@ class FakeDebtNotifier extends DebtNotifier {
       _record('deletePayment:$debtId:$paymentId');
 
   @override
-  Future<void> deleteDebt(int debtId) => _record('deleteDebt:$debtId');
+  Future<void> deleteDebt(int debtId, {bool refundWallet = false}) =>
+      _record('deleteDebt:$debtId${refundWallet ? ':refund' : ''}');
 }
 
 List<Override> debtOverrides(FakeDebtNotifier fake) => [

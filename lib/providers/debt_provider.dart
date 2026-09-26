@@ -202,8 +202,8 @@ class DebtNotifier extends AutoDisposeNotifier<DebtState> {
     return _submit(() => _api.deletePayment(paymentId), refreshPaymentsFor: debtId);
   }
 
-  Future<void> deleteDebt(int debtId) async {
-    await _submit(() => _api.deleteDebt(debtId));
+  Future<void> deleteDebt(int debtId, {bool refundWallet = false}) async {
+    await _submit(() => _api.deleteDebt(debtId, refundWallet: refundWallet));
     _update((s) => s.copyWith(payments: {...s.payments}..remove(debtId)));
   }
 }

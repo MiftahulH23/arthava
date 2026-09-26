@@ -332,7 +332,7 @@ dieksekusi berurutan, jadi plan berikutnya boleh mengandalkannya.
 | Dibuat di | Tambahan |
 |---|---|
 | B1 | `AppNavAction.icon(tooltip:)` (polish B1 — B2/B6 cukup memakainya); `AppAmountField` mengecil untuk nominal panjang; `AppTextField.onChanged`, `AppTextField.inputFormatters`; `AppSwipeActions.deleteConfirmTitle` / `deleteConfirmMessage` (String, default `'Hapus?'` / `'Data ini akan dihapus permanen.'`); tooltip "Tambah" di `AppNavAction.add`; konstanta publik `AppPageScaffold.horizontalPadding` / `blockGap`; `AppProgressRingPainter` publik |
-| B2 | `lib/core/transaction_tags.dart` (`isSavingMutation`, `isDebtMutation`, `isInternalMutation`, `stripDebtTag`, `stripTransactionTags`, `debtTag`) — **satu-satunya** tempat deteksi tag; `lib/models/debt_model.dart` (`DebtType`, `DebtModel`, `DebtBadgeKind`), `debt_payment_model.dart`; `DebtApi` seam; `AppNavAction.icon(tooltip:)` (bila B1 belum punya) |
+| B2 | `showAppChoiceDialog` + `AppDialogChoice` (dialog iOS beberapa pilihan) dan teks semua dialog memakai `AppTextStyles`; `AppListRow` judul 2 baris (porsi 3:2), nilai rata kanan; `AppAmountField` "Rp" + angka dipusatkan bersama; harness screenshot `test/screenshots/` + `tool/screenshots/fetch_fonts.sh`; E2E `tool/e2e/debt_rpc_e2e.dart`; `lib/core/transaction_tags.dart` (`isSavingMutation`, `isDebtMutation`, `isInternalMutation`, `stripDebtTag`, `stripTransactionTags`, `debtTag`) — **satu-satunya** tempat deteksi tag; `lib/models/debt_model.dart` (`DebtType`, `DebtModel`, `DebtBadgeKind`), `debt_payment_model.dart`; `DebtApi` seam; `AppNavAction.icon(tooltip:)` (bila B1 belum punya) |
 | B3 | `lib/core/wallet_rules.dart` (`homeWallets`, `spendableOf`, `spendableTotal`, `wouldBreachMinBalance`, `minBalanceWarningMessage`); `initialsOf` di `formatters.dart`; `AppColors.walletColorChoices` (List<String> hex) + `AppColors.fromWalletHex` + `heroStat*`; `userSettingsProvider`; `lib/providers/home_summary.dart`; `IncludeMinBalanceRow` |
 | B4 | `AppPageScaffold.leading` (mengganti tombol kembali, mis. "Batal"); `lib/widgets/app_period_picker.dart` (`showAppPeriodPicker`); `lib/core/category_visuals.dart` (`categoryIcon`, `categoryColor`); `lib/screens/transaction_history/transaction_filter_sheet.dart` |
 | B5 | `AppSelectOption<T>` + `AppSelectRow<T>` (`lib/widgets/app_select_row.dart`); `AppTextField.focusNode` |
@@ -361,7 +361,7 @@ Bug yang WAJIB diperbaiki (hasil audit, file `lib/providers/debt_provider.dart` 
 5. Nominal ≤ 0 ditolak dengan notifikasi; nominal cicilan > sisa ditolak (dicek ulang di server).
 6. `wallet_id` cicilan = null bila switch "Catat ke Dompet?" mati.
 7. Setelah kembali dari halaman Utang, Beranda memanggil `refreshData()` + `_bumpRefreshCounter()`.
-8. Hapus utang yang gagal menampilkan notifikasi error. Hapus utang menghapus cicilannya; transaksi bertanda `[DEBT_ID:x]` ikut dihapus **tanpa** mengembalikan saldo (sesuai teks dialog yang sudah ada).
+8. Hapus utang yang gagal menampilkan notifikasi error. Hapus utang menghapus cicilannya dan transaksi yang tertaut. **Keputusan user 2026-09-26:** bila utang tertaut ke dompet, dialog memberi dua pilihan — "Hapus & kembalikan saldo" (default; pinjaman & setiap cicilan dibalik ke dompetnya, ditolak utuh bila saldo tidak cukup) dan "Hapus saja" (saldo tetap). Utang tanpa tautan dompet: dialog biasa, saldo tidak berubah. RPC `delete_debt(p_debt_id, p_refund)`.
 9. `payments` dipegang provider; menambah cicilan tidak menampilkan spinner layar penuh.
 
 Fitur baru yang disetujui:

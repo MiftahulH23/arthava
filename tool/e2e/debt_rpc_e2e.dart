@@ -148,6 +148,51 @@ Future<void> main() async {
     check('8 hapus utang: saldo tidak dikembalikan', await balance() == before8, await balance());
     final cTx = await db.from('transactions').select('id').eq('id', cTxId);
     check('M1 hapus Tes A tidak ikut menghapus transaksi utang C', cTx.length == 1, cTx);
+
+    // R1–R4: hapus dengan pilihan kembalikan saldo (migrasi 202609260002).
+    Future<int> newDebt(String name, String type, int amount) async {
+      final id = await rpc('create_debt', {
+        'p_name': name, 'p_type': type, 'p_amount': amount,
+        'p_loan_date': today, 'p_due_date': null, 'p_notes': null, 'p_wallet_id': walletId,
+      }) as int;
+      created.add(id);
+      return id;
+    }
+    Future<void> pay(int debtId, int amount) =>
+        rpc('add_debt_payment', {'p_debt_id': debtId, 'p_amount': amount, 'p_date': today, 'p_wallet_id': walletId});
+    Future<void> remove(int debtId, bool refund) async {
+      await rpc('delete_debt', {'p_debt_id': debtId, 'p_refund': refund});
+      created.remove(debtId);
+    }
+
+    var start = await balance();
+    final r1 = await newDebt('Refund Utang', 'payable', 1000000);
+    await pay(r1, 400000);
+    await remove(r1, true);
+    check('R1 utang + cicilan, hapus & kembalikan: saldo kembali ke awal', await balance() == start, '${await balance()} vs $start');
+
+    start = await balance();
+    final r2 = await newDebt('Refund Piutang', 'receivable', 500000);
+    await pay(r2, 200000);
+    await remove(r2, true);
+    check('R2 piutang + terima bayar, hapus & kembalikan: saldo kembali ke awal', await balance() == start, '${await balance()} vs $start');
+
+    start = await balance();
+    final r3 = await newDebt('Hapus Saja', 'payable', 100000);
+    await remove(r3, false);
+    check('R3 hapus saja: saldo tetap +100.000', await balance() == start + 100000, '${await balance()} vs ${start + 100000}');
+
+    final r4 = await newDebt('Uang Terpakai', 'payable', 1000000);
+    await db.from('wallets').update({'balance': 500000}).eq('id', walletId);
+    String? err4;
+    try {
+      await remove(r4, true);
+    } on PostgrestException catch (e) {
+      err4 = e.message;
+    }
+    check('R4 saldo tidak cukup: kembalikan ditolak dengan pesan', err4?.contains('Hapus saja') ?? false, err4);
+    check('R4 utang masih ada & saldo tidak berubah', await debt(r4) != null && await balance() == 500000);
+    await remove(r4, false);
   } catch (e, st) {
     failures++;
     stdout.writeln('ERROR  $e\n$st');

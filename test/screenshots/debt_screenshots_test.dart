@@ -123,4 +123,13 @@ void main() {
     await tester.pumpAndSettle();
     await saveScreenshot(tester, 'debt_05_payment_sheet');
   }, skip: skip);
+
+  testWidgets('06 dialog hapus utang (dua pilihan)', (tester) async {
+    await loadRealFonts(tester);
+    await pumpScreen(tester, const DebtDetailScreen(debtId: 1), overrides: debtOverrides(FakeDebtNotifier(_state())));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Hapus utang'));
+    await tester.pumpAndSettle();
+    await saveScreenshot(tester, 'debt_06_delete_dialog');
+  }, skip: skip);
 }

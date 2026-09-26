@@ -79,7 +79,7 @@ void main() {
     await flushToast(tester);
   });
 
-  testWidgets('hapus utang memakai teks dialog lama dan menampilkan error bila gagal', (tester) async {
+  testWidgets('hapus utang bertautan dompet: pilihan "Hapus saja" + error tampil bila gagal', (tester) async {
     final fake = FakeDebtNotifier(state())..error = Exception('Utang tidak ditemukan.');
     await pumpApp(tester, const DebtDetailScreen(debtId: 1), overrides: debtOverrides(fake));
     await tester.pump();
@@ -88,14 +88,55 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Hapus Catatan?'), findsOneWidget);
     expect(
-      find.text('Data utang ini dan seluruh riwayat cicilannya akan dihapus permanen. Saldo dompet tidak akan dikembalikan otomatis.'),
+      find.text('Data utang ini dan seluruh riwayat cicilannya akan dihapus permanen. Kembalikan saldo dompet seperti sebelum utang ini dicatat?'),
       findsOneWidget,
     );
-    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus'));
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus saja'));
     await tester.pumpAndSettle();
 
     expect(fake.calls, contains('deleteDebt:1'));
     expect(find.text('Utang tidak ditemukan.'), findsOneWidget);
+    await flushToast(tester);
+  });
+
+  testWidgets('hapus & kembalikan saldo mengirim refund', (tester) async {
+    final fake = FakeDebtNotifier(state());
+    await pumpApp(tester, Builder(builder: (context) => Scaffold(body: TextButton(
+      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DebtDetailScreen(debtId: 1))),
+      child: const Text('buka'),
+    ))), overrides: debtOverrides(fake));
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Hapus utang'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus & kembalikan saldo'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, contains('deleteDebt:1:refund'));
+    expect(find.text('Utang dihapus dan saldo dikembalikan!'), findsOneWidget);
+    await flushToast(tester);
+  });
+
+  testWidgets('utang tanpa tautan dompet: dialog dua tombol dan saldo tidak berubah', (tester) async {
+    final unlinked = DebtState(
+      isLoading: false,
+      debts: [sampleDebt()],
+      payments: {
+        1: [samplePayment(walletId: null, walletName: null, transactionId: null)],
+      },
+    );
+    final fake = FakeDebtNotifier(unlinked);
+    await pumpApp(tester, const DebtDetailScreen(debtId: 1), overrides: debtOverrides(fake));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Hapus utang'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Data utang ini dan seluruh riwayat cicilannya akan dihapus permanen. Utang ini tidak terhubung ke saldo dompet, jadi saldo tidak berubah.'),
+      findsOneWidget,
+    );
+    expect(find.text('Hapus & kembalikan saldo'), findsNothing);
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, contains('deleteDebt:1'));
     await flushToast(tester);
   });
 
@@ -109,7 +150,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Hapus utang'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus'));
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus saja'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('Data utang tidak ditemukan.'), findsNothing);
@@ -122,7 +163,7 @@ class _RemovingFake extends FakeDebtNotifier {
   _RemovingFake(super.initial);
 
   @override
-  Future<void> deleteDebt(int debtId) async {
+  Future<void> deleteDebt(int debtId, {bool refundWallet = false}) async {
     calls.add('deleteDebt:$debtId');
     state = state.copyWith(debts: state.debts.where((d) => d.id != debtId).toList());
   }

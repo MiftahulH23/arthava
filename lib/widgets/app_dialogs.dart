@@ -1,3 +1,5 @@
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/core/colors.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Dialog konfirmasi gaya iOS. `true` hanya bila tombol konfirmasi ditekan.
@@ -13,21 +15,84 @@ Future<bool> showAppConfirmDialog({
     context: context,
     barrierDismissible: true,
     builder: (dialogContext) => CupertinoAlertDialog(
-      title: Text(title),
-      content: Text(message),
+      title: _title(title),
+      content: _message(message),
       actions: [
         CupertinoDialogAction(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text(cancelLabel),
+          child: _action(cancelLabel),
         ),
         CupertinoDialogAction(
           isDestructiveAction: destructive,
           isDefaultAction: !destructive,
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: Text(confirmLabel),
+          child: _action(confirmLabel, destructive: destructive, bold: !destructive),
         ),
       ],
     ),
   );
   return result ?? false;
 }
+
+/// Satu pilihan di [showAppChoiceDialog].
+class AppDialogChoice<T> {
+  const AppDialogChoice({required this.label, required this.value, this.destructive = false});
+
+  final String label;
+  final T value;
+  final bool destructive;
+}
+
+/// Dialog iOS dengan beberapa pilihan (ditumpuk vertikal) + "Batal".
+/// Pilihan pertama tebal (default). Mengembalikan `value` pilihan, atau null bila batal.
+Future<T?> showAppChoiceDialog<T>({
+  required BuildContext context,
+  required String title,
+  required String message,
+  required List<AppDialogChoice<T>> choices,
+  String cancelLabel = 'Batal',
+}) {
+  return showCupertinoDialog<T>(
+    context: context,
+    barrierDismissible: true,
+    builder: (dialogContext) => CupertinoAlertDialog(
+      title: _title(title),
+      content: _message(message),
+      actions: [
+        for (var i = 0; i < choices.length; i++)
+          CupertinoDialogAction(
+            isDefaultAction: i == 0 && !choices[i].destructive,
+            isDestructiveAction: choices[i].destructive,
+            onPressed: () => Navigator.of(dialogContext).pop(choices[i].value),
+            child: _action(
+              choices[i].label,
+              destructive: choices[i].destructive,
+              bold: i == 0 && !choices[i].destructive,
+            ),
+          ),
+        CupertinoDialogAction(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: _action(cancelLabel),
+        ),
+      ],
+    ),
+  );
+}
+
+// CupertinoAlertDialog memakai font sistem iOS ("CupertinoSystemText") yang tidak
+// ada di Android/web; teks dialog diberi gaya aplikasi supaya tetap Plus Jakarta Sans.
+Widget _title(String text) =>
+    Text(text, style: AppTextStyles.headline.copyWith(fontSize: 17, fontWeight: FontWeight.w700));
+
+Widget _message(String text) =>
+    Text(text, style: AppTextStyles.caption.copyWith(fontSize: 13, color: AppColors.textPrimary, height: 1.35));
+
+Widget _action(String label, {bool destructive = false, bool bold = false}) => Text(
+      label,
+      textAlign: TextAlign.center,
+      style: AppTextStyles.body.copyWith(
+        fontSize: 17,
+        fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+        color: destructive ? AppColors.expense : AppColors.primary,
+      ),
+    );

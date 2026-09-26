@@ -97,7 +97,8 @@ class FakeDebtApi implements DebtApi {
   Future<void> deletePayment(int paymentId) => _mutate('deletePayment:$paymentId');
 
   @override
-  Future<void> deleteDebt(int debtId) => _mutate('deleteDebt:$debtId');
+  Future<void> deleteDebt(int debtId, {bool refundWallet = false}) =>
+      _mutate('deleteDebt:$debtId${refundWallet ? ':refund' : ''}');
 }
 
 Future<void> _settle() async {

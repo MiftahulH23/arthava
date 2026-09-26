@@ -205,4 +205,4 @@ Fungsi: `handle_new_user`. Trigger di schema public: tidak ada (trigger `handle_
 - `debt_payments.wallet_id → wallets` kini ON DELETE SET NULL (migrasi B2, dijalankan user 2026-09-26).
 - `transactions.category_id → categories` NO ACTION: kategori yang dipakai transaksi tidak bisa dihapus (disengaja; UI menampilkan "Kategori sedang digunakan").
 - `profiles` punya policy SELECT `true` ("Public profiles are viewable by everyone") sehingga semua user bisa membaca nama user lain — dihapus di Plan B3.
-- RPC utang (migrasi `202609240001_debt_rpc.sql`, dijalankan 2026-09-26): `create_debt`, `add_debt_payment`, `update_debt`, `update_debt_payment`, `delete_debt_payment`, `delete_debt`, helper `debt_category_id`, `debt_move_wallet`.
+- RPC utang (migrasi `202609240001_debt_rpc.sql`, dijalankan 2026-09-26): `create_debt`, `add_debt_payment`, `update_debt`, `update_debt_payment`, `delete_debt_payment`, `delete_debt(p_debt_id, p_refund)` (versi 202609260002; `p_refund` true = balik efek dompet), helper `debt_category_id`, `debt_move_wallet`.

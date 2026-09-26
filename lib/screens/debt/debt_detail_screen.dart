@@ -44,19 +44,38 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
   bool _deleted = false;
 
   Future<void> _deleteDebt(DebtModel debt) async {
-    final confirm = await showAppConfirmDialog(
-      context: context,
-      title: 'Hapus Catatan?',
-      message:
-          'Data utang ini dan seluruh riwayat cicilannya akan dihapus permanen. Saldo dompet tidak akan dikembalikan otomatis.',
-    );
-    if (!confirm || !mounted) return;
+    const intro = 'Data utang ini dan seluruh riwayat cicilannya akan dihapus permanen.';
+    final payments = ref.read(debtProvider).payments[debt.id] ?? const <DebtPaymentModel>[];
+    final linkedToWallet =
+        (debt.transactionId != null && debt.walletId != null) || payments.any((p) => p.affectsWallet);
+
+    // null = batal; true = kembalikan saldo; false = hapus saja.
+    final bool? refund;
+    if (linkedToWallet) {
+      refund = await showAppChoiceDialog<bool>(
+        context: context,
+        title: 'Hapus Catatan?',
+        message: '$intro Kembalikan saldo dompet seperti sebelum utang ini dicatat?',
+        choices: const [
+          AppDialogChoice(label: 'Hapus & kembalikan saldo', value: true),
+          AppDialogChoice(label: 'Hapus saja', value: false, destructive: true),
+        ],
+      );
+    } else {
+      final confirm = await showAppConfirmDialog(
+        context: context,
+        title: 'Hapus Catatan?',
+        message: '$intro Utang ini tidak terhubung ke saldo dompet, jadi saldo tidak berubah.',
+      );
+      refund = confirm ? false : null;
+    }
+    if (refund == null || !mounted) return;
     try {
       _deleted = true;
-      await ref.read(debtProvider.notifier).deleteDebt(debt.id);
+      await ref.read(debtProvider.notifier).deleteDebt(debt.id, refundWallet: refund);
       if (!mounted) return;
       Navigator.pop(context);
-      AppNotification.success(context, 'Data berhasil dihapus!');
+      AppNotification.success(context, refund ? 'Utang dihapus dan saldo dikembalikan!' : 'Data berhasil dihapus!');
     } catch (e) {
       _deleted = false;
       if (!mounted) return;

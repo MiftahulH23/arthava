@@ -61,7 +61,8 @@ abstract class DebtApi {
   });
 
   Future<void> deletePayment(int paymentId);
-  Future<void> deleteDebt(int debtId);
+  /// [refundWallet] true = balik semua efek dompet yang tertaut sebelum menghapus.
+  Future<void> deleteDebt(int debtId, {bool refundWallet = false});
 }
 
 String _day(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
@@ -194,9 +195,9 @@ class SupabaseDebtApi implements DebtApi {
   }
 
   @override
-  Future<void> deleteDebt(int debtId) {
+  Future<void> deleteDebt(int debtId, {bool refundWallet = false}) {
     return runDebtRpc(() async {
-      await _client.rpc('delete_debt', params: {'p_debt_id': debtId});
+      await _client.rpc('delete_debt', params: {'p_debt_id': debtId, 'p_refund': refundWallet});
     });
   }
 }
