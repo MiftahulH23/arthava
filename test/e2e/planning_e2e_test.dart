@@ -310,7 +310,7 @@ void main() {
     container.listen(savingsProvider, (_, _) {});
     await settle();
     final savings = container.read(savingsProvider.notifier);
-    const name = 'E2E Tab';
+    const name = 'E2E Tab Buku'; // unik: file E2E lain memakai "E2E Tab" dan berjalan bersamaan
     t.savingNames.addAll({name, 'E2E Tab Baru'});
     try {
       final walletId = await t.wallet('E2E Tabungan W', 1000000);
