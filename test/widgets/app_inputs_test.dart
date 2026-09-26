@@ -61,4 +61,17 @@ void main() {
     await tester.pump();
     expect(fontSize(), lessThan(40));
   });
+
+  testWidgets('AppAmountField: "Rp" berdampingan dengan angka di tengah', (tester) async {
+    final controller = TextEditingController(text: '45.000');
+    addTearDown(controller.dispose);
+    await pumpApp(tester, Scaffold(body: AppAmountField(controller: controller, label: 'Nominal')));
+    // Kotak EditableText selebar sisa baris, jadi ukur posisi "Rp" saja:
+    // bila angka + "Rp" dipusatkan bersama, "Rp" tidak menempel di tepi kiri,
+    // dan kotak field hanya selebar angkanya (jaraknya ke tepi kanan besar).
+    final rp = tester.getRect(find.text('Rp'));
+    final field = tester.getRect(find.byType(EditableText));
+    expect(rp.left, greaterThan(40));
+    expect(390 - field.right, greaterThan(40));
+  });
 }
