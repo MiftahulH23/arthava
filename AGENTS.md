@@ -60,6 +60,14 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
   Cupertino widgets): large left-aligned titles, grouped inset lists,
   segmented controls, add/edit forms as bottom sheets. For visual
   redesigns, agree on a mockup with the user before writing code.
+- **Modals:** every modal in the app has the same look. Confirmations
+  and choices go through `showAppConfirmDialog` / `showAppChoiceDialog`
+  (`lib/widgets/app_dialogs.dart`); forms and lists go through
+  `showAppFormSheet`. Never call `showDialog`, `AlertDialog`,
+  `showModalBottomSheet` or `showAppBottomSheet` directly from a screen.
+  `test/architecture/modal_consistency_test.dart` enforces this; its
+  `_legacy` list names the not-yet-redesigned screens and the plan that
+  cleans each one — remove a file's entry when its plan does.
 - **Font:** `google_fonts` Plus Jakarta Sans
   (`GoogleFonts.plusJakartaSansTextTheme(...)`), applied once in
   `main.dart`'s `ThemeData.textTheme` (light & dark), and mapped into
