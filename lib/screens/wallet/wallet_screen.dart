@@ -26,6 +26,9 @@ class WalletScreen extends ConsumerWidget {
   static const double cardHeight = 176;
   static const double cardStep = 96;
 
+  /// Tambahan strip untuk kartu bertumpuk yang menampilkan "Bisa dipakai".
+  static const double spendableStep = 28;
+
   static final NumberFormat _thousands = NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
 
   /// Sheet pilih dompet (pengganti DropdownButton lama). Mengembalikan id atau null.
@@ -439,22 +442,33 @@ class _WalletStack extends StatelessWidget {
   final bool includeMinBalance;
   final ValueChanged<WalletModel> onTap;
 
+  bool _showsSpendable(WalletModel wallet) => !includeMinBalance && wallet.minBalance > 0;
+
   @override
   Widget build(BuildContext context) {
-    final height = WalletScreen.cardHeight + WalletScreen.cardStep * (wallets.length - 1);
+    // Strip tiap kartu setinggi isinya, supaya baris "Bisa dipakai" tidak
+    // tertutup kartu berikutnya.
+    final tops = <double>[];
+    var top = 0.0;
+    for (final wallet in wallets) {
+      tops.add(top);
+      top += WalletScreen.cardStep + (_showsSpendable(wallet) ? WalletScreen.spendableStep : 0);
+    }
+    final height = wallets.isEmpty ? 0.0 : tops.last + WalletScreen.cardHeight;
     return SizedBox(
       height: height,
       child: Stack(
         children: [
           for (var i = 0; i < wallets.length; i++)
             Positioned(
-              top: WalletScreen.cardStep * i,
+              top: tops[i],
               left: 0,
               right: 0,
               height: WalletScreen.cardHeight,
               child: _WalletCard(
                 wallet: wallets[i],
-                includeMinBalance: includeMinBalance,
+                showSpendable: _showsSpendable(wallets[i]),
+                isLast: i == wallets.length - 1,
                 onTap: () => onTap(wallets[i]),
               ),
             ),
@@ -465,10 +479,13 @@ class _WalletStack extends StatelessWidget {
 }
 
 class _WalletCard extends StatelessWidget {
-  const _WalletCard({required this.wallet, required this.includeMinBalance, required this.onTap});
+  const _WalletCard({required this.wallet, required this.showSpendable, required this.isLast, required this.onTap});
 
   final WalletModel wallet;
-  final bool includeMinBalance;
+  final bool showSpendable;
+
+  /// Hanya kartu terakhir yang tampil utuh, jadi label "TOTAL SALDO" hanya di sana.
+  final bool isLast;
   final VoidCallback onTap;
 
   @override
@@ -524,9 +541,11 @@ class _WalletCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               AppHeroAmount(formatRupiah(wallet.balance), fontSize: 24),
-              const SizedBox(height: 2),
-              const AppHeroLabel('TOTAL SALDO'),
-              if (!includeMinBalance && wallet.minBalance > 0) ...[
+              if (isLast) ...[
+                const SizedBox(height: 2),
+                const AppHeroLabel('TOTAL SALDO'),
+              ],
+              if (showSpendable) ...[
                 const SizedBox(height: 6),
                 AppHeroLabel('Bisa dipakai ${formatRupiah(spendableOf(wallet))}'),
               ],

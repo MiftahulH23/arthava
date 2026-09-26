@@ -103,4 +103,20 @@ void main() {
     expect(find.text('Saldo Minimal (Opsional)'), findsOneWidget);
     expect(find.text('Pilih Warna'), findsOneWidget);
   });
+
+  Rect cardRect(WidgetTester tester, String name) =>
+      tester.getRect(find.ancestor(of: find.text(name), matching: find.byType(Positioned)).first);
+
+  testWidgets('TOTAL SALDO hanya di kartu terakhir (strip lain tidak terpotong)', (tester) async {
+    await pumpWallet(tester, sample());
+    expect(find.text('TOTAL SALDO'), findsOneWidget);
+    final label = tester.getRect(find.text('TOTAL SALDO'));
+    expect(cardRect(tester, 'TUNAI').contains(label.center), isTrue);
+  });
+
+  testWidgets('pengaturan nonaktif: Bisa dipakai di kartu bertumpuk tidak tertutup kartu berikutnya', (tester) async {
+    await pumpWallet(tester, sample(), include: false);
+    final text = tester.getRect(find.text('Bisa dipakai Rp 9.250.000'));
+    expect(text.bottom, lessThanOrEqualTo(cardRect(tester, 'GOPAY').top));
+  });
 }
