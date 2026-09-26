@@ -62,9 +62,12 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
   redesigns, agree on a mockup with the user before writing code.
 - **Modals:** every modal in the app has the same look. Confirmations
   and choices go through `showAppConfirmDialog` / `showAppChoiceDialog`
-  (`lib/widgets/app_dialogs.dart`); forms and lists go through
-  `showAppFormSheet`. Never call `showDialog`, `AlertDialog`,
-  `showModalBottomSheet` or `showAppBottomSheet` directly from a screen.
+  (`lib/widgets/app_dialogs.dart`); forms, lists and date/month/year/
+  range pickers are bottom sheets (`showAppFormSheet`, `showApp*Picker`
+  in `lib/widgets/app_pickers.dart`); blocking loading uses
+  `runWithAppLoading`. Never call `showDialog`, `AlertDialog`,
+  `showDatePicker`, `showDateRangePicker`, `showModalBottomSheet` or
+  `showAppBottomSheet` directly from a screen.
   `test/architecture/modal_consistency_test.dart` enforces this; its
   `_legacy` list names the not-yet-redesigned screens and the plan that
   cleans each one — remove a file's entry when its plan does.
@@ -134,7 +137,8 @@ machine/clone.
   `docs/superpowers/specs/2026-09-24-redesign-phase-b-design.md` (design
   rules, tokens, shared component API, decisions) with the approved
   mockup at `docs/design/dompetku-redesign-mockup.html`. Its plans are
-  `docs/superpowers/plans/2026-09-24-phase-b*.md`, executed in order B1 → B7.
+  `docs/superpowers/plans/2026-09-2*-phase-b*.md`, executed in order
+  B1 → B2 → B3 → B3b → B4 → B5 → B6 → B7.
 - There is no CI pipeline currently. `flutter analyze` and `flutter
   test` are the local verification bar before reporting work as done.
 
