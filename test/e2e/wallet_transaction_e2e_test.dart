@@ -495,6 +495,153 @@ void main() {
     expect(_failures, isEmpty);
   }, skip: _email == null || _password == null, timeout: const Timeout(Duration(minutes: 4)));
 
+  test('jadwal rutin & transfer (perbaikan review B4b)', () async {
+    _failures.clear();
+    final userId = db.auth.currentUser!.id;
+    final today = DateTime.now();
+    final walletIds = <int>[];
+    final recurringIds = <int>[];
+
+    container.listen(walletProvider, (_, _) {});
+    await settle();
+
+    Future<int> newWallet(String name, double balance) async {
+      final w = await db
+          .from('wallets')
+          .insert({'user_id': userId, 'name': name, 'balance': balance, 'color': '#1E3A8A'})
+          .select('id')
+          .single();
+      walletIds.add(w['id'] as int);
+      return w['id'] as int;
+    }
+
+    final expenseCat = (await db
+            .from('categories')
+            .select('id')
+            .eq('is_expense', true)
+            .or('user_id.is.null,user_id.eq.$userId')
+            .not('name', 'ilike', '%tabung%')
+            .not('name', 'ilike', '%sistem%')
+            .limit(1))
+        .single['id'] as int;
+
+    Future<int> newSchedule(int walletId, String freq, DateTime start, String note) async {
+      final r = await db
+          .from('recurring_transactions')
+          .insert({
+            'user_id': userId,
+            'category_id': expenseCat,
+            'wallet_id': walletId,
+            'amount': 1000,
+            'note': note,
+            'frequency': freq,
+            'start_date': _day(start),
+            'next_run_date': _day(start),
+            'is_active': true,
+          })
+          .select('id')
+          .single();
+      recurringIds.add(r['id'] as int);
+      return r['id'] as int;
+    }
+
+    Future<List<String>> runDates(int walletId, String note) async =>
+        (await db.from('transactions').select('date').eq('wallet_id', walletId).like('note', '$note%'))
+            .map((r) => r['date'].toString())
+            .toList();
+
+    try {
+      // C8: tanggal dari perangkat (WIB) dipakai, bukan tanggal UTC server.
+      final w8 = await newWallet('E2E C8', 100000);
+      final tomorrow = today.add(const Duration(days: 1));
+      await newSchedule(w8, 'Harian', tomorrow, 'E2E C8');
+      Object? err8;
+      try {
+        await db.rpc('run_due_recurring', params: {'p_today': _day(tomorrow)});
+      } catch (e) {
+        err8 = e;
+      }
+      final c8 = await runDates(w8, 'E2E C8');
+      check('C8 jadwal "besok" jalan bila perangkat mengirim tanggal besok', err8 == null && c8.length == 1,
+          err8 ?? c8);
+
+      // C9: tanggal perangkat dibatasi maksimal satu hari di depan server.
+      final w9 = await newWallet('E2E C9', 100000);
+      await newSchedule(w9, 'Harian', today, 'E2E C9');
+      try {
+        await db.rpc('run_due_recurring', params: {'p_today': _day(today.add(const Duration(days: 10)))});
+      } catch (_) {}
+      final c9 = await runDates(w9, 'E2E C9');
+      check('C9 tanggal perangkat +10 hari dibatasi (maks 2 eksekusi, bukan 11)', c9.isNotEmpty && c9.length <= 2,
+          c9.length);
+
+      // C10: tagihan bulanan tanggal 31 tetap di akhir bulan, tidak bergeser ke 28.
+      final year = today.month >= 4 ? today.year : today.year - 1;
+      final w10 = await newWallet('E2E C10', 10000000);
+      await newSchedule(w10, 'Bulanan', DateTime(year, 1, 31), 'E2E C10');
+      try {
+        await db.rpc('run_due_recurring', params: {'p_today': _day(today)});
+      } catch (_) {
+        await container.read(homeProvider.notifier).checkRecurringTransactions();
+      }
+      final c10 = await runDates(w10, 'E2E C10');
+      check('C10 Februari jatuh di akhir bulan', c10.any((d) => d.startsWith('$year-02-2')), c10);
+      check('C10 Maret kembali ke tanggal 31 (bukan 28)', c10.contains('$year-03-31') && !c10.contains('$year-03-28'),
+          c10);
+
+      // C11: penolakan transfer dari server menyegarkan saldo di layar.
+      final p = await newWallet('E2E CP', 100000);
+      final q = await newWallet('E2E CQ', 0);
+      final wallets = container.read(walletProvider.notifier);
+      await wallets.fetchWallets();
+      await db.from('wallets').update({'balance': 30000}).eq('id', p); // berubah dari perangkat lain
+      Object? err11;
+      try {
+        await wallets.transfer(sourceId: p, destId: q, amount: 50000);
+      } catch (e) {
+        err11 = e;
+      }
+      check('C11 transfer ditolak server "Saldo di E2E CP tidak cukup!"',
+          err11.toString().contains('Saldo di E2E CP tidak cukup!'), err11);
+      final shown = container.read(walletProvider).wallets.firstWhere((w) => w.id == p).balance;
+      check('C11 saldo di layar ikut diperbarui ke 30.000', shown == 30000, shown);
+
+      // C7 (lanjutan): id transaksi dan kategori yang tidak dimiliki ditolak.
+      Future<Object?> rpcError(Map<String, dynamic> params) async {
+        try {
+          await db.rpc('save_transaction', params: params);
+          return null;
+        } catch (e) {
+          return e;
+        }
+      }
+
+      final e7a = await rpcError({
+        'p_id': -1, 'p_category_id': expenseCat, 'p_wallet_id': q,
+        'p_amount': 1000, 'p_date': _day(today), 'p_note': 'E2E C7a',
+      });
+      check('C7a id transaksi asing ditolak "Transaksi tidak ditemukan."',
+          e7a is PostgrestException && e7a.message.contains('Transaksi tidak ditemukan.'), e7a);
+      final e7b = await rpcError({
+        'p_id': null, 'p_category_id': -1, 'p_wallet_id': q,
+        'p_amount': 1000, 'p_date': _day(today), 'p_note': 'E2E C7b',
+      });
+      check('C7b kategori asing ditolak "Kategori tidak ditemukan."',
+          e7b is PostgrestException && e7b.message.contains('Kategori tidak ditemukan.'), e7b);
+    } finally {
+      for (final id in recurringIds) {
+        await db.from('recurring_transactions').delete().eq('id', id);
+      }
+      for (final id in walletIds) {
+        await db.from('transactions').delete().eq('wallet_id', id);
+        await db.from('wallets').delete().eq('id', id);
+      }
+      // ignore: avoid_print
+      print(_failures.isEmpty ? '\nSEMUA LULUS (review)' : '\n${_failures.length} GAGAL (review): ${_failures.join(' | ')}');
+    }
+    expect(_failures, isEmpty);
+  }, skip: _email == null || _password == null, timeout: const Timeout(Duration(minutes: 3)));
+
   tearDownAll(() async {
     if (_email == null) return;
     container.dispose();
