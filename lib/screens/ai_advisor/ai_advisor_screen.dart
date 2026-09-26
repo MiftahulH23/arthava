@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:catat_uang_app/core/transaction_tags.dart';
 
 class AiSessionManager {
   static final AiSessionManager _instance = AiSessionManager._internal();
@@ -129,9 +130,7 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
         final catName = item['categories']['name'].toString();
         final note = item['note']?.toString() ?? '';
 
-        final hasSavingMarker = note.contains('[SAVING_ID:');
-        final isSystemCat = catName.toLowerCase().contains('tabung') || catName.toLowerCase().contains('cair');
-        final isPureMutation = hasSavingMarker && isSystemCat;
+        final isPureMutation = isInternalMutation(note, catName);
 
         if (isExpense) {
           totalRawExpenseAllTime += amount;

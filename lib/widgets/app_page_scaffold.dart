@@ -127,36 +127,39 @@ class _AppNavBar extends StatelessWidget {
             ),
           );
 
-    // Kiri : tengah : kanan = 1 : 2 : 1 — judul tetap di tengah dan label
-    // kembali yang panjang terpotong "…" alih-alih menimpa judul (gaya iOS).
+    // NavigationToolbar (mekanisme AppBar): aksi kanan selalu dapat lebar
+    // penuhnya, judul di tengah tanpa pernah menimpa kiri/kanan, dan label
+    // kembali dibatasi 40% lebar supaya terpotong "…" (gaya iOS).
     return SizedBox(
       height: 44,
-      child: Row(
-        children: [
-          Expanded(child: Align(alignment: Alignment.centerLeft, child: back)),
-          if (title != null)
-            Expanded(
-              flex: 2,
-              child: Text(title!, textAlign: TextAlign.center, style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var i = 0; i < actions.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 4),
-                      actions[i],
-                    ],
-                  ],
+      child: LayoutBuilder(
+        builder: (context, constraints) => NavigationToolbar(
+          centerMiddle: true,
+          middleSpacing: 8,
+          leading: backLabel == null
+              ? null
+              : ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.4),
+                  child: back,
                 ),
-              ),
-            ),
-          ),
-        ],
+          middle: title == null
+              ? null
+              : Text(title!, textAlign: TextAlign.center, style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis),
+          trailing: actions.isEmpty
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < actions.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 4),
+                        actions[i],
+                      ],
+                    ],
+                  ),
+                ),
+        ),
       ),
     );
   }

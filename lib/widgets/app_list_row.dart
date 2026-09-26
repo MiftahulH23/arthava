@@ -37,7 +37,10 @@ class AppListRow extends StatelessWidget {
         child: Row(
           children: [
             if (leading != null) ...[leading!, const SizedBox(width: 12)],
+            // Judul mendapat porsi 3 : 2 dari nilai dan boleh turun ke baris
+            // kedua, supaya label panjang (mis. "Tanggal Pembayaran") tidak "…".
             Expanded(
+              flex: 3,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -45,7 +48,7 @@ class AppListRow extends StatelessWidget {
                   Text(
                     title,
                     style: AppTextStyles.bodyStrong.copyWith(color: titleColor),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (subtitle != null)
@@ -61,12 +64,18 @@ class AppListRow extends StatelessWidget {
             if (value != null) ...[
               const SizedBox(width: 8),
               Flexible(
-                child: Text(
-                  value!,
-                  style: AppTextStyles.subhead,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
+                flex: 2,
+                // Align mengisi porsi Flexible sehingga nilai pendek tetap
+                // menempel ke kanan (bukan mulai di tengah baris).
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    value!,
+                    style: AppTextStyles.subhead,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                  ),
                 ),
               ),
             ],

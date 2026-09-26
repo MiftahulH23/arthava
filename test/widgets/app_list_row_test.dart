@@ -1,6 +1,7 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -46,5 +47,23 @@ void main() {
     expect(deco('r').shape, BoxShape.circle);
     final filledIcon = tester.widget<Icon>(find.descendant(of: find.byKey(const Key('f')), matching: find.byType(Icon)));
     expect(filledIcon.color, Colors.white);
+  });
+
+  testWidgets('value pendek menempel ke kanan (rata kanan seperti Settings iOS)', (tester) async {
+    await pumpApp(tester, const Scaffold(body: AppListRow(title: 'Tanggal Pinjam', value: '01 Agu')));
+    final right = tester.getRect(find.text('01 Agu')).right;
+    expect(right, closeTo(390 - 16, 0.5));
+  });
+
+  testWidgets('judul panjang tidak terpotong (turun baris), nilai tetap tampil', (tester) async {
+    await pumpApp(tester, const Scaffold(body: AppListRow(
+      leading: AppIconTile(icon: Icons.calendar_today, color: Colors.blue),
+      title: 'Tanggal Pembayaran',
+      value: '24 Sep 2026',
+      showChevron: true,
+    )));
+    final title = tester.renderObject<RenderParagraph>(find.text('Tanggal Pembayaran'));
+    expect(title.didExceedMaxLines, isFalse);
+    expect(find.text('24 Sep 2026'), findsOneWidget);
   });
 }

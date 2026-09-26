@@ -44,6 +44,7 @@ class _InputTransactionScreenState
   late bool _isExpense;
 
   bool _isReadOnly = false;
+  bool _readOnlyFromDebt = false;
   String? _hiddenSavingMarker;
 
   int? _selectedWalletId;
@@ -62,10 +63,16 @@ class _InputTransactionScreenState
 
       String rawNote = trx.note ?? '';
       final match = RegExp(r'\s*\[SAVING_ID:\d+\]').firstMatch(rawNote);
+      final debtMatch = RegExp(r'\s*\[DEBT_ID:[^\]]*\]').firstMatch(rawNote);
       if (match != null) {
         _hiddenSavingMarker = match.group(0);
         _noteController.text = rawNote.replaceAll(match.group(0)!, '');
         _isReadOnly = true;
+      } else if (debtMatch != null) {
+        _hiddenSavingMarker = debtMatch.group(0);
+        _noteController.text = rawNote.replaceAll(debtMatch.group(0)!, '').trim();
+        _isReadOnly = true;
+        _readOnlyFromDebt = true;
       } else {
         _noteController.text = rawNote;
       }
@@ -370,7 +377,9 @@ class _InputTransactionScreenState
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        "Ini adalah catatan otomatis dari fitur Tabungan. Silakan gunakan Menu Tabungan di Beranda untuk mengedit/menghapus data ini.",
+                        _readOnlyFromDebt
+                            ? "Ini adalah catatan otomatis dari fitur Utang & Piutang. Silakan gunakan menu Utang & Piutang di Beranda untuk mengedit/menghapus data ini."
+                            : "Ini adalah catatan otomatis dari fitur Tabungan. Silakan gunakan Menu Tabungan di Beranda untuk mengedit/menghapus data ini.",
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           color: Colors.blue.shade800,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/core/transaction_tags.dart';
 
 class TransactionHistoryState {
   final bool isLoading;
@@ -192,9 +193,7 @@ class TransactionHistoryNotifier
         final trx = TransactionModel.fromJson(item);
         final note = trx.note?.toString() ?? '';
         final catName = trx.category?.name.toLowerCase() ?? '';
-        final isPureMutation =
-            note.contains('[SAVING_ID:') &&
-            (catName.contains('tabung') || catName.contains('cair'));
+        final isPureMutation = isInternalMutation(note, catName);
 
         loaded.add(trx);
 
@@ -220,6 +219,9 @@ class TransactionHistoryNotifier
   /// pemanggil (widget) bisa menampilkannya lewat AppNotification tanpa
   /// mengubah string.
   Future<String> deleteTransaction(TransactionModel trx) async {
+    if (isDebtMutation(trx.note)) {
+      throw Exception('Transaksi ini dibuat dari fitur Utang & Piutang. Hapus lewat menu Utang & Piutang.');
+    }
     try {
       final walletId = trx.walletId;
 

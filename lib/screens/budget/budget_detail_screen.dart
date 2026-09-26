@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/core/transaction_tags.dart';
 
 class BudgetDetailScreen extends ConsumerStatefulWidget {
   final BudgetModel budget;
@@ -88,7 +89,7 @@ class _BudgetDetailScreenState extends ConsumerState<BudgetDetailScreen> {
         final noteStr = item['note']?.toString() ?? '';
 
         // [FIX] Celah gaib ditutup! Mutasi tabungan gak boleh masuk hitungan anggaran
-        if (noteStr.contains('[SAVING_ID:')) continue;
+        if (noteStr.contains('[SAVING_ID:') || isDebtMutation(noteStr)) continue;
 
         if (catId == widget.budget.categoryId) {
           final amount = (item['amount'] as num).toDouble();

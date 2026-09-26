@@ -72,27 +72,35 @@ class AppAmountField extends StatelessWidget {
       children: [
         Text(label, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
-        TextField(
-          controller: controller,
-          autofocus: autofocus,
-          onChanged: onChanged,
-          keyboardType: TextInputType.number,
-          inputFormatters: [RupiahInputFormatter()],
-          textAlign: TextAlign.center,
-          style: style,
-          cursorColor: AppColors.primary,
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.zero,
-            hintText: '0',
-            hintStyle: style.copyWith(color: AppColors.textSecondary.withValues(alpha: 0.5)),
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Text('Rp', style: style.copyWith(fontSize: 28, color: AppColors.textSecondary)),
+        // "Rp" + angka dipusatkan bersama (mockup); field hanya selebar isinya.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text('Rp', style: style.copyWith(fontSize: fontSize * 0.7, color: AppColors.textSecondary)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: IntrinsicWidth(
+                child: TextField(
+                  controller: controller,
+                  autofocus: autofocus,
+                  onChanged: onChanged,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [RupiahInputFormatter()],
+                  textAlign: TextAlign.start,
+                  style: style,
+                  cursorColor: AppColors.primary,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: '0',
+                    hintStyle: style.copyWith(color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                  ),
+                ),
+              ),
             ),
-            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          ),
+          ],
         ),
       ],
     );
