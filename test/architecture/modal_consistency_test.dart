@@ -26,9 +26,6 @@ const _shared = {
 /// Layar lama yang belum didesain ulang, dan plan yang wajib membersihkannya.
 /// Hapus entri saat plan-nya merapikan layar itu; daftar ini harus kosong di akhir Phase B.
 const _legacy = <String, String>{
-  'lib/screens/input_transaction/input_transaction_screen.dart': 'B4',
-  'lib/screens/stats/stats_screen.dart': 'B4',
-  'lib/screens/transaction_history/transaction_history_screen.dart': 'B4',
   'lib/screens/budget/budget_screen.dart': 'B5',
   'lib/screens/budget/budget_detail_screen.dart': 'B5',
   'lib/screens/recurring/recurring_screen.dart': 'B5',

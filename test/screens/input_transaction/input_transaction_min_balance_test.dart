@@ -1,8 +1,11 @@
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/providers/input_transaction_provider.dart';
 import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../helpers/pump_app.dart';
 
@@ -65,11 +68,9 @@ void main() {
     await tester.enterText(find.byType(TextField).first, amount);
     await tester.pump();
     if (pickCategory && edit == null) {
-      final dropdown = find.byWidgetPredicate(
-        (w) => w is DropdownButton<int> && (w.items?.any((i) => i.value == 10) ?? false),
-      );
-      await tester.ensureVisible(dropdown);
-      await tester.tap(dropdown);
+      // B4: kategori dipilih lewat baris "Kategori" -> sheet "Pilih Kategori".
+      await tester.ensureVisible(find.text('Kategori'));
+      await tester.tap(find.text('Kategori'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Makan').last);
       await tester.pumpAndSettle();
@@ -87,7 +88,7 @@ void main() {
     final fake = await pumpInput(tester, '60000');
     await tapSave(tester);
     expect(find.text('Di bawah saldo minimal'), findsOneWidget);
-    await tester.tap(find.text('Batal'));
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Batal'));
     await tester.pumpAndSettle();
     expect(fake.saveCalls, 0);
   });
@@ -95,7 +96,7 @@ void main() {
   testWidgets('pengeluaran melewati saldo minimal: Lanjutkan tetap menyimpan', (tester) async {
     final fake = await pumpInput(tester, '60000');
     await tapSave(tester);
-    await tester.tap(find.text('Lanjutkan'));
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Lanjutkan'));
     await tester.pumpAndSettle();
     expect(fake.saveCalls, 1);
     await tester.pump(const Duration(seconds: 4)); // tutup toast
@@ -132,7 +133,7 @@ void main() {
     final fake = await pumpInput(tester, '90000', edit: oldExpense(30000));
     await tapSave(tester);
     expect(find.text('Di bawah saldo minimal'), findsOneWidget);
-    await tester.tap(find.text('Batal'));
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Batal'));
     await tester.pumpAndSettle();
     expect(fake.saveCalls, 0);
   });
@@ -144,4 +145,61 @@ void main() {
     expect(fake.saveCalls, 1);
     await tester.pump(const Duration(seconds: 4)); // tutup toast
   });
+
+  testWidgets('dompet pertama otomatis terpilih saat daftar dompet tiba', (tester) async {
+    await pumpInput(tester, '1000', pickCategory: false);
+    final walletRow = find.ancestor(of: find.text('Dompet'), matching: find.byType(AppListRow));
+    expect(find.descendant(of: walletRow, matching: find.text('BCA')), findsOneWidget);
+  });
+
+  testWidgets('tidak ada kategori untuk jenis ini: baris Kategori tanpa chevron (tidak bisa diketuk)', (tester) async {
+    // Fake hanya punya kategori pengeluaran; buka sebagai pemasukan.
+    await pumpApp(
+      tester,
+      const InputTransactionScreen(initialIsExpense: false),
+      overrides: [inputTransactionProvider.overrideWith(() => FakeInputNotifier())],
+      size: const Size(600, 1400),
+    );
+    await tester.pumpAndSettle();
+    final row = find.ancestor(of: find.text('Kategori'), matching: find.byType(AppListRow));
+    expect(find.descendant(of: row, matching: find.byIcon(PhosphorIconsRegular.caretRight)), findsNothing);
+  });
+
+  testWidgets('Pilih Kategori dengan banyak kategori: ada kolom cari yang menyaring', (tester) async {
+    await pumpApp(
+      tester,
+      const InputTransactionScreen(initialIsExpense: true),
+      overrides: [inputTransactionProvider.overrideWith(_ManyCategoriesNotifier.new)],
+      size: const Size(600, 1400),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kategori'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cari kategori'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Cari kategori'), 'kategori 1');
+    await tester.pump();
+    // "Kategori 1" dan "Kategori 10".."Kategori 19" cocok; "Kategori 2" tidak.
+    expect(find.text('Kategori 2'), findsNothing);
+    await tester.tap(find.text('Kategori 12'));
+    await tester.pumpAndSettle();
+    final row = find.ancestor(of: find.text('Kategori'), matching: find.byType(AppListRow));
+    expect(find.descendant(of: row, matching: find.text('Kategori 12')), findsOneWidget);
+  });
+}
+
+class _ManyCategoriesNotifier extends InputTransactionNotifier {
+  @override
+  InputTransactionState build() {
+    Future.microtask(
+      () => state = InputTransactionState(
+        wallets: const [
+          {'id': 1, 'name': 'BCA', 'balance': 100000, 'min_balance': 0},
+        ],
+        categories: [
+          for (var i = 1; i <= 30; i++) {'id': i, 'name': 'Kategori $i', 'is_expense': true},
+        ],
+      ),
+    );
+    return const InputTransactionState();
+  }
 }

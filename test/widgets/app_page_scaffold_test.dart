@@ -126,4 +126,35 @@ void main() {
     final edit = tester.getRect(find.text('Edit'));
     expect(title.right, lessThanOrEqualTo(edit.left));
   });
+
+  testWidgets('leading menggantikan tombol kembali', (tester) async {
+    var tapped = false;
+    await pumpApp(
+      tester,
+      AppPageScaffold(
+        title: 'Tambah Transaksi',
+        largeTitle: false,
+        backLabel: 'Beranda',
+        leading: AppNavAction.text('Batal', onPressed: () => tapped = true),
+        children: const [SizedBox.shrink()],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Beranda'), findsNothing);
+    await tester.tap(find.text('Batal'));
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('leading tanpa backLabel tetap memunculkan nav bar', (tester) async {
+    await pumpApp(
+      tester,
+      AppPageScaffold(
+        title: 'Dompet Saya',
+        leading: AppNavAction.text('Batal', onPressed: () {}),
+        children: const [SizedBox.shrink()],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Batal'), findsOneWidget);
+  });
 }

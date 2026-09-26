@@ -115,4 +115,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(find.byType(ListTile).first).dx, 0);
   });
+
+  testWidgets('deleteConfirmTitle & deleteConfirmMessage tampil di dialog hapus', (tester) async {
+    var deleted = false;
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: AppSwipeActions(
+          deleteConfirmTitle: 'Hapus Transaksi?',
+          deleteConfirmMessage: 'Data transaksi akan dihapus permanen.',
+          onDelete: () => deleted = true,
+          child: const SizedBox(height: 56, width: 390, child: Text('Makan')),
+        ),
+      ),
+    );
+    await tester.drag(find.text('Makan'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus Transaksi?'), findsOneWidget);
+    expect(find.text('Data transaksi akan dihapus permanen.'), findsOneWidget);
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus'));
+    await tester.pumpAndSettle();
+    expect(deleted, isTrue);
+  });
+
+  testWidgets('saat tertutup tombol aksi tidak dilukis (tidak ada garis merah di tepi)', (tester) async {
+    await pumpRow(tester, onEdit: () {}, onDelete: () {});
+    expect(find.text('Hapus'), findsNothing);
+    expect(find.text('Edit'), findsNothing);
+    await tester.drag(find.text('Makan'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus'), findsOneWidget);
+    await tester.tap(find.text('Makan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus'), findsNothing);
+  });
 }

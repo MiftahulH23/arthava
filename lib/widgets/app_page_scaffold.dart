@@ -21,6 +21,7 @@ class AppPageScaffold extends StatelessWidget {
     this.embedded = false,
     this.largeTitle = true,
     this.titleWidget,
+    this.leading,
     super.key,
   });
 
@@ -37,10 +38,14 @@ class AppPageScaffold extends StatelessWidget {
   final bool largeTitle;
   final Widget? titleWidget;
 
+  /// Pengganti tombol kembali di kiri nav bar (mis. `AppNavAction.text('Batal')`).
+  /// Bila diisi, `backLabel` diabaikan.
+  final Widget? leading;
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = embedded ? MediaQuery.of(context).padding.bottom : 0.0;
-    final hasNav = backLabel != null || actions.isNotEmpty || !largeTitle;
+    final hasNav = leading != null || backLabel != null || actions.isNotEmpty || !largeTitle;
 
     final items = <Widget>[
       if (largeTitle)
@@ -76,7 +81,7 @@ class AppPageScaffold extends StatelessWidget {
     final body = Column(
       children: [
         if (hasNav)
-          _AppNavBar(backLabel: backLabel, title: largeTitle ? null : title, actions: actions),
+          _AppNavBar(leading: leading, backLabel: backLabel, title: largeTitle ? null : title, actions: actions),
         Expanded(child: list),
         if (bottomBar != null)
           Padding(
@@ -92,8 +97,9 @@ class AppPageScaffold extends StatelessWidget {
 }
 
 class _AppNavBar extends StatelessWidget {
-  const _AppNavBar({required this.backLabel, required this.title, required this.actions});
+  const _AppNavBar({required this.leading, required this.backLabel, required this.title, required this.actions});
 
+  final Widget? leading;
   final String? backLabel;
   final String? title;
   final List<Widget> actions;
@@ -136,12 +142,17 @@ class _AppNavBar extends StatelessWidget {
         builder: (context, constraints) => NavigationToolbar(
           centerMiddle: true,
           middleSpacing: 8,
-          leading: backLabel == null
-              ? null
-              : ConstrainedBox(
+          leading: leading != null
+              ? ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.4),
-                  child: back,
-                ),
+                  child: Padding(padding: const EdgeInsets.only(left: 6), child: leading),
+                )
+              : backLabel == null
+                  ? null
+                  : ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.4),
+                      child: back,
+                    ),
           middle: title == null
               ? null
               : Text(title!, textAlign: TextAlign.center, style: AppTextStyles.headline, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -173,9 +184,9 @@ class AppNavAction extends StatelessWidget {
         color = null,
         tooltip = 'Tambah';
 
-  const AppNavAction.text(String this.label, {required this.onPressed, super.key})
+  /// [color] opsional, mis. `AppColors.expense` untuk aksi merusak ("Reset").
+  const AppNavAction.text(String this.label, {required this.onPressed, this.color, super.key})
       : icon = null,
-        color = null,
         tooltip = null;
 
   const AppNavAction.icon(IconData this.icon, {required this.onPressed, this.color, this.tooltip, super.key})
@@ -201,7 +212,7 @@ class AppNavAction extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Center(
                 widthFactor: 1,
-                child: Text(label!, style: AppTextStyles.navLabel.copyWith(fontWeight: FontWeight.w600)),
+                child: Text(label!, style: AppTextStyles.navLabel.copyWith(fontWeight: FontWeight.w600, color: color)),
               ),
             ),
           ),

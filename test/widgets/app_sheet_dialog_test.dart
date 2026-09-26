@@ -1,6 +1,7 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:flutter/rendering.dart';
 import 'package:catat_uang_app/widgets/app_dialogs.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -107,5 +108,26 @@ void main() {
     }
     final destructive = tester.renderObject<RenderParagraph>(find.text('Hapus saja')).text.style!.color;
     expect(destructive, AppColors.expense);
+  });
+
+  testWidgets('showAppFormSheet trailing: aksi di kanan header, sejajar Batal & judul', (tester) async {
+    var taps = 0;
+    await pumpApp(tester, _opener((context) => showAppFormSheet<void>(
+          context: context,
+          title: 'Filter Transaksi',
+          trailing: AppNavAction.text('Reset', color: AppColors.expense, onPressed: () => taps++),
+          builder: (_) => const Text('isi'),
+        )));
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    final reset = tester.getRect(find.text('Reset'));
+    final title = tester.getRect(find.text('Filter Transaksi'));
+    final batal = tester.getRect(find.text('Batal'));
+    expect(reset.center.dy, closeTo(title.center.dy, 1));
+    expect(reset.left, greaterThanOrEqualTo(title.right));
+    expect(batal.right, lessThanOrEqualTo(title.left));
+    expect(tester.widget<Text>(find.text('Reset')).style!.color, AppColors.expense);
+    await tester.tap(find.text('Reset'));
+    expect(taps, 1);
   });
 }

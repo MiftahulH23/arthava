@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:catat_uang_app/widgets/app_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -58,5 +59,26 @@ void main() {
     expect(find.text('2'), findsOneWidget);
     await tester.tap(find.text('Filter'));
     expect(taps, 1);
+  });
+
+  testWidgets('AppPillButton selebar isinya, tidak melebar penuh di Wrap/Align', (tester) async {
+    await pumpApp(tester, Scaffold(body: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(alignment: Alignment.centerRight, child: AppPillButton(label: 'Reset', onPressed: () {})),
+        Wrap(children: [AppPillButton(label: 'BCA', onPressed: () {})]),
+      ],
+    )));
+    final screen = tester.getSize(find.byType(Scaffold)).width;
+    expect(tester.getSize(find.widgetWithText(AppPillButton, 'Reset')).width, lessThan(screen / 2));
+    expect(tester.getSize(find.widgetWithText(AppPillButton, 'BCA')).width, lessThan(screen / 2));
+  });
+
+  testWidgets('badge AppPill tetap bulat kecil (tidak setinggi pill)', (tester) async {
+    await pumpApp(tester, Scaffold(body: Center(child: AppPill(
+      label: 'Filter', icon: PhosphorIconsRegular.funnel, badgeCount: 1, onTap: () {},
+    ))));
+    final badge = tester.getSize(find.byType(AppCountBadge));
+    expect(badge.height, lessThanOrEqualTo(20));
   });
 }

@@ -89,23 +89,27 @@ class AppPillButton extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
+          // Tanpa `alignment` di Container: Container beralignment melebar penuh
+          // di Wrap/Align. Center(widthFactor: 1) memusatkan tanpa melebar.
           child: Container(
             height: large ? 44 : 36,
             padding: EdgeInsets.symmetric(horizontal: large ? 20 : 14),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[Icon(icon, size: large ? 18 : 16, color: fg), SizedBox(width: large ? 8 : 6)],
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.subhead.copyWith(fontSize: large ? 15 : 14, fontWeight: FontWeight.w700, color: fg),
+            child: Center(
+              widthFactor: 1,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[Icon(icon, size: large ? 18 : 16, color: fg), SizedBox(width: large ? 8 : 6)],
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.subhead.copyWith(fontSize: large ? 15 : 14, fontWeight: FontWeight.w700, color: fg),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

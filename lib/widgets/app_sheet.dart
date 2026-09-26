@@ -9,19 +9,23 @@ Future<T?> showAppFormSheet<T>({
   required BuildContext context,
   required String title,
   String cancelLabel = 'Batal',
+  Widget? trailing,
   required WidgetBuilder builder,
 }) {
   return showAppBottomSheet<T>(
     context: context,
-    builder: (sheetContext) => _AppFormSheet(title: title, cancelLabel: cancelLabel, builder: builder),
+    builder: (sheetContext) => _AppFormSheet(title: title, cancelLabel: cancelLabel, trailing: trailing, builder: builder),
   );
 }
 
 class _AppFormSheet extends StatelessWidget {
-  const _AppFormSheet({required this.title, required this.cancelLabel, required this.builder});
+  const _AppFormSheet({required this.title, required this.cancelLabel, required this.trailing, required this.builder});
 
   final String title;
   final String cancelLabel;
+
+  /// Aksi opsional di kanan header (mis. "Reset"), sejajar "Batal" dan judul.
+  final Widget? trailing;
   final WidgetBuilder builder;
 
   @override
@@ -79,7 +83,10 @@ class _AppFormSheet extends StatelessWidget {
                       style: AppTextStyles.headline,
                     ),
                   ),
-                  const SizedBox(width: 72),
+                  SizedBox(
+                    width: 72,
+                    child: trailing == null ? null : Align(alignment: Alignment.centerRight, child: trailing),
+                  ),
                 ],
               ),
             ),
