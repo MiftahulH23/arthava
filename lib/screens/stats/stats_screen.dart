@@ -1,11 +1,23 @@
+import 'package:catat_uang_app/core/transaction_tags.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/providers/stats_provider.dart';
-import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
-import 'package:catat_uang_app/widgets/app_tab_selector.dart';
+import 'package:catat_uang_app/screens/transaction_history/transaction_filter_sheet.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:catat_uang_app/widgets/app_chip.dart';
+import 'package:catat_uang_app/widgets/app_chip_tabs.dart';
+import 'package:catat_uang_app/widgets/app_empty_state.dart';
+import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_period_picker.dart';
+import 'package:catat_uang_app/widgets/app_progress.dart';
+import 'package:catat_uang_app/widgets/app_segmented_control.dart';
+import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -17,1148 +29,418 @@ class StatsScreen extends ConsumerStatefulWidget {
 }
 
 class _StatsScreenState extends ConsumerState<StatsScreen> {
-  final List<Color> _chartColors = [
-    Colors.blue,
-    Colors.red,
-    Colors.green,
-    Colors.orange,
-    Colors.purple,
-    Colors.teal,
-    Colors.pink,
-    Colors.amber,
+  static const List<Color> _chartColors = [
+    AppColors.primary,
+    AppColors.accent,
+    AppColors.tintSky,
+    AppColors.tintPink,
+    AppColors.tintIndigo,
+    AppColors.tintTeal,
+    AppColors.tintAmber,
+    AppColors.tintBrown,
   ];
 
   int _touchedIndex = -1;
 
   StatsNotifier get _notifier => ref.read(statsProvider.notifier);
 
-  void _pickDate(StatsState state) async {
-    if (state.filterType == 'Harian') {
-      final picked = await showDatePicker(
-        context: context,
-        initialDate: state.selectedDate,
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2030),
-        builder: (context, child) => Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primary),
-          ),
-          child: child!,
-        ),
-      );
-      if (picked != null) {
-        _notifier.setSelectedDate(picked);
-      }
-    } else if (state.filterType == 'Tahunan') {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.transparent,
-            title: Text(
-              "Pilih Tahun",
-              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-            ),
-            content: SizedBox(
-              width: 300,
-              height: 300,
-              child: YearPicker(
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-                selectedDate: state.selectedDate,
-                onChanged: (DateTime val) {
-                  Navigator.pop(context);
-                  _notifier.setSelectedDate(val);
-                },
-              ),
-            ),
-          );
-        },
-      );
-    } else if (state.filterType == 'Periode') {
-      final DateTimeRange? picked = await showDateRangePicker(
-        context: context,
-        initialDateRange: state.selectedDateRange,
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2030),
-        builder: (context, child) => Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppColors.primary),
-          ),
-          child: child!,
-        ),
-      );
-      if (picked != null) {
-        _notifier.setSelectedDateRange(picked);
-      }
-    } else {
-      final currentYear = DateTime.now().year;
-      final years = List.generate(11, (i) => (currentYear - 5) + i);
-      int tempYear = state.selectedDate.year;
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                surfaceTintColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                title: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Pilih Bulan",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: tempYear,
-                          dropdownColor: Colors.white,
-                          isDense: true,
-                          icon: const Icon(
-                            Icons.arrow_drop_down,
-                            color: AppColors.primary,
-                          ),
-                          items: years
-                              .map(
-                                (year) => DropdownMenuItem<int>(
-                                  value: year,
-                                  child: Text(
-                                    "$year",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null)
-                              setDialogState(() => tempYear = val);
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                content: SizedBox(
-                  width: 300,
-                  height: 300,
-                  child: Column(
-                    children: [
-                      const Divider(),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: GridView.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                childAspectRatio: 1.5,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                              ),
-                          itemCount: 12,
-                          itemBuilder: (context, index) {
-                            final int monthIndex = index + 1;
-                            final bool isSelected =
-                                state.selectedDate.month == monthIndex &&
-                                state.selectedDate.year == tempYear;
-                            return InkWell(
-                              onTap: () {
-                                Navigator.pop(context);
-                                _notifier.setSelectedDate(
-                                  DateTime(tempYear, monthIndex),
-                                );
-                              },
-                              child: Container(
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppColors.primary
-                                        : Colors.grey.shade300,
-                                  ),
-                                ),
-                                child: Text(
-                                  DateFormat(
-                                    'MMM',
-                                    'id_ID',
-                                  ).format(DateTime(2024, monthIndex)),
-                                  style: GoogleFonts.poppins(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : AppColors.textPrimary,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      );
-    }
+  void _pickDate(StatsState state) {
+    showAppPeriodPicker(
+      context: context,
+      filterType: state.filterType,
+      selectedDate: state.selectedDate,
+      selectedDateRange: state.selectedDateRange,
+      onDateSelected: _notifier.setSelectedDate,
+      onRangeSelected: _notifier.setSelectedDateRange,
+    );
   }
 
   void _showFilterSheet() {
-    showAppBottomSheet(
+    final isExpense = ref.read(statsProvider).isExpense;
+    showTransactionFilterSheet(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final state = ref.read(statsProvider);
-            return Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.85,
-              ),
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Filter Transaksi",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          _notifier.resetFilters();
-                          setSheetState(() {});
-                        },
-                        child: Text(
-                          "Reset",
-                          style: GoogleFonts.poppins(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Kategori",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: state.categories.map((c) {
-                              final id = c['id'] as int;
-                              final isSelected =
-                                  state.selectedCategoryIds.contains(id);
-                              final color = state.isExpense
-                                  ? AppColors.expense
-                                  : AppColors.income;
-                              return FilterChip(
-                                label: Text(c['name']),
-                                selected: isSelected,
-                                onSelected: (val) {
-                                  _notifier.toggleCategoryFilter(id, val);
-                                  setSheetState(() {});
-                                },
-                                selectedColor: color.withOpacity(0.2),
-                                checkmarkColor: color,
-                                labelStyle: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: isSelected ? color : Colors.black87,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                                backgroundColor: Colors.grey.shade50,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? color
-                                        : Colors.grey.shade200,
-                                  ),
-                                ),
-                                showCheckmark: false,
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            "Dompet",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: state.walletNames.entries.map((e) {
-                              final id = e.key;
-                              final isSelected =
-                                  state.selectedWalletIds.contains(id);
-                              final color = state.isExpense
-                                  ? AppColors.expense
-                                  : AppColors.income;
-                              return FilterChip(
-                                label: Text(e.value),
-                                selected: isSelected,
-                                onSelected: (val) {
-                                  _notifier.toggleWalletFilter(id, val);
-                                  setSheetState(() {});
-                                },
-                                selectedColor: color.withOpacity(0.2),
-                                checkmarkColor: color,
-                                labelStyle: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: isSelected ? color : Colors.black87,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                                backgroundColor: Colors.grey.shade50,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? color
-                                        : Colors.grey.shade200,
-                                  ),
-                                ),
-                                showCheckmark: false,
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: state.isExpense
-                            ? AppColors.expense
-                            : AppColors.income,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _notifier.applyFilters();
-                      },
-                      child: Text(
-                        "Terapkan Filter",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+      accentColor: isExpense ? AppColors.expense : AppColors.income,
+      readData: () {
+        final s = ref.read(statsProvider);
+        return TransactionFilterData(
+          categories: s.categories,
+          walletNames: s.walletNames,
+          selectedCategoryIds: s.selectedCategoryIds,
+          selectedWalletIds: s.selectedWalletIds,
         );
       },
+      onToggleCategory: _notifier.toggleCategoryFilter,
+      onToggleWallet: _notifier.toggleWalletFilter,
+      onReset: _notifier.resetFilters,
+      onApply: _notifier.applyFilters,
     );
+  }
+
+  List<PieChartSectionData> _buildSections(StatsState state) {
+    final sections = <PieChartSectionData>[];
+    double otherAmount = 0;
+    int currentIndex = 0;
+    for (int i = 0; i < state.categoryData.length; i++) {
+      final item = state.categoryData[i];
+      final percentage = (item['amount'] / state.totalAmount) * 100;
+
+      if (i < 5 && percentage >= 2) {
+        final isTouched = currentIndex == _touchedIndex;
+        sections.add(PieChartSectionData(
+          color: _chartColors[i % _chartColors.length],
+          value: item['amount'],
+          title: isTouched
+              ? '${item['name']}\n${percentage.toStringAsFixed(1)}%'
+              : '${percentage.toStringAsFixed(0)}%',
+          radius: isTouched ? 40 : 32,
+          titleStyle: AppTextStyles.caption.copyWith(
+            fontSize: isTouched ? 11 : 10,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            shadows: isTouched ? const [Shadow(color: Colors.black45, blurRadius: 2)] : null,
+          ),
+        ));
+        currentIndex++;
+      } else {
+        otherAmount += (item['amount'] as num).toDouble();
+      }
+    }
+
+    if (otherAmount > 0) {
+      final otherPercentage = (otherAmount / state.totalAmount) * 100;
+      final isTouched = currentIndex == _touchedIndex;
+      final remainingCount = state.categoryData.length - currentIndex;
+      final labelText = "Gabungan\n($remainingCount)";
+      sections.add(PieChartSectionData(
+        color: AppColors.tintGray,
+        value: otherAmount,
+        title: isTouched
+            ? '$labelText\n${otherPercentage.toStringAsFixed(1)}%'
+            : '${otherPercentage.toStringAsFixed(0)}%\n$labelText',
+        radius: isTouched ? 40 : 32,
+        titleStyle: AppTextStyles.caption.copyWith(
+          fontSize: isTouched ? 10 : 8,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+          shadows: isTouched ? const [Shadow(color: Colors.black45, blurRadius: 2)] : null,
+        ),
+      ));
+    }
+    return sections;
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(statsProvider);
-    final currencyFormat = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
     final activeColor = state.isExpense ? AppColors.expense : AppColors.income;
+    final activeFilterCount = state.selectedCategoryIds.length + state.selectedWalletIds.length;
 
-    String dateLabel = '';
-    if (state.filterType == 'Harian')
-      dateLabel = DateFormat('dd MMM yyyy', 'id_ID').format(state.selectedDate);
-    else if (state.filterType == 'Tahunan')
-      dateLabel = DateFormat('yyyy', 'id_ID').format(state.selectedDate);
-    else if (state.filterType == 'Periode')
-      dateLabel = state.selectedDateRange != null
-          ? "${DateFormat('dd MMM', 'id_ID').format(state.selectedDateRange!.start)} - ${DateFormat('dd MMM yy', 'id_ID').format(state.selectedDateRange!.end)}"
-          : "Pilih Periode";
-    else
-      dateLabel = DateFormat('MMMM yyyy', 'id_ID').format(state.selectedDate);
-
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: Colors.white,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return AppPageScaffold(
+      embedded: true,
+      title: 'Statistik',
+      children: [
+        AppSegmentedControl(
+          labels: const ['Pemasukan', 'Pengeluaran'],
+          selectedIndex: state.isExpense ? 1 : 0,
+          selectedLabelColors: const [AppColors.income, AppColors.expense],
+          onChanged: (i) => _notifier.setIsExpense(i == 1),
+        ),
+        AppChipTabs(
+          labels: kPeriodFilterTypes,
+          selectedIndex: kPeriodFilterTypes.indexOf(state.filterType),
+          onChanged: (index) => _notifier.setFilterType(kPeriodFilterTypes[index]),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: AppPill(
+                expand: true,
+                icon: PhosphorIconsRegular.calendarBlank,
+                label: periodLabel(state.filterType, state.selectedDate, state.selectedDateRange),
+                trailing: const Icon(PhosphorIconsRegular.caretDown, size: 14, color: AppColors.textSecondary),
+                onTap: () => _pickDate(state),
+              ),
+            ),
+            const SizedBox(width: 8),
+            AppPill(
+              icon: PhosphorIconsRegular.funnel,
+              label: 'Filter',
+              badgeCount: activeFilterCount,
+              onTap: _showFilterSheet,
+            ),
+          ],
+        ),
+        if (state.isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 48),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          )
+        else if (state.categoryData.isEmpty)
+          const AppEmptyState(icon: PhosphorIconsRegular.chartPieSlice, title: 'Tidak ada data')
+        else ...[
+          AppSurfaceCard(
+            child: Row(
               children: [
-                Text(
-                  "Laporan Keuangan",
-                  style: GoogleFonts.poppins(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Row(
+                SizedBox(
+                  width: 148,
+                  height: 148,
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _notifier.setIsExpense(false),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: !state.isExpense
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: !state.isExpense
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 5,
-                                      ),
-                                    ]
-                                  : [],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "Pemasukan",
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                color: !state.isExpense
-                                    ? AppColors.income
-                                    : Colors.grey,
-                              ),
-                            ),
+                      PieChart(
+                        PieChartData(
+                          pieTouchData: PieTouchData(
+                            touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                              setState(() {
+                                if (event is FlTapUpEvent) {
+                                  if (pieTouchResponse == null ||
+                                      pieTouchResponse.touchedSection == null ||
+                                      pieTouchResponse.touchedSection!.touchedSectionIndex == -1) {
+                                    _touchedIndex = -1;
+                                  } else {
+                                    final newIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                                    _touchedIndex = _touchedIndex == newIndex ? -1 : newIndex;
+                                  }
+                                }
+                              });
+                            },
                           ),
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 40,
+                          sections: _buildSections(state),
                         ),
                       ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _notifier.setIsExpense(true),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: state.isExpense
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: state.isExpense
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 5,
-                                      ),
-                                    ]
-                                  : [],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "Pengeluaran",
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                color: state.isExpense
-                                    ? AppColors.expense
-                                    : Colors.grey,
-                              ),
-                            ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text("Total", style: AppTextStyles.caption),
+                          Text(
+                            formatRupiahCompact(state.totalAmount),
+                            style: AppTextStyles.bodyStrong.copyWith(fontSize: 13),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 15),
-
-                AppTabSelector(
-                  labels: const ['Harian', 'Bulanan', 'Tahunan', 'Periode'],
-                  initialIndex: ['Harian', 'Bulanan', 'Tahunan', 'Periode']
-                      .indexOf(state.filterType),
-                  activeColor: activeColor,
-                  onChanged: (index) {
-                    final type = ['Harian', 'Bulanan', 'Tahunan', 'Periode'][index];
-                    _notifier.setFilterType(type);
-                  },
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _StatLine(
+                        label: "Total ${state.isExpense ? 'Pengeluaran' : 'Pemasukan'}",
+                        value: formatRupiah(state.totalAmount),
+                        valueColor: activeColor,
+                      ),
+                      if (state.totalAmount > 0) ...[
+                        const SizedBox(height: 12),
+                        _StatLine(label: "Rata-rata harian", value: formatRupiah(state.dailyAverage)),
+                        if (state.highestTransaction != null) ...[
+                          const SizedBox(height: 12),
+                          _StatLine(
+                            label: "Terbesar (${state.highestTransaction!['note']})",
+                            value: formatRupiah(state.highestTransaction!['amount'] as num),
+                            valueColor: activeColor,
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 15),
+              ],
+            ),
+          ),
+          AppGroupedSection(
+            header: 'Kategori',
+            children: [
+              for (var i = 0; i < state.categoryData.length; i++)
+                _CategoryRankRow(
+                  rank: i + 1,
+                  color: _chartColors[i % _chartColors.length],
+                  item: state.categoryData[i],
+                  totalAmount: state.totalAmount,
+                  walletNames: state.walletNames,
+                  walletColors: state.walletColors,
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
 
+class _StatLine extends StatelessWidget {
+  const _StatLine({required this.label, required this.value, this.valueColor});
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: AppTextStyles.amountRow.copyWith(color: valueColor ?? AppColors.textPrimary),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+class _RankBadge extends StatelessWidget {
+  const _RankBadge({required this.rank, required this.color});
+
+  final int rank;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(color.withValues(alpha: 0.14), AppColors.surface),
+        shape: BoxShape.circle,
+      ),
+      child: Text('$rank', style: AppTextStyles.bodyStrong.copyWith(color: color, fontWeight: FontWeight.w800)),
+    );
+  }
+}
+
+class _CategoryRankRow extends StatefulWidget {
+  const _CategoryRankRow({
+    required this.rank,
+    required this.color,
+    required this.item,
+    required this.totalAmount,
+    required this.walletNames,
+    required this.walletColors,
+  });
+
+  final int rank;
+  final Color color;
+  final Map<String, dynamic> item;
+  final double totalAmount;
+  final Map<int, String> walletNames;
+  final Map<int, Color> walletColors;
+
+  @override
+  State<_CategoryRankRow> createState() => _CategoryRankRowState();
+}
+
+class _CategoryRankRowState extends State<_CategoryRankRow> {
+  // Tag [SAVING_ID:..] / [DEBT_ID:..] dibersihkan lewat stripTransactionTags (lib/core/transaction_tags.dart, Plan B2).
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final amount = (item['amount'] as num).toDouble();
+    final percentage = widget.totalAmount == 0 ? 0.0 : (amount / widget.totalAmount) * 100;
+    final transactions = item['transactions'] as List;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppListRow(
+          leading: _RankBadge(rank: widget.rank, color: widget.color),
+          title: item['name'].toString(),
+          subtitleWidget: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: "${item['count']} Transaksi · "),
+                    TextSpan(
+                      text: "${percentage.toStringAsFixed(1)}%",
+                      style: TextStyle(color: widget.color, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+                style: AppTextStyles.caption,
+              ),
+              const SizedBox(height: 6),
+              AppProgressBar(value: percentage / 100, color: widget.color, height: 6),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(formatRupiah(amount), style: AppTextStyles.amountRow),
+              const SizedBox(width: 4),
+              Icon(
+                _expanded ? PhosphorIconsRegular.caretUp : PhosphorIconsRegular.caretDown,
+                size: 14,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+          onTap: () => setState(() => _expanded = !_expanded),
+        ),
+        if (_expanded)
+          Container(
+            color: AppColors.background,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Column(
+              children: [
+                for (final t in transactions) _buildTransactionLine(t as Map<String, dynamic>),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionLine(Map<String, dynamic> t) {
+    final wId = t['wallet_id'];
+    final wName = widget.walletNames[wId] ?? 'Kas Utama';
+    final wColor = widget.walletColors[wId] ?? AppColors.tintGray;
+    final cleanNote = stripTransactionTags(t['note']?.toString());
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  cleanNote.isNotEmpty ? cleanNote : 'Tanpa catatan',
+                  style: AppTextStyles.body.copyWith(fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => _pickDate(state),
-                        child: Container(
-                          height: 45,
-                          padding: const EdgeInsets.symmetric(horizontal: 15),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                PhosphorIconsRegular.calendarBlank,
-                                size: 18,
-                                color: activeColor,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  dateLabel,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const Icon(
-                                Icons.arrow_drop_down,
-                                size: 18,
-                                color: Colors.grey,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    Text(
+                      DateFormat('dd MMM yyyy').format(DateTime.parse(t['date'])),
+                      style: AppTextStyles.caption,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _showFilterSheet,
-                        child: Container(
-                          height: 45,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                PhosphorIconsRegular.funnel,
-                                size: 16,
-                                color: (state.selectedCategoryIds.isNotEmpty ||
-                                        state.selectedWalletIds.isNotEmpty)
-                                    ? activeColor
-                                    : Colors.grey,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                "Filter",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: (state.selectedCategoryIds.isNotEmpty ||
-                                          state.selectedWalletIds.isNotEmpty)
-                                      ? activeColor
-                                      : Colors.black87,
-                                ),
-                              ),
-                              if (state.selectedCategoryIds.isNotEmpty ||
-                                  state.selectedWalletIds.isNotEmpty)
-                                Container(
-                                  margin: const EdgeInsets.only(left: 6),
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: activeColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    '${state.selectedCategoryIds.length + state.selectedWalletIds.length}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 10,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      height: 1,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(width: 8),
+                    // Flexible: nama dompet panjang terpotong "…", bukan meluap.
+                    Flexible(child: AppChip(label: wName, color: wColor)),
                   ],
                 ),
               ],
             ),
           ),
-
-          Expanded(
-            child: state.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : state.categoryData.isEmpty
-                ? Center(
-                    child: Text(
-                      "Tidak ada data",
-                      style: GoogleFonts.poppins(color: Colors.grey),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      20,
-                      20,
-                      20 + MediaQuery.of(context).padding.bottom,
-                    ),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: 250,
-                          child: Stack(
-                            children: [
-                              PieChart(
-                                PieChartData(
-                                  pieTouchData: PieTouchData(
-                                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                                      setState(() {
-                                        if (event is FlTapUpEvent) {
-                                          if (pieTouchResponse == null ||
-                                              pieTouchResponse.touchedSection == null ||
-                                              pieTouchResponse.touchedSection!.touchedSectionIndex == -1) {
-                                            _touchedIndex = -1;
-                                          } else {
-                                            final newIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                                            if (_touchedIndex == newIndex) {
-                                              _touchedIndex = -1; // toggle off if tapped again
-                                            } else {
-                                              _touchedIndex = newIndex;
-                                            }
-                                          }
-                                        }
-                                      });
-                                    },
-                                  ),
-                                  sectionsSpace: 2,
-                                  centerSpaceRadius: 60,
-                                  sections: () {
-                                    List<PieChartSectionData> sections = [];
-                                    double otherAmount = 0;
-                                    int currentIndex = 0;
-                                    for (int i = 0; i < state.categoryData.length; i++) {
-                                      final item = state.categoryData[i];
-                                      final percentage = (item['amount'] / state.totalAmount) * 100;
-
-                                      if (i < 5 && percentage >= 2) {
-                                        final isTouched = currentIndex == _touchedIndex;
-                                        sections.add(PieChartSectionData(
-                                          color: _chartColors[i % _chartColors.length],
-                                          value: item['amount'],
-                                          title: isTouched ? '${item['name']}\n${percentage.toStringAsFixed(1)}%' : '${percentage.toStringAsFixed(0)}%',
-                                          radius: isTouched ? 65 : 50,
-                                          titleStyle: GoogleFonts.poppins(
-                                            fontSize: isTouched ? 12 : 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            shadows: isTouched ? [const Shadow(color: Colors.black45, blurRadius: 2)] : null,
-                                          ),
-                                        ));
-                                        currentIndex++;
-                                      } else {
-                                        otherAmount += (item['amount'] as num).toDouble();
-                                      }
-                                    }
-
-                                    if (otherAmount > 0) {
-                                      final otherPercentage = (otherAmount / state.totalAmount) * 100;
-                                      final isTouched = currentIndex == _touchedIndex;
-                                      final remainingCount = state.categoryData.length - currentIndex;
-                                      final labelText = "Gabungan\n($remainingCount)";
-                                      sections.add(PieChartSectionData(
-                                        color: Colors.grey.shade400,
-                                        value: otherAmount,
-                                        title: isTouched ? '$labelText\n${otherPercentage.toStringAsFixed(1)}%' : '${otherPercentage.toStringAsFixed(0)}%\n$labelText',
-                                        radius: isTouched ? 65 : 50,
-                                        titleStyle: GoogleFonts.poppins(
-                                          fontSize: isTouched ? 11 : 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          shadows: isTouched ? [const Shadow(color: Colors.black45, blurRadius: 2)] : null,
-                                        ),
-                                      ));
-                                    }
-                                    return sections;
-                                  }(),
-                                ),
-                              ),
-                              Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "Total",
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.grey,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    Text(
-                                      currencyFormat.format(state.totalAmount),
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: state.isExpense
-                                ? AppColors.expense.withOpacity(0.05)
-                                : AppColors.income.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(
-                              color: state.isExpense
-                                  ? AppColors.expense.withOpacity(0.2)
-                                  : AppColors.income.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    state.isExpense
-                                        ? PhosphorIconsBold.trendDown
-                                        : PhosphorIconsBold.trendUp,
-                                    color: state.isExpense
-                                        ? AppColors.expense
-                                        : AppColors.income,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      "Total ${state.isExpense ? 'Pengeluaran' : 'Pemasukan'}",
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.grey.shade700,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    currencyFormat.format(state.totalAmount),
-                                    style: GoogleFonts.poppins(
-                                      color: state.isExpense
-                                          ? AppColors.expense
-                                          : AppColors.income,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (state.totalAmount > 0) ...[
-                                const SizedBox(height: 15),
-                                Divider(color: Colors.grey.shade300, height: 1),
-                                const SizedBox(height: 15),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Rata-rata harian",
-                                      style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
-                                    ),
-                                    Text(
-                                      currencyFormat.format(state.dailyAverage),
-                                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                                if (state.highestTransaction != null) ...[
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          "Terbesar (${state.highestTransaction!['note']})",
-                                          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade600),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        currencyFormat.format(state.highestTransaction!['amount']),
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: state.isExpense ? AppColors.expense : AppColors.income
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        ...List.generate(state.categoryData.length, (index) {
-                          final item = state.categoryData[index];
-                          final percentage =
-                              (item['amount'] / state.totalAmount) * 100;
-                          final color =
-                              _chartColors[index % _chartColors.length];
-
-                          Color rankColor;
-                          Widget rankIcon;
-
-                          if (index == 0) {
-                            rankColor = Colors.amber;
-                            rankIcon = const Icon(
-                              PhosphorIconsFill.medal,
-                              color: Colors.amber,
-                              size: 24,
-                            );
-                          } else if (index == 1) {
-                            rankColor = Colors.grey.shade400;
-                            rankIcon = Icon(
-                              PhosphorIconsFill.medal,
-                              color: Colors.grey.shade400,
-                              size: 24,
-                            );
-                          } else if (index == 2) {
-                            rankColor = Colors.brown.shade300;
-                            rankIcon = Icon(
-                              PhosphorIconsFill.medal,
-                              color: Colors.brown.shade300,
-                              size: 24,
-                            );
-                          } else {
-                            rankColor = color;
-                            rankIcon = Text(
-                              "#${index + 1}",
-                              style: GoogleFonts.poppins(
-                                color: color,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            );
-                          }
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 15),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Theme(
-                              data: Theme.of(
-                                context,
-                              ).copyWith(dividerColor: Colors.transparent),
-                              child: ExpansionTile(
-                                tilePadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                leading: Container(
-                                  width: 45,
-                                  height: 45,
-                                  decoration: BoxDecoration(
-                                    color: rankColor.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: rankIcon,
-                                ),
-                                title: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        item['name'],
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      currencyFormat.format(item['amount']),
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                subtitle: Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            "${item['count']} Transaksi",
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.grey,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                          Text(
-                                            "${percentage.toStringAsFixed(1)}%",
-                                            style: GoogleFonts.poppins(
-                                              color: color,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: LinearProgressIndicator(
-                                          value: (percentage / 100).clamp(0.0, 1.0),
-                                          backgroundColor: color.withOpacity(0.15),
-                                          valueColor: AlwaysStoppedAnimation<Color>(color),
-                                          minHeight: 6,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade50,
-                                      borderRadius: const BorderRadius.vertical(
-                                        bottom: Radius.circular(15),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: (item['transactions'] as List).map((
-                                        t,
-                                      ) {
-                                        final wId = t['wallet_id'];
-                                        final wName =
-                                            state.walletNames[wId] ?? 'Kas Utama';
-                                        final wColor =
-                                            state.walletColors[wId] ?? Colors.grey;
-
-                                        // [FIX] Kita hajar string `[SAVING_ID:]` pakai mesin cuci regex!
-                                        final rawNote =
-                                            t['note']?.toString() ?? '';
-                                        final cleanNote = rawNote
-                                            .replaceAll(
-                                              RegExp(r'\[SAVING_ID:\d+\]'),
-                                              '',
-                                            )
-                                            .trim();
-
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 12,
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      cleanNote.isNotEmpty
-                                                          ? cleanNote
-                                                          : 'Tanpa catatan',
-                                                      style:
-                                                          GoogleFonts.poppins(
-                                                            fontSize: 13,
-                                                            color:
-                                                                Colors.black87,
-                                                          ),
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Row(
-                                                      children: [
-                                                        Text(
-                                                          DateFormat(
-                                                            'dd MMM yyyy',
-                                                          ).format(
-                                                            DateTime.parse(
-                                                              t['date'],
-                                                            ),
-                                                          ),
-                                                          style:
-                                                              GoogleFonts.poppins(
-                                                                fontSize: 11,
-                                                                color:
-                                                                    Colors.grey,
-                                                              ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 8,
-                                                        ),
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 6,
-                                                                vertical: 2,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            color: wColor
-                                                                .withOpacity(
-                                                                  0.1,
-                                                                ),
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  6,
-                                                                ),
-                                                          ),
-                                                          child: Text(
-                                                            wName,
-                                                            style:
-                                                                GoogleFonts.poppins(
-                                                                  fontSize: 9,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  color: wColor,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              const SizedBox(width: 15),
-                                              Text(
-                                                currencyFormat.format(
-                                                  (t['amount'] as num)
-                                                      .toDouble(),
-                                                ),
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.black87,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-          ),
+          const SizedBox(width: 15),
+          Text(formatRupiah((t['amount'] as num).toDouble()), style: AppTextStyles.amountRow),
         ],
       ),
     );
