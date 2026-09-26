@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:catat_uang_app/screens/debt/debt_form_sheet.dart';
 
 final DateFormat _dayFormat = DateFormat('dd MMM yyyy', 'id_ID');
 
@@ -107,6 +108,7 @@ class _DebtDetailScreenState extends ConsumerState<DebtDetailScreen> {
       backLabel: 'Utang',
       titleWidget: _DebtHeader(debt: debt, today: today, color: mainColor),
       actions: [
+        AppNavAction.text('Edit', onPressed: () => showDebtFormSheet(context, debt: debt)),
         AppNavAction.icon(
           PhosphorIconsRegular.trash,
           color: AppColors.expense,

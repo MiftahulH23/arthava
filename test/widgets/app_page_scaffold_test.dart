@@ -109,4 +109,21 @@ void main() {
     final title = tester.getRect(find.text('Detail Utang Panjang'));
     expect(back.right, lessThanOrEqualTo(title.left));
   });
+
+  testWidgets('dua aksi kanan (Edit + ikon) dengan judul kecil muat di 360', (tester) async {
+    await pumpApp(tester, AppPageScaffold(
+      title: 'Detail Utang',
+      backLabel: 'Utang',
+      largeTitle: false,
+      actions: [
+        AppNavAction.text('Edit', onPressed: () {}),
+        AppNavAction.icon(Icons.delete, tooltip: 'Hapus utang', onPressed: () {}),
+      ],
+      children: const [],
+    ), size: const Size(360, 740));
+    expect(tester.takeException(), isNull);
+    final title = tester.getRect(find.text('Detail Utang'));
+    final edit = tester.getRect(find.text('Edit'));
+    expect(title.right, lessThanOrEqualTo(edit.left));
+  });
 }
