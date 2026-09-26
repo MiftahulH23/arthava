@@ -24,7 +24,7 @@ class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
 
   static const double cardHeight = 176;
-  static const double cardStep = 96;
+  static const double cardStep = 116;
 
   /// Tambahan strip untuk kartu bertumpuk yang menampilkan "Bisa dipakai".
   static const double spendableStep = 28;
@@ -468,7 +468,6 @@ class _WalletStack extends StatelessWidget {
               child: _WalletCard(
                 wallet: wallets[i],
                 showSpendable: _showsSpendable(wallets[i]),
-                isLast: i == wallets.length - 1,
                 onTap: () => onTap(wallets[i]),
               ),
             ),
@@ -479,13 +478,10 @@ class _WalletStack extends StatelessWidget {
 }
 
 class _WalletCard extends StatelessWidget {
-  const _WalletCard({required this.wallet, required this.showSpendable, required this.isLast, required this.onTap});
+  const _WalletCard({required this.wallet, required this.showSpendable, required this.onTap});
 
   final WalletModel wallet;
   final bool showSpendable;
-
-  /// Hanya kartu terakhir yang tampil utuh, jadi label "TOTAL SALDO" hanya di sana.
-  final bool isLast;
   final VoidCallback onTap;
 
   @override
@@ -540,11 +536,9 @@ class _WalletCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
+              const AppHeroLabel('TOTAL SALDO'),
+              const SizedBox(height: 2),
               AppHeroAmount(formatRupiah(wallet.balance), fontSize: 24),
-              if (isLast) ...[
-                const SizedBox(height: 2),
-                const AppHeroLabel('TOTAL SALDO'),
-              ],
               if (showSpendable) ...[
                 const SizedBox(height: 6),
                 AppHeroLabel('Bisa dipakai ${formatRupiah(spendableOf(wallet))}'),

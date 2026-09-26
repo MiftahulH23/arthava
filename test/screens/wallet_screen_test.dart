@@ -107,11 +107,13 @@ void main() {
   Rect cardRect(WidgetTester tester, String name) =>
       tester.getRect(find.ancestor(of: find.text(name), matching: find.byType(Positioned)).first);
 
-  testWidgets('TOTAL SALDO hanya di kartu terakhir (strip lain tidak terpotong)', (tester) async {
+  testWidgets('TOTAL SALDO di atas saldo di tiap kartu (mockup), tidak tertutup kartu berikutnya', (tester) async {
     await pumpWallet(tester, sample());
-    expect(find.text('TOTAL SALDO'), findsOneWidget);
-    final label = tester.getRect(find.text('TOTAL SALDO'));
-    expect(cardRect(tester, 'TUNAI').contains(label.center), isTrue);
+    expect(find.text('TOTAL SALDO'), findsNWidgets(3));
+    final firstLabel = tester.getRect(find.text('TOTAL SALDO').first);
+    final firstAmount = tester.getRect(find.text('Rp 9.300.000'));
+    expect(firstLabel.bottom, lessThanOrEqualTo(firstAmount.top));
+    expect(firstAmount.bottom, lessThanOrEqualTo(cardRect(tester, 'GOPAY').top));
   });
 
   testWidgets('pengaturan nonaktif: Bisa dipakai di kartu bertumpuk tidak tertutup kartu berikutnya', (tester) async {
