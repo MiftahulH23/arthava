@@ -1,8 +1,7 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/core/theme_mode_manager.dart';
-import 'package:catat_uang_app/screens/home/home_screen.dart';
 import 'package:catat_uang_app/screens/login/login_screen.dart';
-import 'package:catat_uang_app/screens/lock/lock_screen.dart'; // [NEW] Import Halaman Gembok
+import 'package:catat_uang_app/screens/lock/app_entry_gate.dart'; // [NEW] Import Halaman Gembok
 import 'package:catat_uang_app/theme/app_forui_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,10 +101,10 @@ class MyApp extends StatelessWidget {
           ],
           supportedLocales: const [Locale('id', 'ID'), Locale('en', 'US')],
 
-          // 4. Navigasi Awal (UPDATE LOGIKA DISINI BRO!)
-          // Jika User sudah Login, arahkan ke Gembok (LockScreen) dulu.
-          // Jika belum Login, suruh LoginScreen.
-          home: user != null ? const HomeScreen() : const LoginScreen(),
+          // 4. Navigasi Awal: sudah login → AppEntryGate (Kunci Aplikasi bila
+          // kunci biometrik diaktifkan di Pengaturan, selain itu Beranda);
+          // belum login → LoginScreen.
+          home: user != null ? const AppEntryGate() : const LoginScreen(),
 
           // 5. Bungkus dengan FTheme supaya widget forui tersedia di semua
           // screen yang dinavigasi lewat MaterialApp ini.

@@ -1,18 +1,105 @@
+import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/edit_profile/edit_profile_screen.dart';
 import 'package:catat_uang_app/screens/login/login_screen.dart';
-import 'package:catat_uang_app/screens/settings/include_min_balance_row.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_switch.dart';
+import 'package:catat_uang_app/screens/settings/include_min_balance_row.dart';
+import 'package:catat_uang_app/services/biometric_lock_setting.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// StatelessWidget: layar ini tidak punya state lokal (tidak ada setState di
-// mana pun) — hanya satu aksi one-shot (_logout) tanpa data yang perlu
-// dipertahankan, jadi tidak butuh StatefulWidget atau Riverpod provider.
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+/// Pengaturan. StatefulWidget karena switch "Kunci dengan biometrik" (Plan
+/// B7 Task 5b) menyimpan status lokal; switch saldo minimal (Plan B3) adalah
+/// ConsumerWidget mandiri.
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({
+    super.key,
+    @visibleForTesting this.loadBiometricLock,
+    @visibleForTesting this.saveBiometricLock,
+    @visibleForTesting this.biometricAuth,
+  });
+
+  /// Default: baca/tulis `profiles.use_biometric_lock` user yang login.
+  final Future<bool> Function()? loadBiometricLock;
+  final Future<void> Function(bool value)? saveBiometricLock;
+
+  /// Default: `LocalAuthentication()` (plugin tidak tersedia di test).
+  final LocalAuthentication? biometricAuth;
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _useBiometricLock = false;
+  bool _savingBiometric = false;
+  late final LocalAuthentication _auth = widget.biometricAuth ?? LocalAuthentication();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricLock();
+  }
+
+  Future<void> _loadBiometricLock() async {
+    try {
+      final value = await (widget.loadBiometricLock ?? loadBiometricLockSetting)();
+      if (!mounted) return;
+      setState(() => _useBiometricLock = value);
+    } catch (e) {
+      debugPrint('Gagal memuat pengaturan kunci biometrik: $e');
+    }
+  }
+
+  Future<void> _toggleBiometricLock(bool value) async {
+    // Dikunci sejak awal (termasuk selama prompt biometrik): ketukan kedua
+    // tidak memulai verifikasi kedua.
+    if (_savingBiometric) return;
+    setState(() => _savingBiometric = true);
+    try {
+      if (value) {
+        if (kIsWeb) {
+          AppNotification.error(context, 'Kunci biometrik tidak tersedia di versi web.');
+          return;
+        }
+        final supported = await _auth.canCheckBiometrics && await _auth.isDeviceSupported();
+        if (!mounted) return;
+        if (!supported) {
+          AppNotification.error(context, 'Perangkat ini tidak mendukung biometrik.');
+          return;
+        }
+        try {
+          final ok = await _auth.authenticate(localizedReason: 'Konfirmasi untuk mengaktifkan kunci DompetKu');
+          if (!ok || !mounted) return;
+        } on LocalAuthException catch (e) {
+          // local_auth 3.x melempar exception saat dibatalkan/gagal.
+          final canceled = e.code == LocalAuthExceptionCode.userCanceled ||
+              e.code == LocalAuthExceptionCode.systemCanceled;
+          if (!canceled && mounted) AppNotification.error(context, 'Verifikasi biometrik gagal.');
+          return;
+        }
+      }
+
+      try {
+        await (widget.saveBiometricLock ?? saveBiometricLockSetting)(value);
+        if (!mounted) return;
+        setState(() => _useBiometricLock = value);
+        AppNotification.success(context, value ? 'Kunci biometrik aktif.' : 'Kunci biometrik dimatikan.');
+      } catch (e) {
+        if (mounted) AppNotification.error(context, 'Gagal menyimpan pengaturan.');
+      }
+    } catch (e) {
+      if (mounted) AppNotification.error(context, 'Perangkat ini tidak mendukung biometrik.');
+    } finally {
+      if (mounted) setState(() => _savingBiometric = false);
+    }
+  }
 
   Future<void> _logout(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
@@ -25,161 +112,78 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Cek apakah mode gelap sedang aktif (untuk styling UI halaman ini).
-    // CATATAN: sengaja TIDAK memakai AppCard di sini — AppCard (forui)
-    // light-only by design, sedangkan layar ini mendukung dark mode secara
-    // manual lewat Container/ListTile dinamis. Memakai AppCard akan
-    // meregresi dark mode di layar ini.
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final contentColor = isDark ? Colors.white : Colors.black;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-
-    return Scaffold(
-      // Background otomatis ikut tema dari main.dart
-      appBar: AppBar(
-        title: Text(
-          "Pengaturan",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: contentColor,
+  /// Baris grup "Umum". Baris terakhir adalah switch saldo minimal dari
+  /// Plan B3 (`IncludeMinBalanceRow`, ConsumerWidget mandiri).
+  List<Widget> _generalRows(BuildContext context) => [
+        AppListRow(
+          leading: const AppIconTile(
+            icon: PhosphorIconsFill.user,
+            color: AppColors.primary,
+            filled: true,
+          ),
+          title: 'Profil Akun',
+          subtitle: 'Atur nama dan info akun',
+          showChevron: true,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+            );
+          },
+        ),
+        const IncludeMinBalanceRow(),
+        AppListRow(
+          leading: const AppIconTile(icon: PhosphorIconsFill.fingerprint, color: AppColors.primary, filled: true),
+          title: 'Kunci dengan biometrik',
+          subtitle: 'Minta sidik jari / Face ID saat aplikasi dibuka',
+          trailing: AppSwitch(
+            value: _useBiometricLock,
+            onChanged: _savingBiometric ? null : _toggleBiometricLock,
           ),
         ),
-        centerTitle: true,
-        // Background & Icon AppBar otomatis ikut tema dari main.dart
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: contentColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPageScaffold(
+      title: 'Pengaturan',
+      backLabel: 'Beranda',
+      children: [
+        AppGroupedSection(header: 'Umum', children: _generalRows(context)),
+        AppGroupedSection(
+          header: 'Lainnya',
           children: [
-            _buildSectionHeader("Umum"),
-
-            // 1. PROFIL AKUN
-            _buildSettingItem(
-              icon: PhosphorIconsFill.user,
-              title: "Profil Akun",
-              subtitle: "Atur nama dan info akun",
-              cardColor: cardColor,
-              contentColor: contentColor,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const EditProfileScreen(),
-                  ),
-                );
-              },
-            ),
-            // Sementara (layar ini didesain ulang di Plan B7): baris pengaturan
-            // saldo minimal di grup "Umum".
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: AppGroupedSection(children: [IncludeMinBalanceRow()]),
-            ),
-
-
-
-            const SizedBox(height: 20),
-            _buildSectionHeader("Lainnya"),
-
-            // 3. TENTANG APLIKASI
-            _buildSettingItem(
-              icon: PhosphorIconsFill.info,
-              title: "Tentang Aplikasi",
-              subtitle: "Versi 1.0.0",
-              cardColor: cardColor,
-              contentColor: contentColor,
+            AppListRow(
+              leading: const AppIconTile(
+                icon: PhosphorIconsFill.info,
+                color: AppColors.tintBlue,
+                filled: true,
+              ),
+              title: 'Tentang Aplikasi',
+              subtitle: 'Versi 1.0.0',
+              showChevron: true,
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text("Aplikasi DompetKu v1.0 by Miftahul Huda"),
+                    content: Text('Aplikasi DompetKu v1.0 by Miftahul Huda'),
                   ),
                 );
               },
             ),
-
-            // 4. KELUAR / LOGOUT
-            _buildSettingItem(
-              icon: PhosphorIconsFill.signOut,
-              title: "Keluar",
-              subtitle: "Logout dari akun",
-              cardColor: cardColor,
-              contentColor: contentColor, // Text default
-              iconColor: Colors.red,
-              textColor: Colors.red,
+            AppListRow(
+              leading: const AppIconTile(
+                icon: PhosphorIconsFill.signOut,
+                color: AppColors.expense,
+                filled: true,
+              ),
+              title: 'Keluar',
+              titleColor: AppColors.expense,
+              subtitle: 'Logout dari akun',
               onTap: () => _logout(context),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-          fontSize: 14,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingItem({
-    required IconData icon,
-    required String title,
-    required Color cardColor, // Warna kartu dinamis
-    required Color contentColor, // Warna teks dinamis
-    String? subtitle,
-    VoidCallback? onTap,
-    Widget? trailing,
-    Color? iconColor,
-    Color? textColor,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor, // Pakai warna dinamis
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: (iconColor ?? AppColors.primary).withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor ?? AppColors.primary, size: 22),
-        ),
-        title: Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: textColor ?? contentColor, // Pakai warna dinamis
-          ),
-        ),
-        subtitle: subtitle != null
-            ? Text(
-                subtitle,
-                style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-              )
-            : null,
-        trailing:
-            trailing ??
-            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      ),
+      ],
     );
   }
 }

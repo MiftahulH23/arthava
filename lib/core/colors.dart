@@ -6,6 +6,8 @@ class AppColors {
   static const Color white = Colors.white;
   static const Color income = Color(0xFF2E9E68); // Hijau, dibedakan dari primary
   static const Color expense = Color(0xFFE0564F); // Merah soft
+  static const Color incomeSoft = Color(0xFFE3F4EB); // Latar lembut hijau (toast sukses)
+  static const Color expenseSoft = Color(0xFFFCE5E3); // Latar lembut merah (toast error)
   static const Color textPrimary = Color(0xFF1C1C1E); // Hitam iOS
   static const Color textSecondary = Color(0xFF8E8E93); // Abu-abu iOS
   static const Color accent = Color(0xFFFF9500); // Oranye hangat, aksen pelengkap

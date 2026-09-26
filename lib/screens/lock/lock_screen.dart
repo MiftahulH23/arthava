@@ -1,21 +1,26 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/home/home_screen.dart';
-import 'package:catat_uang_app/widgets/app_button.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class LockScreen extends StatefulWidget {
-  const LockScreen({super.key});
+  const LockScreen({super.key, @visibleForTesting this.auth});
+
+  /// Hanya untuk test: pengganti `LocalAuthentication` (plugin tidak tersedia
+  /// di lingkungan test). Produksi selalu memakai `const LockScreen()`.
+  final LocalAuthentication? auth;
 
   @override
   State<LockScreen> createState() => _LockScreenState();
 }
 
 class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
-  final LocalAuthentication _auth = LocalAuthentication();
+  late final LocalAuthentication _auth = widget.auth ?? LocalAuthentication();
   bool _isLoading = false;
   bool _canCheckBiometrics = false;
   bool _showManualButton = false;
@@ -94,6 +99,19 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
           setState(() => _showManualButton = true);
         }
       }
+    } on LocalAuthException catch (e) {
+      // local_auth 3.x: batal/gagal dilempar sebagai exception (tidak pernah
+      // `false` di Android). Tanpa ini layar macet tanpa tombol "Buka Kunci".
+      debugPrint("Error Auth: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _showManualButton = true;
+        });
+        final canceled = e.code == LocalAuthExceptionCode.userCanceled ||
+            e.code == LocalAuthExceptionCode.systemCanceled;
+        if (!canceled) AppNotification.error(context, "Gagal menggunakan biometrik.");
+      }
     } on PlatformException catch (e) {
       debugPrint("Error Auth: $e");
       if (mounted) {
@@ -117,88 +135,64 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    const backgroundColor = Colors.white;
-    const textColor = Colors.black87;
-
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(30),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-
-                Container(
-                  padding: const EdgeInsets.all(25),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.lock_outline,
-                    color: AppColors.primary,
-                    size: 80,
-                  ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            children: [
+              const Spacer(),
+              Container(
+                width: 100,
+                height: 100,
+                decoration: const BoxDecoration(
+                  color: AppColors.primarySoft,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 30),
-
-                Text(
-                  "Aplikasi Terkunci",
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: const Icon(
+                  PhosphorIconsFill.lockSimple,
+                  color: AppColors.primary,
+                  size: 46,
                 ),
-                const SizedBox(height: 12),
-
-                Text(
-                  "Demi keamanan datamu, silakan buka kunci menggunakan biometrik perangkat.",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: textColor.withOpacity(0.8),
-                    fontSize: 14,
-                  ),
+              ),
+              const SizedBox(height: 24),
+              Text('Aplikasi Terkunci', style: AppTextStyles.title),
+              const SizedBox(height: 10),
+              Text(
+                'Demi keamanan datamu, silakan buka kunci menggunakan biometrik perangkat.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.subhead.copyWith(height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              const Icon(
+                PhosphorIconsRegular.userFocus,
+                size: 64,
+                color: AppColors.primary,
+              ),
+              const SizedBox(height: 32),
+              if (_isLoading)
+                Column(
+                  children: [
+                    const CircularProgressIndicator(color: AppColors.primary),
+                    const SizedBox(height: 16),
+                    Text('Sedang memverifikasi...', style: AppTextStyles.subhead),
+                  ],
                 ),
-                const SizedBox(height: 50),
-
-                if (_isLoading)
-                  Column(
-                    children: [
-                      const CircularProgressIndicator(color: AppColors.primary),
-                      const SizedBox(height: 20),
-                      Text(
-                        "Sedang memverifikasi...",
-                        style: GoogleFonts.poppins(
-                          color: textColor.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                if (!_isLoading && _showManualButton)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: AppButton(
-                      label: "Buka Kunci",
-                      onPressed: _authenticateWithBiometrics,
-                    ),
-                  ),
-
-                const Spacer(),
-                Text(
-                  "Aman bersama DompetKu",
-                  style: GoogleFonts.poppins(
-                    color: textColor.withOpacity(0.3),
-                    fontSize: 10,
-                  ),
+              if (!_isLoading && _showManualButton)
+                AppPrimaryButton(
+                  label: 'Buka Kunci',
+                  onPressed: _authenticateWithBiometrics,
                 ),
-              ],
-            ),
+              const Spacer(),
+              Text(
+                'Aman bersama DompetKu',
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 11,
+                  color: AppColors.textSecondary.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
           ),
         ),
       ),

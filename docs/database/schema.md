@@ -80,6 +80,7 @@ Diekspor user dari SQL Editor pada 2026-09-24 (schema `public`). Sumber resmi un
 | `created_at` | timestamp with time zone | ya | `now()` |
 | `updated_at` | timestamp with time zone | ya |  |
 | `include_min_balance` | boolean | TIDAK | `true` |
+| `use_biometric_lock` | boolean | TIDAK | `false` |
 
 ## `recurring_transactions`
 

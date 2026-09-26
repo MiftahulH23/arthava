@@ -39,11 +39,28 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
   throws `StateError: uninitialized provider`. To force a refresh,
   `ref.invalidate(...)` the provider; don't rely on changing a widget's
   `ValueKey`.
-- `lib/widgets/` — shared UI built on forui: `AppButton`, `AppCard`,
-  `AppTabSelector`, `AppBottomNav`, `showAppBottomSheet`. Use these
-  instead of hand-rolling tabs, sheets, or buttons in a screen.
+- `lib/widgets/` — shared iOS-style UI (API contract in spec §6 of
+  `docs/superpowers/specs/2026-09-24-redesign-phase-b-design.md`):
+  `AppPageScaffold` + `AppNavAction` (large title, nav bar, "+" action),
+  `AppGroupedSection` + `AppListRow` + `AppIconTile` (grouped lists),
+  `AppSelectRow`, `AppWalletSelectRow` and `AppSearchableGroup` (picker
+  rows/sheets, search field above 8 items), `AppSegmentedControl`,
+  `AppChipTabs`, `AppHeroCard`, `AppSurfaceCard`, `AppSummaryWidget`,
+  `AppProgressBar`/`AppProgressRing`, `AppChip`, `AppCallout`,
+  `AppPrimaryButton`/`AppPillButton`/`AppPill`, `AppSwitch`,
+  `AppSwipeActions`, `AppAmountDisplay`/`AppAmountField`, `AppTextField`,
+  `AppEmptyState`, `AppBottomNav`; modals `showAppFormSheet`,
+  `showAppDatePicker`/`showAppMonthPicker`/`showAppYearPicker`/
+  `showAppDateRangePicker`, `showAppPeriodPicker`, `showAppConfirmDialog`/
+  `showAppChoiceDialog`, `runWithAppLoading` (`showAppBottomSheet` is the
+  low-level sheet they build on). Use these instead of hand-rolling cards,
+  rows, tabs, sheets, or buttons in a screen. Screen widget tests use
+  `pumpApp` from `test/helpers/pump_app.dart` with fake provider notifiers.
 - `lib/services/` — thin wrappers around Supabase/external APIs
-  (`auth_service.dart`, `gemini_service.dart`, `pdf_service.dart`).
+  (`auth_service.dart`, `gemini_service.dart`, `pdf_service.dart`) plus
+  data/money logic pulled out of screens so the E2E can call it
+  (`zakat_service.dart`, `export_report_service.dart`,
+  `ai_context_service.dart`).
 
 ## Conventions
 
@@ -69,15 +86,15 @@ lock, and an AI advisor / receipt scanner powered by Google Gemini
   `showDatePicker`, `showDateRangePicker`, `showModalBottomSheet` or
   `showAppBottomSheet` directly from a screen.
   `test/architecture/modal_consistency_test.dart` enforces this; its
-  `_legacy` list names the not-yet-redesigned screens and the plan that
-  cleans each one — remove a file's entry when its plan does.
-- **Font:** `google_fonts` Plus Jakarta Sans
-  (`GoogleFonts.plusJakartaSansTextTheme(...)`), applied once in
-  `main.dart`'s `ThemeData.textTheme` (light & dark), and mapped into
-  `appForuiTheme`'s typography for forui widgets. Many screens still
-  call `GoogleFonts.poppins(...)` inline, which overrides the theme;
-  don't add new ones, and replace them with theme text styles when you
-  touch a screen.
+  `_legacy` allowlist is empty since Phase B — keep it that way.
+- **Font:** `google_fonts` Plus Jakarta Sans. `main.dart` applies
+  `GoogleFonts.plusJakartaSansTextTheme(...)` to `ThemeData.textTheme`
+  (light & dark), `appForuiTheme` maps it into forui typography, and
+  screens use the named styles in `lib/theme/app_text_styles.dart`
+  (`AppTextStyles.largeTitle`, `.title`, `.body`, ...). Don't call
+  `GoogleFonts.*` from screens or widgets; `test/conventions_test.dart`
+  fails on any `GoogleFonts.poppins` and on hardcoded colors in
+  `lib/screens`/`lib/widgets`.
 - **Icons:** `phosphor_flutter` (Regular for inactive, Fill for active).
   Swapping to `hugeicons` and to Phosphor Duotone were both tried and
   rejected by the user.
