@@ -69,7 +69,7 @@ void main() {
     expect(find.text('Dana Darurat'), findsOneWidget);
     expect(find.textContaining('/ hari agar tercapai.'), findsOneWidget);
     expect(find.text('45%'), findsOneWidget);
-    expect(find.text('Tercapai! 🎉'), findsOneWidget);
+    expect(find.text('Tercapai!'), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsNothing);
   });
 

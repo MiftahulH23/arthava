@@ -468,7 +468,7 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
             children: [
               Flexible(
                 child: Text(
-                  remaining <= 0 ? "Tercapai! 🎉" : "Kurang ${formatRupiah(remaining)}",
+                  remaining <= 0 ? "Tercapai!" : "Kurang ${formatRupiah(remaining)}",
                   style: remaining <= 0
                       ? AppTextStyles.bodyStrong.copyWith(color: AppColors.income)
                       : AppTextStyles.caption.copyWith(fontStyle: FontStyle.italic),
