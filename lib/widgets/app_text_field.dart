@@ -18,6 +18,7 @@ class AppTextField extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.textCapitalization = TextCapitalization.none,
+    this.label,
     this.onChanged,
     this.inputFormatters,
     super.key,
@@ -35,13 +36,17 @@ class AppTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final TextCapitalization textCapitalization;
+
+  /// Label kecil opsional di atas input (gaya baris iOS "Nama Lengkap" +
+  /// nilai). Null = tanpa label.
+  final String? label;
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(16);
-    return TextField(
+    final field = TextField(
       controller: controller,
       focusNode: focusNode,
       autofocus: autofocus,
@@ -70,6 +75,18 @@ class AppTextField extends StatelessWidget {
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
       ),
+    );
+    if (label == null) return field;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: Text(label!, style: AppTextStyles.caption),
+        ),
+        field,
+      ],
     );
   }
 }

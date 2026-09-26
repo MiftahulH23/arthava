@@ -1,39 +1,58 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/providers/edit_profile_provider.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Inisial avatar memakai initialsOf() dari lib/core/formatters.dart (dibuat Plan B3,
+// sudah dites di sana): '?' untuk nama kosong → avatar menampilkan ikon user.
+
 class EditProfileScreen extends ConsumerStatefulWidget {
-  const EditProfileScreen({super.key});
+  const EditProfileScreen({
+    super.key,
+    @visibleForTesting this.initialName,
+    @visibleForTesting this.initialEmail,
+  });
+
+  /// Hanya untuk test: nilai awal pengganti metadata Auth Supabase.
+  /// Produksi selalu `const EditProfileScreen()`.
+  final String? initialName;
+  final String? initialEmail;
 
   @override
   ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
-  // Controller jangan di-init kosong, tapi nanti di initState
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
 
   @override
   void initState() {
     super.initState();
-    final user = Supabase.instance.client.auth.currentUser;
+    String initialName = widget.initialName ?? '';
+    String initialEmail = widget.initialEmail ?? '';
 
-    // ISI DATA LANGSUNG (Synchronous) dari Metadata Auth
-    // Ini biar pas buka layar, textfield TIDAK KOSONG
-    String initialName = user?.userMetadata?['name'] ?? "";
-    String initialEmail = user?.email ?? "";
+    if (widget.initialName == null && widget.initialEmail == null) {
+      // ISI DATA LANGSUNG (Synchronous) dari Metadata Auth supaya textfield
+      // tidak kosong saat layar dibuka. Data terbaru dari tabel `profiles`
+      // disinkronkan lewat ref.listen di build().
+      final user = Supabase.instance.client.auth.currentUser;
+      initialName = user?.userMetadata?['name'] ?? '';
+      initialEmail = user?.email ?? '';
+    }
 
     _nameController = TextEditingController(text: initialName);
     _emailController = TextEditingController(text: initialEmail);
-
-    // Cek lagi ke Database (untuk memastikan data paling update) dilakukan
-    // oleh editProfileProvider saat pertama kali di-watch/build di bawah.
   }
 
   @override
@@ -67,8 +86,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(editProfileProvider);
 
-    // Kalau data di database beda sama yang di textfield, update — meniru
-    // _loadLatestData yang lama.
     ref.listen<EditProfileState>(editProfileProvider, (previous, next) {
       if (next.latestName != null && _nameController.text != next.latestName) {
         _nameController.text = next.latestName!;
@@ -77,141 +94,91 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     final isLoading = state.isSaving;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          "Edit Profil",
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+    return AppPageScaffold(
+      title: 'Edit Profil',
+      backLabel: 'Pengaturan',
+      titleWidget: _ProfileHeader(controller: _nameController),
+      bottomBar: AppPrimaryButton(
+        label: 'Simpan Perubahan',
+        color: AppColors.textPrimary,
+        loading: isLoading,
+        onPressed: isLoading ? null : _updateProfile,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      children: [
+        AppGroupedSection(
           children: [
-            // AVATAR
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+            AppListRow(
+              leading: const Icon(
+                PhosphorIconsRegular.envelope,
+                color: AppColors.textSecondary,
+                size: 22,
               ),
-              child: const Icon(
-                PhosphorIconsFill.user,
-                size: 60,
-                color: AppColors.primary,
+              title: 'Email',
+              subtitle: _emailController.text,
+              trailing: const Icon(
+                PhosphorIconsRegular.lockSimple,
+                color: AppColors.textSecondary,
+                size: 18,
               ),
             ),
-            const SizedBox(height: 30),
-
-            // FORM EMAIL
-            _buildTextField(
-              label: "Email",
-              controller: _emailController,
-              icon: PhosphorIconsRegular.envelope,
-              isReadOnly: true,
-            ),
-            const SizedBox(height: 15),
-
-            // FORM NAMA
-            _buildTextField(
-              label: "Nama Lengkap",
+            AppTextField(
               controller: _nameController,
+              label: 'Nama Lengkap',
+              hint: 'Masukkan nama kamu',
               icon: PhosphorIconsRegular.user,
-              hint: "Masukkan nama kamu",
-            ),
-            const SizedBox(height: 40),
-
-            // TOMBOL SIMPAN
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : _updateProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.textPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  elevation: 0,
-                ),
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        "Simpan Perubahan",
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
+}
 
-  Widget _buildTextField({
-    required String label,
-    required TextEditingController controller,
-    required IconData icon,
-    bool isReadOnly = false,
-    String? hint,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: isReadOnly ? Colors.grey.shade100 : Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: TextField(
-            controller: controller,
-            readOnly: isReadOnly,
-            style: GoogleFonts.poppins(
-              color: isReadOnly ? Colors.grey : AppColors.textPrimary,
-              fontWeight: FontWeight.w500,
+/// Avatar inisial + judul "Edit Profil" (mockup), ikut berubah saat nama diketik.
+class _ProfileHeader extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _ProfileHeader({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Center(
+        heightFactor: 1,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) {
+                final raw = initialsOf(value.text);
+                final initials = raw == '?' ? '' : raw;
+                return Container(
+                  width: 96,
+                  height: 96,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: initials.isEmpty
+                      ? const Icon(PhosphorIconsFill.user, color: Colors.white, size: 44)
+                      : Text(
+                          initials,
+                          style: AppTextStyles.title.copyWith(
+                            color: Colors.white,
+                            fontSize: 32,
+                          ),
+                        ),
+                );
+              },
             ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: GoogleFonts.poppins(color: Colors.grey.shade400),
-              prefixIcon: Icon(icon, color: isReadOnly ? Colors.grey : AppColors.primary),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-            ),
-          ),
+            const SizedBox(height: 10),
+            Text('Edit Profil', style: AppTextStyles.headline),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
