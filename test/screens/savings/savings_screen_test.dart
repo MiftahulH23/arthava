@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/models/saving_model.dart';
 import 'package:catat_uang_app/providers/savings_provider.dart';
+import 'package:catat_uang_app/widgets/app_amount_display.dart';
 import 'package:catat_uang_app/screens/savings/savings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,7 @@ class _FakeSavingsNotifier extends SavingsNotifier {
   final SavingsState _initial;
   final calls = <String>[];
   String? processResult;
+  Duration delay = Duration.zero;
   @override
   SavingsState build() => _initial;
   @override
@@ -24,6 +26,7 @@ class _FakeSavingsNotifier extends SavingsNotifier {
     String? notes,
   }) async {
     calls.add('process:$isDeposit:$savingName:$amount:$walletId:$location:$notes');
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     return processResult;
   }
 
@@ -178,6 +181,68 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(fake.calls, ['delete:Dana Darurat']);
     expect(find.text('Tabungan dihapus'), findsOneWidget);
+    await settleToast(tester);
+  });
+
+  testWidgets('Tarik ditolak server (respons lambat) → toast tampil, sheet tetap terbuka', (tester) async {
+    final fake = await _pump(tester, filled());
+    fake.delay = const Duration(milliseconds: 500);
+    fake.processResult = 'Saldo tabungan tidak cukup! Sisa: Rp 150.000';
+    await tester.tap(find.text('Tarik').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '900000');
+    await tester.tap(find.text('Konfirmasi Penarikan'));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Saldo tabungan tidak cukup! Sisa: Rp 150.000'), findsOneWidget);
+    expect(find.text('Tarik dari Dana Darurat'), findsOneWidget);
+    await settleToast(tester);
+  });
+
+  testWidgets('Setor sukses (respons lambat) → sheet tertutup + toast "Berhasil Menabung!"', (tester) async {
+    final fake = await _pump(tester, filled());
+    fake.delay = const Duration(milliseconds: 500);
+    await tester.tap(find.text('Setor').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '10000');
+    await tester.tap(find.text('Konfirmasi Setoran'));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Berhasil Menabung!'), findsOneWidget);
+    await settleToast(tester);
+    expect(find.text('Setor ke Dana Darurat'), findsNothing);
+  });
+
+  testWidgets('ketuk ganda Konfirmasi Setoran → uang diproses sekali', (tester) async {
+    final fake = await _pump(tester, filled());
+    fake.delay = const Duration(milliseconds: 500);
+    await tester.tap(find.text('Setor').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '10000');
+    final button = find.text('Konfirmasi Setoran');
+    await tester.tap(button);
+    await tester.tap(button, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(fake.calls, hasLength(1));
+    await settleToast(tester);
+  });
+
+  testWidgets('ketuk ganda Simpan Tabungan (dengan setoran awal) → diproses sekali', (tester) async {
+    final fake = await _pump(tester, filled());
+    fake.delay = const Duration(milliseconds: 500);
+    await tester.tap(find.byTooltip('Tambah'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Contoh: Dana Darurat'), 'Liburan');
+    await tester.enterText(find.descendant(of: find.byType(AppAmountField), matching: find.byType(TextField)), '10000');
+    await tester.ensureVisible(find.text('Simpan Tabungan'));
+    final button = find.text('Simpan Tabungan');
+    await tester.tap(button);
+    await tester.tap(button, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(fake.calls, hasLength(1));
     await settleToast(tester);
   });
 }

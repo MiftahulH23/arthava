@@ -469,6 +469,56 @@ void main() {
     expect(_failures, isEmpty);
   }, skip: _skip, timeout: const Timeout(Duration(minutes: 3)));
 
+  test('perbaikan review B5: nama tabungan beda huruf/spasi, pesan server', () async {
+    _failures.clear();
+    final t = _Temp();
+    await t.snapshotCategories();
+    container.listen(savingsProvider, (_, _) {});
+    container.listen(targetProvider, (_, _) {});
+    await settle();
+    final savings = container.read(savingsProvider.notifier);
+    final target = container.read(targetProvider.notifier);
+    t.savingNames.addAll({'E2E Tab Case', 'e2e tab case '});
+    try {
+      final walletId = await t.wallet('E2E Review W', 100000);
+      await db.from('savings').insert([
+        {'user_id': userId, 'name': 'E2E Tab Case', 'amount': 100000},
+        {'user_id': userId, 'name': 'e2e tab case ', 'amount': 50000},
+      ]);
+      await savings.fetchSavings();
+      await savings.fetchWallets();
+      final keys = container.read(savingsProvider).groupedSavings.keys.where((k) => k.toLowerCase() == 'e2e tab case');
+      check('V1 app menampilkan satu kelompok untuk dua ejaan', keys.length == 1, keys.toList());
+
+      final r1 = await savings.processSavingTransaction(
+          isDeposit: false, savingName: keys.first, amount: 120000, walletId: walletId);
+      check('V2 tarik 120.000 dari kelompok 150.000 (dua ejaan) diterima', r1 == null, r1);
+      final rows = await db.from('savings').select('amount').eq('user_id', userId).ilike('name', '%e2e tab case%');
+      final total = rows.fold<double>(0, (s, r) => s + (r['amount'] as num).toDouble());
+      check('V2 sisa kelompok 30.000', total == 30000, total);
+
+      final r2 = await savings.processSavingTransaction(
+          isDeposit: false, savingName: 'e2e tab case ', amount: 40000, walletId: walletId);
+      check('V3 tarik 40.000 dari sisa 30.000 ditolak lewat ejaan lain', r2 == 'Saldo tabungan tidak cukup! Sisa: Rp 30.000', r2);
+
+      final r3 = await savings.processSavingTransaction(isDeposit: true, savingName: keys.first, amount: 0, walletId: walletId);
+      check('V4 setor 0 → pesan server "Isi nominal dengan benar!"', r3 == 'Isi nominal dengan benar!', r3);
+
+      await target.addTarget(name: 'E2E Target Review', targetAmount: 100000);
+      final tid = (await db.from('targets').select('id').eq('user_id', userId).eq('name', 'E2E Target Review').single())['id'] as int;
+      t.targets.add(tid);
+      await target.fetchTargets();
+      await target.fetchWallets();
+      final tm = container.read(targetProvider).targets.firstWhere((x) => x.id == tid);
+      final r4 = await target.depositToTarget(target: tm, rawAmount: 0, walletId: walletId);
+      check('V5 nabung target 0 → pesan server "Nominal tidak boleh kosong!"', r4 == 'Nominal tidak boleh kosong!', r4);
+    } finally {
+      await t.cleanup();
+      report('review');
+    }
+    expect(_failures, isEmpty);
+  }, skip: _skip, timeout: const Timeout(Duration(minutes: 3)));
+
   tearDownAll(() async {
     if (_skip) return;
     container.dispose();

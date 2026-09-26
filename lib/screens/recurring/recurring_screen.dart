@@ -166,7 +166,10 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
               AppPrimaryButton(
                 label: isEdit ? "Perbarui Jadwal" : "Simpan Jadwal",
                 onPressed: () async {
-                  if (amountController.text.isEmpty || selectedCatId == null || selectedWalletId == null) {
+                  // Id lama milik dompet/kategori yang sudah dihapus dianggap kosong.
+                  final walletExists = ref.read(recurringProvider).wallets.any((w) => w['id'] == selectedWalletId);
+                  final categoryExists = filteredCats.any((c) => c['id'] == selectedCatId);
+                  if (amountController.text.isEmpty || !categoryExists || !walletExists) {
                     AppNotification.error(context, "Nominal, Kategori, dan Dompet wajib diisi!");
                     return;
                   }

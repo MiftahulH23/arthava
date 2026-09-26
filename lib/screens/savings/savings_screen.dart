@@ -46,6 +46,7 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
     final amountController = TextEditingController();
     final initialWallets = ref.read(savingsProvider).wallets;
     int? selectedWalletId = initialWallets.isNotEmpty ? initialWallets.first['id'] as int : null;
+    var busy = false; // cegah ketuk ganda menyetor dua kali
 
     showAppFormSheet<void>(
       context: context,
@@ -90,7 +91,9 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
               const SizedBox(height: 20),
               AppPrimaryButton(
                 label: "Simpan Tabungan",
+                loading: busy,
                 onPressed: () async {
+                  if (busy) return;
                   if (nameController.text.isEmpty) {
                     AppNotification.error(context, "Nama tabungan tidak boleh kosong!");
                     return;
@@ -106,6 +109,8 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                     return;
                   }
 
+                  busy = true;
+                  setSheetState(() {});
                   try {
                     if (amt > 0) {
                       final error = await ref.read(savingsProvider.notifier).processSavingTransaction(
@@ -136,6 +141,9 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                     if (context.mounted) Navigator.pop(context);
                   } catch (e) {
                     if (context.mounted) AppNotification.error(context, "Gagal membuat tabungan.");
+                  } finally {
+                    busy = false;
+                    if (context.mounted) setSheetState(() {});
                   }
                 },
               ),
@@ -209,6 +217,7 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
     final initialWallets = ref.read(savingsProvider).wallets;
     int? selectedWalletId = initialWallets.isNotEmpty ? initialWallets.first['id'] as int : null;
     final actionColor = isDeposit ? AppColors.primary : AppColors.tintOrange;
+    var busy = false;
 
     showAppFormSheet<void>(
       context: context,
@@ -241,30 +250,33 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
               AppPrimaryButton(
                 label: isDeposit ? "Konfirmasi Setoran" : "Konfirmasi Penarikan",
                 color: actionColor,
-                onPressed: () {
+                loading: busy,
+                onPressed: () async {
+                  if (busy) return;
                   if (amountController.text.isEmpty || selectedWalletId == null) {
                     AppNotification.error(context, "Isi nominal dengan benar!");
                     return;
                   }
                   final double amt = parseRupiah(amountController.text).toDouble();
-                  // Sama seperti sebelumnya: tidak di-await, sheet langsung ditutup.
-                  ref
-                      .read(savingsProvider.notifier)
-                      .processSavingTransaction(
+                  // Hasil server ditunggu (tolakan "Saldo tabungan tidak cukup!" harus
+                  // terlihat); sheet ditutup hanya bila berhasil.
+                  busy = true;
+                  setSheetState(() {});
+                  final error = await ref.read(savingsProvider.notifier).processSavingTransaction(
                         isDeposit: isDeposit,
                         savingName: groupName,
                         amount: amt,
                         walletId: selectedWalletId!,
-                      )
-                      .then((error) {
-                    if (!context.mounted) return;
-                    if (error != null) {
-                      AppNotification.error(context, error);
-                    } else {
-                      AppNotification.success(context, isDeposit ? "Berhasil Menabung!" : "Berhasil Dicairkan!");
-                    }
-                  });
+                      );
+                  busy = false;
+                  if (!context.mounted) return;
+                  if (error != null) {
+                    setSheetState(() {});
+                    AppNotification.error(context, error);
+                    return;
+                  }
                   Navigator.pop(context);
+                  AppNotification.success(context, isDeposit ? "Berhasil Menabung!" : "Berhasil Dicairkan!");
                 },
               ),
             ],

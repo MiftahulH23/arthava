@@ -108,11 +108,13 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
     );
     final locationController = TextEditingController(text: saving.location ?? '');
     final notesController = TextEditingController(text: saving.notes ?? '');
+    var busy = false; // ketuk ganda tidak memproses dua kali
 
     showAppFormSheet<void>(
       context: context,
       title: "Edit ${isDeposit ? 'Setoran' : 'Tarikan'}",
-      builder: (context) => Column(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -132,10 +134,14 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
           const SizedBox(height: 20),
           AppPrimaryButton(
             label: "Simpan Perubahan",
+            loading: busy,
             onPressed: () async {
+              if (busy) return;
               final double rawAmount = parseRupiah(amountController.text).toDouble();
               // [LOGIKA] Dulu double.parse('') melempar FormatException di luar try.
               if (rawAmount <= 0) return;
+              busy = true;
+              setSheetState(() {});
               try {
                 await ref.read(savingsProvider.notifier).editSavingItem(
                       saving: saving,
@@ -150,10 +156,14 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
                 }
               } catch (e) {
                 if (context.mounted) AppNotification.error(context, "Gagal update data.");
+              } finally {
+                busy = false;
+                if (context.mounted) setSheetState(() {});
               }
             },
           ),
         ],
+      ),
       ),
     );
   }

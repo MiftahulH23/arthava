@@ -143,7 +143,8 @@ class SavingsNotifier extends AutoDisposeNotifier<SavingsState> {
         final left = double.tryParse(e.message.substring(prefix.length)) ?? 0;
         return "Saldo tabungan tidak cukup! Sisa: ${formatRupiah(left)}";
       }
-      if (e.code == 'P0001' && e.message == 'Saldo dompet tidak cukup!') {
+      // Tolakan server lain (saldo dompet kurang, nominal 0, dompet terhapus).
+      if (e.code == 'P0001') {
         fetchWallets();
         return e.message;
       }

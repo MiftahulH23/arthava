@@ -21,6 +21,8 @@ class _FakeRecurringNotifier extends RecurringNotifier {
   Future<void> deleteItem(int id) async => calls.add('delete:$id');
   @override
   Future<void> addRecurring(Map<String, dynamic> data) async => calls.add('add');
+  @override
+  Future<void> updateRecurring(int id, Map<String, dynamic> data) async => calls.add('update:$id');
 }
 
 RecurringTransactionModel _item({
@@ -148,6 +150,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Simpan Jadwal'));
     await tester.tap(find.text('Simpan Jadwal'));
+    await tester.pump();
+    expect(find.text('Nominal, Kategori, dan Dompet wajib diisi!'), findsOneWidget);
+    expect(fake.calls, isEmpty);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('edit jadwal yang dompet & kategorinya sudah dihapus → validasi, tidak menyimpan id lama', (tester) async {
+    final fake = await _pump(tester, filled());
+    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).last);
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Jadwal Tagihan'), findsOneWidget);
+    await tester.ensureVisible(find.text('Perbarui Jadwal'));
+    await tester.tap(find.text('Perbarui Jadwal'));
     await tester.pump();
     expect(find.text('Nominal, Kategori, dan Dompet wajib diisi!'), findsOneWidget);
     expect(fake.calls, isEmpty);

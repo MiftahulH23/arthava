@@ -23,6 +23,7 @@ class _FakeSavingsNotifier extends SavingsNotifier {
     required String notes,
   }) async {
     editCalls++;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     lastEdit = (saving.id, rawAmount, isDeposit, location, notes);
   }
 
@@ -127,6 +128,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(notifier.deleted, [1]);
     expect(find.text('Data dihapus & Saldo Dompet dikembalikan!'), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('ketuk ganda Simpan Perubahan → edit diproses sekali', (tester) async {
+    await pump(tester);
+    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).first);
+    await tester.pumpAndSettle();
+    final button = find.text('Simpan Perubahan');
+    await tester.tap(button);
+    await tester.tap(button, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(notifier.editCalls, 1);
     await tester.pumpAndSettle(const Duration(seconds: 5));
   });
 }

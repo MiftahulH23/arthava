@@ -263,13 +263,19 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
 
   void _showDepositSheet(TargetModel target) {
     final amountController = TextEditingController();
-    final wallets = ref.read(targetProvider).wallets;
-    int? selectedWalletId = wallets.isNotEmpty ? wallets.first['id'] as int : null;
+    final initialWallets = ref.read(targetProvider).wallets;
+    int? selectedWalletId = initialWallets.isNotEmpty ? initialWallets.first['id'] as int : null;
+    var busy = false; // cegah ketuk ganda memotong dompet dua kali
 
     showAppFormSheet<void>(
       context: context,
       title: "Nabung: ${target.name}",
-      builder: (context) => StatefulBuilder(
+      // Consumer: daftar dompet ikut ter-update bila fetchWallets baru selesai.
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final wallets = ref.watch(targetProvider.select((s) => s.wallets));
+          if (selectedWalletId == null && wallets.isNotEmpty) selectedWalletId = wallets.first['id'] as int;
+          return StatefulBuilder(
         builder: (context, setSheetState) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -316,8 +322,11 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
             AppPrimaryButton(
               label: "Setor Tabungan",
               color: AppColors.income,
+              loading: busy,
               onPressed: () async {
-                if (amountController.text.isEmpty || selectedWalletId == null) return;
+                if (busy || amountController.text.isEmpty || selectedWalletId == null) return;
+                busy = true;
+                setSheetState(() {});
                 try {
                   final rawAmount = parseRupiah(amountController.text).toDouble();
                   final result = await ref.read(targetProvider.notifier).depositToTarget(
@@ -335,11 +344,16 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
                   }
                 } catch (e) {
                   debugPrint(e.toString());
+                } finally {
+                  busy = false;
+                  if (context.mounted) setSheetState(() {});
                 }
               },
             ),
           ],
         ),
+      );
+        },
       ),
     );
   }

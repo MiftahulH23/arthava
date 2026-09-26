@@ -184,7 +184,9 @@ class TargetNotifier extends AutoDisposeNotifier<TargetState> {
         'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       });
     } on PostgrestException catch (e) {
-      if (e.code == 'P0001' && e.message.startsWith('Saldo dompet ')) {
+      // Tolakan server (saldo kurang, nominal 0, dompet/target terhapus):
+      // pesannya ditampilkan apa adanya.
+      if (e.code == 'P0001') {
         fetchWallets();
         return e.message;
       }

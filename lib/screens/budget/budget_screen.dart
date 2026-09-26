@@ -39,8 +39,6 @@ class BudgetScreen extends ConsumerWidget {
     ref.read(budgetProvider.notifier).changeMonth(offset);
   }
 
-  // Catatan executor (B3b): bila `AppSelectRow`/`AppGroupedSection` tidak lagi
-  // dipakai di file ini setelah _pickPeriod memakai showAppMonthPicker, hapus import-nya.
   /// Sheet "Pilih Periode" (dulu AlertDialog) — pemilih bulan bersama
   /// (Plan B3b, spec G17). Mengembalikan bulan terpilih atau null bila batal.
   /// Dipakai pill bulan di header dan baris "Periode Anggaran" di sheet "Buat Anggaran".

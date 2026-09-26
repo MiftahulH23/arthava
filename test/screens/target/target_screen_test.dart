@@ -12,6 +12,7 @@ class _FakeTargetNotifier extends TargetNotifier {
   _FakeTargetNotifier(this._initial);
   final TargetState _initial;
   String? depositResult;
+  Duration delay = Duration.zero;
   final deposits = <(int, double, int)>[];
   final deleted = <int>[];
   @override
@@ -19,6 +20,7 @@ class _FakeTargetNotifier extends TargetNotifier {
   @override
   Future<String?> depositToTarget({required TargetModel target, required double rawAmount, required int walletId}) async {
     deposits.add((target.id, rawAmount, walletId));
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     return depositResult;
   }
 
@@ -167,5 +169,34 @@ void main() {
     expect(fake.deleted, [1]);
     expect(find.text('Target dihapus'), findsOneWidget);
     await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('ketuk ganda Setor Tabungan → nabung diproses sekali', (tester) async {
+    final fake = await _pump(tester, _state());
+    fake.delay = const Duration(milliseconds: 500);
+    await openDeposit(tester);
+    await tester.enterText(find.byType(TextField), '50000');
+    final button = find.text('Setor Tabungan');
+    await tester.tap(button);
+    await tester.tap(button, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(fake.deposits, hasLength(1));
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('sheet Nabung ikut memuat dompet yang datang setelah sheet dibuka', (tester) async {
+    final empty = _state();
+    final fake = await _pump(
+      tester,
+      TargetState(isLoading: false, targets: empty.targets, savingNames: empty.savingNames, totalSavings: empty.totalSavings),
+    );
+    await openDeposit(tester);
+    expect(find.text('Belum ada dompet'), findsOneWidget);
+
+    fake.state = fake.state.copyWith(wallets: const [
+      {'id': 1, 'name': 'BCA', 'balance': 9300000},
+    ]);
+    await tester.pumpAndSettle();
+    expect(find.text('BCA'), findsOneWidget);
   });
 }
