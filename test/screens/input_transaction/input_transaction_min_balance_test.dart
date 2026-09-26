@@ -1,6 +1,8 @@
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/providers/input_transaction_provider.dart';
 import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
+import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -65,11 +67,9 @@ void main() {
     await tester.enterText(find.byType(TextField).first, amount);
     await tester.pump();
     if (pickCategory && edit == null) {
-      final dropdown = find.byWidgetPredicate(
-        (w) => w is DropdownButton<int> && (w.items?.any((i) => i.value == 10) ?? false),
-      );
-      await tester.ensureVisible(dropdown);
-      await tester.tap(dropdown);
+      // B4: kategori dipilih lewat baris "Kategori" -> sheet "Pilih Kategori".
+      await tester.ensureVisible(find.text('Kategori'));
+      await tester.tap(find.text('Kategori'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Makan').last);
       await tester.pumpAndSettle();
@@ -87,7 +87,7 @@ void main() {
     final fake = await pumpInput(tester, '60000');
     await tapSave(tester);
     expect(find.text('Di bawah saldo minimal'), findsOneWidget);
-    await tester.tap(find.text('Batal'));
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Batal'));
     await tester.pumpAndSettle();
     expect(fake.saveCalls, 0);
   });
@@ -95,7 +95,7 @@ void main() {
   testWidgets('pengeluaran melewati saldo minimal: Lanjutkan tetap menyimpan', (tester) async {
     final fake = await pumpInput(tester, '60000');
     await tapSave(tester);
-    await tester.tap(find.text('Lanjutkan'));
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Lanjutkan'));
     await tester.pumpAndSettle();
     expect(fake.saveCalls, 1);
     await tester.pump(const Duration(seconds: 4)); // tutup toast
@@ -132,7 +132,7 @@ void main() {
     final fake = await pumpInput(tester, '90000', edit: oldExpense(30000));
     await tapSave(tester);
     expect(find.text('Di bawah saldo minimal'), findsOneWidget);
-    await tester.tap(find.text('Batal'));
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Batal'));
     await tester.pumpAndSettle();
     expect(fake.saveCalls, 0);
   });
@@ -143,5 +143,11 @@ void main() {
     expect(find.text('Di bawah saldo minimal'), findsNothing);
     expect(fake.saveCalls, 1);
     await tester.pump(const Duration(seconds: 4)); // tutup toast
+  });
+
+  testWidgets('dompet pertama otomatis terpilih saat daftar dompet tiba', (tester) async {
+    await pumpInput(tester, '1000', pickCategory: false);
+    final walletRow = find.ancestor(of: find.text('Dompet'), matching: find.byType(AppListRow));
+    expect(find.descendant(of: walletRow, matching: find.text('BCA')), findsOneWidget);
   });
 }
