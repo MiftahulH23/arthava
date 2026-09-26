@@ -122,29 +122,6 @@ class TargetNotifier extends AutoDisposeNotifier<TargetState> {
     }
   }
 
-  Future<int> _getOrCreateSavingCategory() async {
-    final userId = _supabase.auth.currentUser!.id;
-    final checkRes = await _supabase
-        .from('categories')
-        .select('id')
-        .eq('is_expense', true)
-        .ilike('name', '%Tabung%')
-        .eq('user_id', userId)
-        .maybeSingle();
-    if (checkRes != null) return checkRes['id'] as int;
-    final insertRes = await _supabase
-        .from('categories')
-        .insert({
-          'user_id': userId,
-          'name': 'Tabungan Target',
-          'is_expense': true,
-          'icon_name': 'bank',
-        })
-        .select('id')
-        .single();
-    return insertRes['id'] as int;
-  }
-
   /// Membuat target baru (dari `_showAddSheet`).
   Future<void> addTarget({
     required String name,
@@ -196,49 +173,22 @@ class TargetNotifier extends AutoDisposeNotifier<TargetState> {
     required double rawAmount,
     required int walletId,
   }) async {
-    final selectedWalletData = state.wallets.firstWhere(
-      (w) => w['id'] == walletId,
-    );
-    final currentWalletBal = (selectedWalletData['balance'] as num)
-        .toDouble();
-    if (rawAmount > currentWalletBal) {
-      return "Saldo dompet ${selectedWalletData['name']} tidak cukup!";
-    }
-
-    await _supabase
-        .from('wallets')
-        .update({'balance': currentWalletBal - rawAmount})
-        .eq('id', walletId);
-
-    final catId = await _getOrCreateSavingCategory();
-    final userId = _supabase.auth.currentUser!.id;
-    await _supabase.from('transactions').insert({
-      'user_id': userId,
-      'category_id': catId,
-      'wallet_id': walletId,
-      'amount': rawAmount,
-      'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'note': "Nabung Target: ${target.name} [SAVING_ID:T-${target.id}]",
-    });
-
-    bool isLinked =
-        target.storageLocation != null &&
-        state.savingNames.contains(target.storageLocation!.trim());
-
-    if (isLinked) {
-      await _supabase.from('savings').insert({
-        'user_id': userId,
-        'name': target.storageLocation!.trim(),
-        'amount': rawAmount,
-        'location': null,
-        'notes': 'Dari Target: ${target.name}',
+    // Satu transaksi database (RPC deposit_to_target, migration
+    // 202609260006): potong dompet, catat transaksi, tambah tabungan/target.
+    // Dulu baca-saldo-lalu-tulis dari app: dua setoran bersamaan kehilangan satu.
+    try {
+      await _supabase.rpc('deposit_to_target', params: {
+        'p_target_id': target.id,
+        'p_wallet_id': walletId,
+        'p_amount': rawAmount,
+        'p_date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       });
-    } else {
-      final newTotal = target.savedAmount + rawAmount;
-      await _supabase
-          .from('targets')
-          .update({'saved_amount': newTotal})
-          .eq('id', target.id);
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0001' && e.message.startsWith('Saldo dompet ')) {
+        fetchWallets();
+        return e.message;
+      }
+      rethrow;
     }
 
     // Sama seperti sebelum migrasi: refetch tidak ditunggu (fire-and-forget)
