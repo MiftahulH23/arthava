@@ -577,7 +577,7 @@ class _HomeWalletSection extends StatelessWidget {
             title: w.name,
             subtitle: includeMinBalance || w.minBalance <= 0
                 ? null
-                : 'Bisa dipakai ${formatRupiah(spendableOf(w))}',
+                : 'Bisa dipakai ${formatRupiah(spendableOf(w)).replaceFirst(' ', ' ')}',
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

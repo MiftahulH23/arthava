@@ -83,7 +83,8 @@ void main() {
     );
     expect(find.text('Rp 1.150.000'), findsOneWidget); // 750.000 + 400.000
     expect(find.text('Sudah dikurangi saldo minimal'), findsOneWidget);
-    expect(find.text('Bisa dipakai Rp 750.000'), findsOneWidget);
+    // Spasi tak-putus: "Rp" tidak terpisah dari angkanya saat baris membungkus.
+    expect(find.text('Bisa dipakai Rp 750.000'), findsOneWidget);
   });
 
   testWidgets('kartu ringkasan menampilkan data yang dipilih', (tester) async {
