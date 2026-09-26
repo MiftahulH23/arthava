@@ -105,7 +105,6 @@ class _Temp {
       await db.from('transactions').delete().eq('wallet_id', id);
       await db.from('wallets').delete().eq('id', id);
     }
-    await db.from('transactions').delete().eq('user_id', userId).gte('date', '2099-01-01');
     for (final id in categories) {
       await db.from('transactions').delete().eq('category_id', id);
       await db.from('categories').delete().eq('id', id);
@@ -262,7 +261,7 @@ void main() {
       // Kalender: transaksi biasa tampil di tanggalnya; mutasi tabungan & utang tidak.
       final incomeCat = await t.category('E2E Gaji', isExpense: false);
       await t.trx(categoryId: incomeCat, walletId: walletId, amount: 500000, date: '2099-03-10', note: 'E2E gaji');
-      final tabungCat = await t.category('E2E Tabungan');
+      final tabungCat = await t.category('E2E Tabung Masuk', isExpense: false); // bukan pola kategori sistem ("%Tabungan%" dst.) supaya tidak terpakai RPC tes lain yang berjalan bersamaan
       await t.trx(categoryId: tabungCat, walletId: walletId, amount: 20000, date: '2099-03-10', note: 'E2E nabung [SAVING_ID:0]');
       await t.trx(categoryId: catId, walletId: walletId, amount: 10000, date: '2099-03-10', note: 'E2E utang [DEBT_ID:0]');
       await container.read(calendarProvider.notifier).fetchTransactions();
@@ -331,7 +330,7 @@ void main() {
       final walletId = await t.wallet('E2E Export W', 750000);
       final gaji = await t.category('E2E Gaji', isExpense: false);
       final makan = await t.category('E2E Makan');
-      final tabung = await t.category('E2E Tabungan');
+      final tabung = await t.category('E2E Tabung Masuk', isExpense: false); // bukan pola kategori sistem ("%Tabungan%" dst.) supaya tidak terpakai RPC tes lain yang berjalan bersamaan
       await t.trx(categoryId: gaji, walletId: walletId, amount: 1000000, date: '2099-04-01', note: 'E2E gaji');
       await t.trx(categoryId: makan, walletId: walletId, amount: 200000, date: '2099-04-05', note: 'E2E belanja');
       await t.trx(categoryId: makan, walletId: walletId, amount: 50000, date: '2099-04-30', note: 'E2E kopi');

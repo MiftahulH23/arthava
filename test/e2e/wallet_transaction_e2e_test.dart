@@ -147,6 +147,7 @@ void main() {
               .or('user_id.is.null,user_id.eq.$userId')
               .not('name', 'ilike', '%tabung%')
               .not('name', 'ilike', '%sistem%')
+              .not('name', 'like', 'E2E %') // kategori sementara file E2E lain
               .limit(1))
           .single;
       final incomeCat = (await db
@@ -156,6 +157,7 @@ void main() {
               .or('user_id.is.null,user_id.eq.$userId')
               .not('name', 'ilike', '%tabung%')
               .not('name', 'ilike', '%sistem%')
+              .not('name', 'like', 'E2E %') // kategori sementara file E2E lain
               .limit(1))
           .single;
 
@@ -320,6 +322,7 @@ void main() {
             .or('user_id.is.null,user_id.eq.$userId')
             .not('name', 'ilike', '%tabung%')
             .not('name', 'ilike', '%sistem%')
+            .not('name', 'like', 'E2E %') // kategori sementara file E2E lain
             .limit(1))
         .single['id'] as int;
     final hadWithdrawCategory = (await db
@@ -522,6 +525,7 @@ void main() {
             .or('user_id.is.null,user_id.eq.$userId')
             .not('name', 'ilike', '%tabung%')
             .not('name', 'ilike', '%sistem%')
+            .not('name', 'like', 'E2E %') // kategori sementara file E2E lain
             .limit(1))
         .single['id'] as int;
 
