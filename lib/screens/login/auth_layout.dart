@@ -6,30 +6,27 @@ import 'package:flutter/services.dart';
 
 export 'auth_parts.dart' show AuthLogo, AuthFooter, AuthBackButton;
 
-/// Kerangka layar auth (mockup A): hero gradasi biru di atas, sheet abu
-/// dengan sudut atas membulat yang masuk ke hero. Tombol & footer menempel di
-/// bawah pada layar tinggi; seluruh isi bisa di-scroll saat keyboard terbuka.
+/// Kerangka layar auth (gaya referensi Rotta): hero gradasi biru berdekorasi
+/// lingkaran tipis, lalu sheet putih bersudut atas membulat. [children]
+/// tersusun dari atas dengan jarak 12; [footer] opsional menempel di dasar.
+/// Seluruh isi bisa di-scroll saat keyboard terbuka.
 class AuthLayout extends StatelessWidget {
   const AuthLayout({
     required this.title,
     required this.subtitle,
     required this.leading,
-    required this.fields,
-    required this.action,
-    required this.footer,
-    this.sheetTitle,
+    required this.children,
+    this.footer,
     super.key,
   });
 
   final String title;
   final String subtitle;
   final Widget leading;
-  final String? sheetTitle;
-  final List<Widget> fields;
-  final Widget action;
-  final Widget footer;
+  final List<Widget> children;
+  final Widget? footer;
 
-  static const double _sheetRadius = 26;
+  static const double _sheetRadius = 24;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +34,7 @@ class AuthLayout extends StatelessWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: AppSystemUi.onHero,
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surface,
         body: CustomScrollView(
           slivers: [
             SliverFillRemaining(
@@ -53,33 +50,43 @@ class AuthLayout extends StatelessWidget {
                         colors: [AppColors.heroGradientStart, AppColors.heroGradientEnd],
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    child: Stack(
+                      clipBehavior: Clip.hardEdge,
                       children: [
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(padding.left + 24, padding.top + 16, padding.right + 24, 28),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              leading,
-                              const SizedBox(height: 14),
-                              Text(title, style: AppTextStyles.title.copyWith(fontSize: 24, color: AppColors.white)),
-                              const SizedBox(height: 4),
-                              Text(
-                                subtitle,
-                                style: AppTextStyles.subhead.copyWith(fontSize: 12.5, color: AppColors.heroLabel),
+                        const Positioned(right: -80, top: -70, child: _Ring(size: 240)),
+                        const Positioned(right: -36, top: -26, child: _Ring(size: 150)),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(padding.left + 24, padding.top + 20, padding.right + 24, 32),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  leading,
+                                  const SizedBox(height: 18),
+                                  Text(
+                                    title,
+                                    style: AppTextStyles.title.copyWith(fontSize: 26, color: AppColors.white),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    subtitle,
+                                    style: AppTextStyles.subhead.copyWith(fontSize: 13, color: AppColors.heroLabel),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        // Tutup sudut sheet di atas gradasi: tata letaknya nyata
-                        // (bukan Transform), jadi tidak ada ruang kosong di bawah.
-                        Container(
-                          height: _sheetRadius,
-                          decoration: const BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(_sheetRadius)),
-                          ),
+                            ),
+                            // Sudut sheet sebagai kotak nyata (bukan Transform),
+                            // jadi tidak ada ruang kosong tersembunyi di bawah.
+                            Container(
+                              height: _sheetRadius,
+                              decoration: const BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(_sheetRadius)),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -90,16 +97,13 @@ class AuthLayout extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (sheetTitle != null) ...[
-                            Text(sheetTitle!, style: AppTextStyles.title.copyWith(fontSize: 16)),
-                            const SizedBox(height: 14),
+                          for (var i = 0; i < children.length; i++) ...[
+                            if (i > 0) const SizedBox(height: 12),
+                            children[i],
                           ],
-                          for (var i = 0; i < fields.length; i++) ...[if (i > 0) const SizedBox(height: 12), fields[i]],
                           const SizedBox(height: 24),
                           const Spacer(),
-                          action,
-                          const SizedBox(height: 14),
-                          footer,
+                          if (footer != null) footer!,
                         ],
                       ),
                     ),
@@ -109,6 +113,24 @@ class AuthLayout extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Lingkaran garis tipis dekoratif di hero.
+class _Ring extends StatelessWidget {
+  const _Ring({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.white.withValues(alpha: 0.13), width: 1.5),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/login/auth_layout.dart';
+import 'package:catat_uang_app/screens/login/auth_parts.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
@@ -11,36 +12,46 @@ import '../../helpers/pump_app.dart';
 
 var tapped = 0;
 
-Widget _layout({String? sheetTitle = 'Masuk ke akunmu'}) => AuthLayout(
-      title: 'DompetKu',
+Widget _layout({bool withFooter = true}) => AuthLayout(
+      title: 'Yuk, atur keuanganmu',
       subtitle: 'Tagline',
       leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
-      sheetTitle: sheetTitle,
-      fields: [
-        AppTextField(controller: TextEditingController(), hint: 'a', outlined: true),
-        AppTextField(controller: TextEditingController(), hint: 'b', outlined: true),
-        AppTextField(controller: TextEditingController(), hint: 'c', outlined: true),
+      children: [
+        AppTextField(controller: TextEditingController(), label: 'A', hint: 'a', outlined: true),
+        AppTextField(controller: TextEditingController(), label: 'B', hint: 'b', outlined: true),
+        AppTextField(controller: TextEditingController(), label: 'C', hint: 'c', outlined: true),
+        AppPrimaryButton(label: 'Aksi', onPressed: () => tapped++),
       ],
-      action: AppPrimaryButton(label: 'Aksi', onPressed: () => tapped++),
-      footer: AuthFooter(prompt: 'Belum? ', action: 'Daftar', onTap: () {}),
+      footer: withFooter ? const Text('Kaki') : null,
     );
 
 void main() {
   setUp(() => tapped = 0);
 
-  testWidgets('menampilkan hero, judul sheet, isian, tombol, footer', (tester) async {
+  testWidgets('menampilkan hero, isi sheet, dan footer', (tester) async {
     await pumpApp(tester, _layout());
-    expect(find.text('DompetKu'), findsOneWidget);
+    expect(find.text('Yuk, atur keuanganmu'), findsOneWidget);
     expect(find.text('Tagline'), findsOneWidget);
-    expect(find.text('Masuk ke akunmu'), findsOneWidget);
     expect(find.byType(AppTextField), findsNWidgets(3));
-    expect(find.text('Daftar'), findsOneWidget);
+    expect(find.text('Kaki'), findsOneWidget);
   });
 
-  testWidgets('layar tinggi: tombol menempel dekat bawah', (tester) async {
+  testWidgets('sheet putih: latar layar surface', (tester) async {
+    await pumpApp(tester, _layout());
+    expect(tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor, AppColors.surface);
+  });
+
+  testWidgets('layar tinggi: tombol langsung di bawah isian, footer di dasar', (tester) async {
     await pumpApp(tester, _layout(), size: const Size(390, 844));
-    expect(tester.getBottomLeft(find.text('Daftar')).dy, greaterThan(760));
-    expect(tester.getTopLeft(find.text('Aksi')).dy - tester.getBottomLeft(find.text('c')).dy, greaterThan(100));
+    final gap = tester.getTopLeft(find.text('Aksi')).dy - tester.getBottomLeft(find.byType(AppTextField).last).dy;
+    expect(gap, lessThan(40));
+    expect(844 - tester.getBottomLeft(find.text('Kaki')).dy, closeTo(16, 0.5));
+  });
+
+  testWidgets('tanpa footer tetap dirender', (tester) async {
+    await pumpApp(tester, _layout(withFooter: false));
+    expect(tester.takeException(), isNull);
+    expect(find.text('Kaki'), findsNothing);
   });
 
   testWidgets('HP kecil dengan keyboard: tidak overflow, tombol bisa di-scroll dan ditekan', (tester) async {
@@ -62,42 +73,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('AuthBackButton memanggil onTap', (tester) async {
-    var back = 0;
-    await pumpApp(tester, Scaffold(body: ColoredBox(
-      color: Colors.black, child: AuthBackButton(label: 'Masuk', onTap: () => back++))));
-    await tester.tap(find.text('Masuk'));
-    expect(back, 1);
-    expect(find.byIcon(PhosphorIconsBold.caretLeft), findsOneWidget);
-  });
-
-  testWidgets('tanpa judul sheet: tepi atas isian pertama tetap bisa diketuk', (tester) async {
-    await pumpApp(tester, _layout(sheetTitle: null));
+  testWidgets('tepi atas isian pertama bisa diketuk', (tester) async {
+    await pumpApp(tester, _layout());
     final top = tester.getTopLeft(find.byType(TextField).first);
     await tester.tapAt(top + const Offset(60, 3));
     await tester.pump();
     expect(tester.widget<EditableText>(find.byType(EditableText).first).focusNode.hasFocus, isTrue);
   });
 
-  testWidgets('tidak ada ruang kosong tersembunyi: footer tepat di atas safe area bawah', (tester) async {
-    await pumpApp(tester, _layout(), size: const Size(390, 844));
-    // padding bawah sheet = safe area (0 di tes) + 16.
-    expect(844 - tester.getBottomLeft(find.byType(AuthFooter)).dy, closeTo(16, 0.5));
-  });
-
   testWidgets('safe area samping (landscape berponi) tidak menutupi isi', (tester) async {
     await pumpApp(tester, _layout(), size: const Size(844, 600));
     tester.view.padding = const FakeViewPadding(left: 48, right: 48);
     await tester.pumpAndSettle();
-    expect(tester.getTopLeft(find.text('DompetKu')).dx, greaterThanOrEqualTo(48 + 24));
-    expect(tester.getTopLeft(find.byType(TextField).first).dx, greaterThanOrEqualTo(48 + 20));
+    expect(tester.getTopLeft(find.text('Yuk, atur keuanganmu')).dx, greaterThanOrEqualTo(48 + 24));
+    expect(tester.getTopLeft(find.byType(AppTextField).first).dx, greaterThanOrEqualTo(48 + 20));
   });
 
   testWidgets('status bar ikon terang, nav bar Android ikut warna sheet', (tester) async {
     await pumpApp(tester, _layout());
     await tester.pumpAndSettle();
     expect(SystemChrome.latestStyle?.statusBarIconBrightness, Brightness.light);
-    expect(SystemChrome.latestStyle?.systemNavigationBarColor, AppColors.background);
+    expect(SystemChrome.latestStyle?.systemNavigationBarColor, AppColors.surface);
     expect(SystemChrome.latestStyle?.systemNavigationBarIconBrightness, Brightness.dark);
   });
 }

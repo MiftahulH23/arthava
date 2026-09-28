@@ -81,7 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       title: 'Buat akun baru',
       subtitle: 'Gabung dan mulai atur keuanganmu',
       leading: AuthBackButton(label: 'Masuk', onTap: () => Navigator.pop(context)),
-      fields: [
+      children: [
         AppTextField(
           controller: _nameController,
           hint: 'Nama lengkap',
@@ -114,17 +114,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.only(left: 4),
           child: Text('Minimal 6 karakter.', style: AppTextStyles.caption),
         ),
-      ],
-      action: AppPrimaryButton(
+        AppPrimaryButton(
         label: 'Daftar Sekarang',
         onPressed: _isLoading ? null : _register,
         loading: _isLoading,
       ),
-      footer: AuthFooter(
+        AuthFooter(
         prompt: 'Sudah punya akun? ',
         action: 'Masuk Disini',
         onTap: () => Navigator.pop(context),
       ),
+      ],
     );
   }
 }

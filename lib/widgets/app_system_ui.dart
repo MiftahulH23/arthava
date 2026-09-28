@@ -22,7 +22,7 @@ class AppSystemUi extends StatelessWidget {
   /// mengikuti latar sheet di bawah.
   static final SystemUiOverlayStyle onHero = SystemUiOverlayStyle.light.copyWith(
     statusBarColor: Colors.transparent,
-    systemNavigationBarColor: AppColors.background,
+    systemNavigationBarColor: AppColors.surface,
     systemNavigationBarIconBrightness: Brightness.dark,
   );
 

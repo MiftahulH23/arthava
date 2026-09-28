@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/login/auth_layout.dart';
+import 'package:catat_uang_app/screens/login/auth_parts.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_system_ui.dart';
 import 'package:flutter/material.dart';
@@ -17,9 +18,7 @@ void main() {
         title: 'DompetKu',
         subtitle: 'x',
         leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
-        fields: const [],
-        action: AppPrimaryButton(label: 'Aksi', onPressed: () {}),
-        footer: const SizedBox(),
+        children: [AppPrimaryButton(label: 'Aksi', onPressed: () {})],
       ),
     ));
     await tester.pumpAndSettle();

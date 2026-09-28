@@ -3,6 +3,7 @@ import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/home/home_screen.dart';
 import 'package:catat_uang_app/screens/login/auth_layout.dart';
 import 'package:catat_uang_app/screens/register/register_screen.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
@@ -67,8 +68,8 @@ class _LoginScreenState extends State<LoginScreen> {
       title: 'DompetKu',
       subtitle: 'Cerdas mengelola, tenang finansial',
       leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
-      sheetTitle: 'Masuk ke akunmu',
-      fields: [
+      children: [
+        Text('Masuk ke akunmu', style: AppTextStyles.title.copyWith(fontSize: 16)),
         AppTextField(
           controller: _emailController,
           hint: 'email@contoh.com',
@@ -91,13 +92,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
-      ],
-      action: AppPrimaryButton(
+        AppPrimaryButton(
         label: 'Masuk Sekarang',
         onPressed: _isLoading ? null : _login,
         loading: _isLoading,
       ),
-      footer: AuthFooter(
+        AuthFooter(
         prompt: 'Belum punya akun? ',
         action: 'Daftar Disini',
         onTap: () {
@@ -107,6 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         },
       ),
+      ],
     );
   }
 }
