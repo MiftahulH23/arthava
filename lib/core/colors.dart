@@ -34,6 +34,12 @@ class AppColors {
   static const Color tintSky = Color(0xFF3AA6D8);
   static const Color tintGray = Color(0xFF8E8E93); // Ikon netral (mutasi internal)
 
+  // Logo "G" tombol Google (warna merek resmi).
+  static const Color googleBlue = Color(0xFF4285F4);
+  static const Color googleRed = Color(0xFFEA4335);
+  static const Color googleYellow = Color(0xFFFBBC05);
+  static const Color googleGreen = Color(0xFF34A853);
+
   // Statistik kecil di kartu hero Beranda (pastel supaya terbaca di atas gradasi biru).
   static const Color heroStatIncome = Color(0xFF9BF0C4);
   static const Color heroStatExpense = Color(0xFFFFB4AE);
