@@ -98,4 +98,32 @@ void main() {
     expect(enabled.borderSide, BorderSide.none);
     expect(find.byType(AnimatedContainer), findsNothing);
   });
+
+  testWidgets('outlined: cincin tetap mengikuti fokus saat focusNode diganti (pemanggil → sendiri → pemanggil)', (tester) async {
+    final controller = TextEditingController();
+    final a = FocusNode();
+    final b = FocusNode();
+    addTearDown(controller.dispose);
+    addTearDown(a.dispose);
+    addTearDown(b.dispose);
+    Future<void> pumpWith(FocusNode? node) => pumpApp(tester, Scaffold(body: AppTextField(
+      controller: controller, focusNode: node, icon: PhosphorIconsRegular.envelopeSimple, outlined: true)));
+
+    await pumpWith(a);
+    await pumpWith(null);
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(ring(tester).boxShadow, isNotEmpty);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    expect(ring(tester).boxShadow, isEmpty);
+
+    await pumpWith(b);
+    b.requestFocus();
+    await tester.pumpAndSettle();
+    expect(ring(tester).boxShadow, isNotEmpty);
+    b.unfocus();
+    await tester.pumpAndSettle();
+    expect(ring(tester).boxShadow, isEmpty);
+  });
 }

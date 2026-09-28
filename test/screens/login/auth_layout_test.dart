@@ -1,7 +1,9 @@
+import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/login/auth_layout.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -9,11 +11,11 @@ import '../../helpers/pump_app.dart';
 
 var tapped = 0;
 
-Widget _layout() => AuthLayout(
+Widget _layout({String? sheetTitle = 'Masuk ke akunmu'}) => AuthLayout(
       title: 'DompetKu',
       subtitle: 'Tagline',
       leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
-      sheetTitle: 'Masuk ke akunmu',
+      sheetTitle: sheetTitle,
       fields: [
         AppTextField(controller: TextEditingController(), hint: 'a', outlined: true),
         AppTextField(controller: TextEditingController(), hint: 'b', outlined: true),
@@ -67,5 +69,35 @@ void main() {
     await tester.tap(find.text('Masuk'));
     expect(back, 1);
     expect(find.byIcon(PhosphorIconsBold.caretLeft), findsOneWidget);
+  });
+
+  testWidgets('tanpa judul sheet: tepi atas isian pertama tetap bisa diketuk', (tester) async {
+    await pumpApp(tester, _layout(sheetTitle: null));
+    final top = tester.getTopLeft(find.byType(TextField).first);
+    await tester.tapAt(top + const Offset(60, 3));
+    await tester.pump();
+    expect(tester.widget<EditableText>(find.byType(EditableText).first).focusNode.hasFocus, isTrue);
+  });
+
+  testWidgets('tidak ada ruang kosong tersembunyi: footer tepat di atas safe area bawah', (tester) async {
+    await pumpApp(tester, _layout(), size: const Size(390, 844));
+    // padding bawah sheet = safe area (0 di tes) + 16.
+    expect(844 - tester.getBottomLeft(find.byType(AuthFooter)).dy, closeTo(16, 0.5));
+  });
+
+  testWidgets('safe area samping (landscape berponi) tidak menutupi isi', (tester) async {
+    await pumpApp(tester, _layout(), size: const Size(844, 600));
+    tester.view.padding = const FakeViewPadding(left: 48, right: 48);
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('DompetKu')).dx, greaterThanOrEqualTo(48 + 24));
+    expect(tester.getTopLeft(find.byType(TextField).first).dx, greaterThanOrEqualTo(48 + 20));
+  });
+
+  testWidgets('status bar ikon terang, nav bar Android ikut warna sheet', (tester) async {
+    await pumpApp(tester, _layout());
+    await tester.pumpAndSettle();
+    expect(SystemChrome.latestStyle?.statusBarIconBrightness, Brightness.light);
+    expect(SystemChrome.latestStyle?.systemNavigationBarColor, AppColors.background);
+    expect(SystemChrome.latestStyle?.systemNavigationBarIconBrightness, Brightness.dark);
   });
 }

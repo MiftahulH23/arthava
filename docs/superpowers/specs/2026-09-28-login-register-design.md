@@ -50,18 +50,21 @@ E2E cukup dijalankan ulang sebagai regresi, tanpa E2E baru.
   Di bawahnya caption "Minimal 6 karakter.", lalu "Daftar Sekarang" dan
   footer "Sudah punya akun? **Masuk Disini**".
 - Konten sheet bisa di-scroll saat keyboard muncul. Bila layar cukup
-  tinggi, tombol dan footer menempel di bawah (`LayoutBuilder` +
-  `ConstrainedBox(minHeight)` + `Spacer`), jadi tidak overflow di layar
-  pendek.
-- Status bar di atas hero memakai ikon terang
-  (`SystemUiOverlayStyle.light`).
+  tinggi, tombol dan footer menempel di bawah (`CustomScrollView` +
+  `SliverFillRemaining(hasScrollBody: false)` + `Spacer`), jadi tidak
+  overflow di layar pendek. Sudut atas sheet adalah kotak nyata di dalam
+  hero (bukan `Transform`), dan safe area kiri/kanan ikut dihitung.
+- Status bar di atas hero memakai ikon terang (`AppSystemUi.onHero`), nav
+  bar Android mengikuti latar sheet. Default seluruh aplikasi
+  (`AppSystemUi` di `MaterialApp.builder`) adalah ikon gelap, jadi gaya
+  terang tidak terbawa ke layar lain setelah login.
 
 ## 4. Komponen
 
 - **`AuthLayout`** (`lib/screens/login/auth_layout.dart`) menggantikan
-  `AuthBrand`. Parameternya: `title`, `subtitle`, `leading` (logo atau
-  tombol kembali), `sheetTitle?`, `children` (isian), `action` (tombol),
-  dan `footer`. `AuthFooter` dipertahankan dan dipindah ke file ini.
+  `AuthBrand`. Parameternya: `title`, `subtitle`, `leading` (`AuthLogo`
+  atau `AuthBackButton`), `sheetTitle?`, `fields` (isian), `action`
+  (tombol), dan `footer`. `AuthFooter` dipertahankan dan dipindah ke file ini.
   `auth_brand.dart` dihapus.
 - **`AppTextField`** mendapat parameter `outlined` (default `false`,
   sehingga 32 pemakaian lain tidak berubah). Saat `true`:
