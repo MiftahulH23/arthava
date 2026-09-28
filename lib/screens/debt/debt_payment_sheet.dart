@@ -16,6 +16,7 @@ import 'package:catat_uang_app/widgets/app_pickers.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:catat_uang_app/widgets/app_switch.dart';
+import 'package:catat_uang_app/screens/wallet/wallet_form_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -204,11 +205,11 @@ class _DebtPaymentFormState extends ConsumerState<_DebtPaymentForm> {
             children: [
               AppListRow(
                 title: 'Catat ke Dompet?',
-                subtitle: wallets.isEmpty ? 'Belum ada dompet' : null,
+                subtitle: wallets.isEmpty ? 'Belum ada dompet — buat di bawah' : null,
                 trailing: AppSwitch(
                   key: const ValueKey('debt-affect-wallet'),
                   value: _affectWallet,
-                  onChanged: wallets.isEmpty ? null : (v) => setState(() => _affectWallet = v),
+                  onChanged: (v) => setState(() => _affectWallet = v),
                 ),
               ),
               if (_affectWallet)
@@ -216,6 +217,10 @@ class _DebtPaymentFormState extends ConsumerState<_DebtPaymentForm> {
                   wallets: wallets,
                   selectedWalletId: _walletId,
                   onSelected: (id) => setState(() => _walletId = id),
+                  onCreate: () => showWalletFormSheet(
+                    context,
+                    onSaved: () => ref.read(debtProvider.notifier).fetchData(silent: true),
+                  ),
                 ),
             ],
           ),

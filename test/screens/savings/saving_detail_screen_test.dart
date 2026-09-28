@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/money_rejection.dart';
 import 'package:catat_uang_app/models/saving_model.dart';
 import 'package:catat_uang_app/providers/savings_provider.dart';
 import 'package:catat_uang_app/screens/savings/saving_detail_screen.dart';
@@ -12,6 +13,7 @@ class _FakeSavingsNotifier extends SavingsNotifier {
   _FakeSavingsNotifier(this._initial);
   final SavingsState _initial;
   var editCalls = 0;
+  String? rejectWith;
   @override
   SavingsState build() => _initial;
   @override
@@ -23,6 +25,7 @@ class _FakeSavingsNotifier extends SavingsNotifier {
     required String notes,
   }) async {
     editCalls++;
+    if (rejectWith != null) throw MoneyRejection(rejectWith!);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     lastEdit = (saving.id, rawAmount, isDeposit, location, notes);
   }
@@ -140,6 +143,19 @@ void main() {
     await tester.tap(button, warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 400));
     expect(notifier.editCalls, 1);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('edit ditolak server: pesan tolakan tampil, sheet tetap terbuka', (tester) async {
+    await pump(tester);
+    notifier.rejectWith = 'Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 0';
+    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Simpan Perubahan'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 0'), findsOneWidget);
+    expect(find.text('Edit Setoran'), findsOneWidget);
     await tester.pumpAndSettle(const Duration(seconds: 5));
   });
 }

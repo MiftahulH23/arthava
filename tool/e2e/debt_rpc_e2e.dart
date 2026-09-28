@@ -115,7 +115,7 @@ Future<void> main() async {
       err6 = e.message;
     }
     final b = await db.from('debts').select('id').eq('name', 'Tes B');
-    check('6 piutang > saldo ditolak dengan pesan saldo', err6?.contains('Saldo dompet tidak mencukupi') ?? false, err6);
+    check('6 piutang > saldo ditolak dengan pesan saldo', err6?.contains('tidak cukup! Bisa dipakai:') ?? false, err6);
     check('6 tidak ada utang "Tes B" & saldo tetap', b.isEmpty && await balance() == before6, b);
 
     // 7. Dua pembayaran 600.000 bersamaan (sisa 1.000.000) -> hanya satu berhasil.

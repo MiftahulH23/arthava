@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/money_rejection.dart';
 import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/models/saving_model.dart';
 import 'package:flutter/foundation.dart';
@@ -219,13 +220,18 @@ class SavingsNotifier extends AutoDisposeNotifier<SavingsState> {
     required String notes,
   }) async {
     // Atomik di database (RPC edit_saving_item, migration 202609260006).
-    await _supabase.rpc('edit_saving_item', params: {
-      'p_saving_id': saving.id,
-      'p_amount': rawAmount,
-      'p_is_deposit': isDeposit,
-      'p_location': location,
-      'p_notes': notes,
-    });
+    try {
+      await _supabase.rpc('edit_saving_item', params: {
+        'p_saving_id': saving.id,
+        'p_amount': rawAmount,
+        'p_is_deposit': isDeposit,
+        'p_location': location,
+        'p_notes': notes,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0001') throw MoneyRejection(e.message);
+      rethrow;
+    }
 
     await fetchSavings();
     await fetchWallets();
@@ -236,7 +242,12 @@ class SavingsNotifier extends AutoDisposeNotifier<SavingsState> {
   Future<void> deleteSavingItem(SavingModel item) async {
     // Atomik di database (RPC delete_saving_item, migration 202609260006);
     // juga baris "pakai tabungan" yang punya dua transaksi bertanda sama.
-    await _supabase.rpc('delete_saving_item', params: {'p_saving_id': item.id});
+    try {
+      await _supabase.rpc('delete_saving_item', params: {'p_saving_id': item.id});
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0001') throw MoneyRejection(e.message);
+      rethrow;
+    }
 
     await fetchSavings();
     await fetchWallets();

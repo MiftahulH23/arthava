@@ -9,6 +9,7 @@ import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_dialogs.dart';
 import 'package:catat_uang_app/widgets/app_empty_state.dart';
+import 'package:catat_uang_app/widgets/app_create_row.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_hero_card.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
@@ -16,9 +17,9 @@ import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_searchable_group.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:catat_uang_app/screens/wallet/wallet_form_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class WalletScreen extends ConsumerWidget {
@@ -30,7 +31,6 @@ class WalletScreen extends ConsumerWidget {
   /// Tambahan strip untuk kartu bertumpuk yang menampilkan "Bisa dipakai".
   static const double spendableStep = 28;
 
-  static final NumberFormat _thousands = NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
 
   /// Sheet pilih dompet (pengganti DropdownButton lama). Mengembalikan id atau null.
   Future<int?> _pickWallet(
@@ -40,30 +40,59 @@ class WalletScreen extends ConsumerWidget {
     required int selectedId,
     bool showBalance = false,
   }) {
+    // -1 = "+ Dompet Baru" dipilih (pemanggil membuka form dompet).
     return showAppFormSheet<int>(
       context: context,
       title: title,
-      builder: (sheetContext) => AppSearchableGroup<WalletModel>(
-        items: wallets,
-        searchText: (w) => w.name,
-        hint: 'Cari dompet',
-        rowBuilder: (_, w) =>
-          AppListRow(
-            leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: w.displayColor, filled: true),
-            title: w.name,
-            value: showBalance ? formatRupiah(w.balance) : null,
-            trailing: w.id == selectedId
-                ? const Icon(PhosphorIconsBold.check, color: AppColors.primary, size: 18)
-                : null,
-            onTap: () => Navigator.pop(sheetContext, w.id),
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSearchableGroup<WalletModel>(
+            items: wallets,
+            searchText: (w) => w.name,
+            hint: 'Cari dompet',
+            rowBuilder: (_, w) =>
+              AppListRow(
+                leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: w.displayColor, filled: true),
+                title: w.name,
+                value: showBalance ? formatRupiah(w.balance) : null,
+                trailing: w.id == selectedId
+                    ? const Icon(PhosphorIconsBold.check, color: AppColors.primary, size: 18)
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, w.id),
+              ),
           ),
+          const SizedBox(height: 12),
+          AppGroupedSection(children: [
+            AppCreateRow(label: 'Dompet Baru', onTap: () => Navigator.pop(sheetContext, -1)),
+          ]),
+        ],
       ),
     );
   }
 
-  void _showTransferSheet(BuildContext context, WidgetRef ref, List<WalletModel> wallets) {
+  Future<void> _showTransferSheet(BuildContext context, WidgetRef ref, List<WalletModel> wallets) async {
+    Future<int?> createWallet(BuildContext ctx) async {
+      final id = await showWalletFormSheet(ctx, onSaved: ref.read(walletProvider.notifier).fetchWallets);
+      wallets = ref.read(walletProvider).wallets;
+      return id;
+    }
+
     if (wallets.length < 2) {
-      AppNotification.error(context, "Minimal butuh 2 dompet untuk transfer.");
+      final ok = await showAppConfirmDialog(
+        context: context,
+        title: 'Butuh 2 dompet',
+        message: 'Transfer butuh minimal 2 dompet. Buat dompet baru sekarang?',
+        confirmLabel: 'Buat Dompet',
+        destructive: false,
+      );
+      if (!ok || !context.mounted) return;
+      final id = await createWallet(context);
+      // Sudah 2 dompet: langsung lanjut ke Transfer.
+      if (id != null && wallets.length >= 2 && context.mounted) {
+        await _showTransferSheet(context, ref, wallets);
+      }
       return;
     }
 
@@ -91,39 +120,53 @@ class WalletScreen extends ConsumerWidget {
                     subtitle: '${source.name} (Sisa: ${formatRupiah(source.balance)})',
                     showChevron: true,
                     onTap: () async {
-                      final picked = await _pickWallet(
+                      var picked = await _pickWallet(
                         sheetContext,
                         wallets,
                         title: 'Dari Dompet (Sumber)',
                         selectedId: sourceId,
                         showBalance: true,
                       );
-                      if (picked == null || !sheetContext.mounted) return;
-                      if (picked == destId) {
-                        AppNotification.error(sheetContext, "Dompet asal dan tujuan tidak boleh sama!");
-                        return;
-                      }
-                      setSheetState(() => sourceId = picked);
+                      if (picked == -1 && sheetContext.mounted) picked = await createWallet(sheetContext);
+                      final chosen = picked;
+                      if (chosen == null || !sheetContext.mounted) return;
+                      setSheetState(() {
+                        if (chosen == destId) destId = sourceId; // tukar otomatis
+                        sourceId = chosen;
+                      });
                     },
+                  ),
+                  Center(
+                    heightFactor: 1,
+                    child: IconButton(
+                      tooltip: 'Tukar arah',
+                      icon: const Icon(PhosphorIconsBold.arrowsDownUp, color: AppColors.primary),
+                      onPressed: () => setSheetState(() {
+                        final s = sourceId;
+                        sourceId = destId;
+                        destId = s;
+                      }),
+                    ),
                   ),
                   AppListRow(
                     leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: dest.displayColor, filled: true),
                     title: 'Ke Dompet (Tujuan)',
-                    subtitle: dest.name,
+                    subtitle: '${dest.name} (Sisa: ${formatRupiah(dest.balance)})',
                     showChevron: true,
                     onTap: () async {
-                      final picked = await _pickWallet(
+                      var picked = await _pickWallet(
                         sheetContext,
                         wallets,
                         title: 'Ke Dompet (Tujuan)',
                         selectedId: destId,
                       );
-                      if (picked == null || !sheetContext.mounted) return;
-                      if (picked == sourceId) {
-                        AppNotification.error(sheetContext, "Dompet tujuan dan asal tidak boleh sama!");
-                        return;
-                      }
-                      setSheetState(() => destId = picked);
+                      if (picked == -1 && sheetContext.mounted) picked = await createWallet(sheetContext);
+                      final chosen = picked;
+                      if (chosen == null || !sheetContext.mounted) return;
+                      setSheetState(() {
+                        if (chosen == sourceId) sourceId = destId; // tukar otomatis
+                        destId = chosen;
+                      });
                     },
                   ),
                 ],
@@ -153,22 +196,6 @@ class WalletScreen extends ConsumerWidget {
                     AppNotification.error(sheetContext, error);
                     return;
                   }
-                  final warning = minBalanceWarningMessage(
-                    walletName: source.name,
-                    balance: source.balance,
-                    minBalance: source.minBalance,
-                    amount: cleanAmount,
-                  );
-                  if (warning != null) {
-                    final ok = await showAppConfirmDialog(
-                      context: sheetContext,
-                      title: 'Di bawah saldo minimal',
-                      message: warning,
-                      confirmLabel: 'Lanjutkan',
-                      destructive: false,
-                    );
-                    if (!ok || !sheetContext.mounted) return;
-                  }
                   setSheetState(() => isSubmitting = true);
                   try {
                     await ref.read(walletProvider.notifier).transfer(
@@ -195,132 +222,6 @@ class WalletScreen extends ConsumerWidget {
     );
   }
 
-  void _showAddEditWalletSheet(BuildContext context, WidgetRef ref, {WalletModel? wallet}) {
-    final isEdit = wallet != null;
-    final nameController = TextEditingController(text: isEdit ? wallet.name : '');
-    final balanceController = TextEditingController(text: isEdit ? _thousands.format(wallet.balance) : '');
-    final minBalanceController = TextEditingController(
-      text: isEdit && wallet.minBalance > 0 ? _thousands.format(wallet.minBalance) : '',
-    );
-    String selectedColor =
-        isEdit && wallet.color != null ? wallet.color! : AppColors.walletColorChoices[0];
-    var isSubmitting = false;
-
-    showAppFormSheet<void>(
-      context: context,
-      title: isEdit ? "Edit Dompet" : "Tambah Dompet",
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text("Nama Dompet (cth: BCA, GoPay, Tunai)", style: AppTextStyles.caption),
-              const SizedBox(height: 8),
-              AppTextField(
-                controller: nameController,
-                hint: "Masukkan nama dompet",
-                icon: PhosphorIconsRegular.wallet,
-              ),
-              const SizedBox(height: 16),
-              Text("Saldo Saat Ini", style: AppTextStyles.caption),
-              const SizedBox(height: 8),
-              AppTextField(
-                controller: balanceController,
-                hint: "0",
-                icon: PhosphorIconsRegular.money,
-                keyboardType: TextInputType.number,
-                inputFormatters: [RupiahInputFormatter()],
-              ),
-              const SizedBox(height: 16),
-              Text("Saldo Minimal (Opsional)", style: AppTextStyles.caption),
-              const SizedBox(height: 8),
-              AppTextField(
-                controller: minBalanceController,
-                hint: "0",
-                icon: PhosphorIconsRegular.lockSimple,
-                keyboardType: TextInputType.number,
-                inputFormatters: [RupiahInputFormatter()],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Saldo yang ditahan bank. Dipakai untuk menghitung uang yang bisa dipakai.',
-                style: AppTextStyles.caption,
-              ),
-              const SizedBox(height: 16),
-              Text("Pilih Warna", style: AppTextStyles.caption),
-              const SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: AppColors.walletColorChoices.map((hexColor) {
-                    final color = AppColors.fromWalletHex(hexColor);
-                    final isSelected = selectedColor == hexColor;
-                    return GestureDetector(
-                      onTap: () => setSheetState(() => selectedColor = hexColor),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 12),
-                        width: 45,
-                        height: 45,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: isSelected ? Border.all(color: AppColors.textPrimary, width: 3) : null,
-                        ),
-                        child: isSelected ? const Icon(PhosphorIconsBold.check, color: Colors.white, size: 22) : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 24),
-              AppPrimaryButton(
-                label: "Simpan Dompet",
-                loading: isSubmitting,
-                onPressed: () async {
-                  if (nameController.text.isEmpty || balanceController.text.isEmpty) {
-                    AppNotification.error(sheetContext, "Harap isi semua data!");
-                    return;
-                  }
-                  final cleanBalance = parseRupiah(balanceController.text).toDouble();
-                  final minBalance = parseRupiah(minBalanceController.text).toDouble();
-                  setSheetState(() => isSubmitting = true);
-                  try {
-                    if (isEdit) {
-                      await ref.read(walletProvider.notifier).updateWallet(
-                            id: wallet.id,
-                            name: nameController.text.trim(),
-                            balance: cleanBalance,
-                            color: selectedColor,
-                            minBalance: minBalance,
-                          );
-                    } else {
-                      await ref.read(walletProvider.notifier).addWallet(
-                            name: nameController.text.trim(),
-                            balance: cleanBalance,
-                            color: selectedColor,
-                            minBalance: minBalance,
-                          );
-                    }
-                    if (sheetContext.mounted) {
-                      AppNotification.success(sheetContext, isEdit ? "Dompet diperbarui!" : "Dompet berhasil ditambahkan!");
-                      Navigator.pop(sheetContext);
-                    }
-                  } catch (e) {
-                    if (sheetContext.mounted) {
-                      setSheetState(() => isSubmitting = false);
-                      AppNotification.error(sheetContext, "Gagal menyimpan dompet.");
-                    }
-                  }
-                },
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   void _showWalletActions(BuildContext context, WidgetRef ref, WalletModel wallet) {
     showAppFormSheet<void>(
       context: context,
@@ -332,7 +233,7 @@ class WalletScreen extends ConsumerWidget {
             title: 'Edit',
             onTap: () {
               Navigator.pop(sheetContext);
-              _showAddEditWalletSheet(context, ref, wallet: wallet);
+              showWalletFormSheet(context, wallet: wallet, onSaved: ref.read(walletProvider.notifier).fetchWallets);
             },
           ),
           AppListRow(
@@ -425,9 +326,9 @@ class WalletScreen extends ConsumerWidget {
       bottomBar: Center(
         heightFactor: 1,
         child: _WalletActionPill(
-          showTransfer: state.wallets.length >= 2,
+          showTransfer: state.wallets.isNotEmpty, // < 2 dompet: ditawari membuat dompet kedua
           onTransfer: () => _showTransferSheet(context, ref, state.wallets),
-          onAdd: () => _showAddEditWalletSheet(context, ref),
+          onAdd: () => showWalletFormSheet(context, onSaved: ref.read(walletProvider.notifier).fetchWallets),
         ),
       ),
       children: children,

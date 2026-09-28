@@ -18,8 +18,7 @@ class WalletState {
 }
 
 /// Mengembalikan pesan error kalau transfer tidak valid, atau null kalau valid.
-/// Diekstrak dari logic validasi di WalletScreen._showTransferSheet's tombol
-/// "Transfer Sekarang" supaya bisa diuji unit tanpa Supabase.
+/// Saldo & saldo minimal dicek server (wallet_spend_guard), bukan di sini.
 String? validateTransfer({
   required WalletModel source,
   required WalletModel dest,
@@ -27,8 +26,48 @@ String? validateTransfer({
 }) {
   if (amount <= 0) return 'Nominal tidak boleh kosong!';
   if (source.id == dest.id) return 'Dompet asal dan tujuan tidak boleh sama!';
-  if (source.balance < amount) return 'Saldo di ${source.name} tidak cukup!';
   return null;
+}
+
+/// Menyimpan dompet baru dan mengembalikan id-nya. Top-level supaya bisa
+/// dipanggil dari layar mana pun (form "Dompet Baru") tanpa bergantung pada
+/// WalletNotifier yang sedang hidup.
+Future<int> insertWallet({
+  required String name,
+  required double balance,
+  required String color,
+  double minBalance = 0,
+}) async {
+  final client = Supabase.instance.client;
+  final row = await client
+      .from('wallets')
+      .insert({
+        'user_id': client.auth.currentUser!.id,
+        'name': name,
+        'balance': balance,
+        'color': color,
+        'icon': 'wallet',
+        'min_balance': minBalance,
+      })
+      .select('id')
+      .single();
+  return row['id'] as int;
+}
+
+Future<void> updateWalletRow({
+  required int id,
+  required String name,
+  required double balance,
+  required String color,
+  double minBalance = 0,
+}) async {
+  await Supabase.instance.client.from('wallets').update({
+    'name': name,
+    'balance': balance,
+    'color': color,
+    'icon': 'wallet',
+    'min_balance': minBalance,
+  }).eq('id', id);
 }
 
 class WalletNotifier extends AutoDisposeNotifier<WalletState> {
@@ -66,22 +105,15 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
     }
   }
 
-  Future<void> addWallet({
+  Future<int> addWallet({
     required String name,
     required double balance,
     required String color,
     double minBalance = 0,
   }) async {
-    final userId = _supabase.auth.currentUser!.id;
-    await _supabase.from('wallets').insert({
-      'user_id': userId,
-      'name': name,
-      'balance': balance,
-      'color': color,
-      'icon': 'wallet',
-      'min_balance': minBalance,
-    });
+    final id = await insertWallet(name: name, balance: balance, color: color, minBalance: minBalance);
     await fetchWallets();
+    return id;
   }
 
   Future<void> updateWallet({
@@ -91,13 +123,7 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
     required String color,
     double minBalance = 0,
   }) async {
-    await _supabase.from('wallets').update({
-      'name': name,
-      'balance': balance,
-      'color': color,
-      'icon': 'wallet',
-      'min_balance': minBalance,
-    }).eq('id', id);
+    await updateWalletRow(id: id, name: name, balance: balance, color: color, minBalance: minBalance);
     await fetchWallets();
   }
 

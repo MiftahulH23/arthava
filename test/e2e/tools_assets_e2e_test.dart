@@ -173,8 +173,8 @@ void main() {
       } catch (e) {
         e2 = e;
       }
-      check('I2 beli melebihi saldo ditolak "Saldo dompet tidak mencukupi!"',
-          e2.toString().contains('Saldo dompet tidak mencukupi!'), e2);
+      check('I2 beli melebihi saldo ditolak dengan pesan saldo',
+          e2.toString().contains('Saldo dompet E2E Investasi W tidak cukup!'), e2);
       check('I2 saldo tidak berubah', await balance(walletId) == 400000, await balance(walletId));
       final mahal = await db.from('investments').select('id').eq('user_id', userId).eq('name', 'E2E Mahal');
       t.investments.addAll(mahal.map((r) => r['id'] as int));
@@ -333,7 +333,7 @@ void main() {
       } catch (e) {
         e3 = e;
       }
-      check('Z3 saldo kurang ditolak "Saldo dompet tidak mencukupi!"', e3.toString().contains('Saldo dompet tidak mencukupi!'), e3);
+      check('Z3 saldo kurang ditolak dengan pesan saldo', e3.toString().contains('Saldo dompet E2E Zakat W tidak cukup!'), e3);
       check('Z3 saldo tidak berubah', await balance(walletId) == 65000, await balance(walletId));
 
       await Future.wait([

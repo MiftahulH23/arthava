@@ -230,6 +230,7 @@ class HomeNotifier extends AutoDisposeNotifier<HomeState> {
             .eq('status', 'active'),
       ]);
 
+      final recurring = (results[3] as List).map((e) => RecurringTransactionModel.fromJson(e)).toList();
       state = state.copyWith(
         summary: HomeSummary(
           budget: summarizeBudgets(
@@ -239,9 +240,8 @@ class HomeNotifier extends AutoDisposeNotifier<HomeState> {
           target: pickTarget(
             (results[2] as List).map((e) => TargetModel.fromJson(e)).toList(),
           ),
-          nextBill: pickNextBill(
-            (results[3] as List).map((e) => RecurringTransactionModel.fromJson(e)).toList(),
-          ),
+          nextBill: pickNextBill(recurring),
+          blockedBills: pickBlockedBills(recurring),
           debt: pickDebt(
             (results[4] as List).map((e) => DebtModel.fromJson(e)).toList(),
           ),

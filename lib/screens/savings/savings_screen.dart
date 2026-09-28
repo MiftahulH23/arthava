@@ -17,6 +17,7 @@ import 'package:catat_uang_app/widgets/app_select_row.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:catat_uang_app/screens/wallet/wallet_form_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -77,6 +78,7 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                     value: selectedWalletId,
                     options: [for (final w in wallets) AppSelectOption(w['id'] as int, _walletOptionLabel(w), shortLabel: "${w['name']}")],
                     onChanged: (v) => setSheetState(() => selectedWalletId = v),
+                    onCreate: () => showWalletFormSheet(context, onSaved: ref.read(savingsProvider.notifier).fetchWallets),
                   ),
                 ],
               ),
@@ -239,6 +241,7 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                     value: selectedWalletId,
                     options: [for (final w in wallets) AppSelectOption(w['id'] as int, _walletOptionLabel(w), shortLabel: "${w['name']}")],
                     onChanged: (v) => setSheetState(() => selectedWalletId = v),
+                    onCreate: () => showWalletFormSheet(context, onSaved: ref.read(savingsProvider.notifier).fetchWallets),
                   ),
                 ],
               ),

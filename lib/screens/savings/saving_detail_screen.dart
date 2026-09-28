@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/money_rejection.dart';
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/core/formatters.dart';
@@ -86,6 +87,8 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
     try {
       await ref.read(savingsProvider.notifier).deleteSavingItem(item);
       if (mounted) AppNotification.success(context, "Data dihapus & Saldo Dompet dikembalikan!");
+    } on MoneyRejection catch (e) {
+      if (mounted) AppNotification.error(context, e.message);
     } catch (e) {
       if (mounted) AppNotification.error(context, "Gagal menghapus data.");
     }
@@ -154,6 +157,8 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
                   Navigator.pop(context);
                   AppNotification.success(context, "Perubahan disimpan!");
                 }
+              } on MoneyRejection catch (e) {
+                if (context.mounted) AppNotification.error(context, e.message);
               } catch (e) {
                 if (context.mounted) AppNotification.error(context, "Gagal update data.");
               } finally {

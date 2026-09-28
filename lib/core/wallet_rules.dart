@@ -1,4 +1,3 @@
-import 'package:catat_uang_app/core/formatters.dart';
 import 'package:catat_uang_app/models/wallet_model.dart';
 
 const int kHomeFavoriteLimit = 5;
@@ -35,25 +34,4 @@ double spendableTotal(List<WalletModel> wallets, {required bool includeMinBalanc
     total += includeMinBalance ? w.balance : spendableOf(w);
   }
   return total;
-}
-
-bool wouldBreachMinBalance({
-  required double balance,
-  required double minBalance,
-  required double amount,
-}) {
-  return amount > 0 && minBalance > 0 && balance - amount < minBalance;
-}
-
-/// Pesan dialog peringatan (spec §7.3), atau null bila tidak perlu peringatan.
-String? minBalanceWarningMessage({
-  required String walletName,
-  required double balance,
-  required double minBalance,
-  required double amount,
-}) {
-  if (!wouldBreachMinBalance(balance: balance, minBalance: minBalance, amount: amount)) {
-    return null;
-  }
-  return 'Saldo $walletName akan di bawah saldo minimal (${formatRupiah(minBalance)}). Lanjutkan?';
 }

@@ -4,7 +4,6 @@ import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/providers/input_transaction_provider.dart';
 import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -13,6 +12,7 @@ import '../../helpers/pump_app.dart';
 
 class FakeInputNotifier extends InputTransactionNotifier {
   int saveCalls = 0;
+  String result = 'uji';
 
   /// Bila diisi, saveTransaction menunggu gate ini (meniru jaringan lambat).
   Completer<void>? gate;
@@ -51,7 +51,7 @@ class FakeInputNotifier extends InputTransactionNotifier {
   }) async {
     saveCalls++;
     if (gate != null) await gate!.future;
-    return const TransactionSaveResult(false, 'uji');
+    return TransactionSaveResult(false, result);
   }
 }
 
@@ -90,66 +90,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('pengeluaran melewati saldo minimal: dialog muncul, Batal tidak menyimpan', (tester) async {
+  testWidgets('tidak ada lagi dialog "Di bawah saldo minimal": server yang memutuskan', (tester) async {
     final fake = await pumpInput(tester, '60000');
-    await tapSave(tester);
-    expect(find.text('Di bawah saldo minimal'), findsOneWidget);
-    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Batal'));
-    await tester.pumpAndSettle();
-    expect(fake.saveCalls, 0);
-  });
-
-  testWidgets('pengeluaran melewati saldo minimal: Lanjutkan tetap menyimpan', (tester) async {
-    final fake = await pumpInput(tester, '60000');
-    await tapSave(tester);
-    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Lanjutkan'));
-    await tester.pumpAndSettle();
-    expect(fake.saveCalls, 1);
-    await tester.pump(const Duration(seconds: 4)); // tutup toast
-  });
-
-  testWidgets('pengeluaran masih di atas saldo minimal: tanpa dialog', (tester) async {
-    final fake = await pumpInput(tester, '40000');
+    fake.result = 'Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 50.000';
     await tapSave(tester);
     expect(find.text('Di bawah saldo minimal'), findsNothing);
     expect(fake.saveCalls, 1);
-    await tester.pump(const Duration(seconds: 4)); // tutup toast
-  });
-
-  testWidgets('kategori belum dipilih: tanpa dialog, validasi lama yang bicara duluan', (tester) async {
-    final fake = await pumpInput(tester, '60000', pickCategory: false);
-    await tapSave(tester);
-    expect(find.text('Di bawah saldo minimal'), findsNothing);
-    expect(fake.saveCalls, 1);
-    await tester.pump(const Duration(seconds: 4)); // tutup toast
-  });
-
-  TransactionModel oldExpense(double amount) => TransactionModel(
-        id: 5,
-        userId: 'u',
-        categoryId: 10,
-        amount: amount,
-        date: DateTime(2026, 9, 20),
-        note: 'makan siang',
-        walletId: 1,
-      );
-
-  testWidgets('edit pengeluaran: saldo lama dikembalikan dulu, lalu dicek (30rb -> 90rb memicu dialog)', (tester) async {
-    // Saldo 100rb sudah dipotong 30rb lama -> 130rb sebelum edit; 130rb - 90rb = 40rb < minimal 50rb.
-    final fake = await pumpInput(tester, '90000', edit: oldExpense(30000));
-    await tapSave(tester);
-    expect(find.text('Di bawah saldo minimal'), findsOneWidget);
-    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Batal'));
-    await tester.pumpAndSettle();
-    expect(fake.saveCalls, 0);
-  });
-
-  testWidgets('edit pengeluaran: 30rb -> 70rb masih di atas minimal, tanpa dialog', (tester) async {
-    final fake = await pumpInput(tester, '70000', edit: oldExpense(30000));
-    await tapSave(tester);
-    expect(find.text('Di bawah saldo minimal'), findsNothing);
-    expect(fake.saveCalls, 1);
-    await tester.pump(const Duration(seconds: 4)); // tutup toast
+    expect(find.text('Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 50.000'), findsOneWidget);
+    expect(find.text('Simpan Transaksi'), findsOneWidget); // layar tetap terbuka
+    await tester.pump(const Duration(seconds: 4));
   });
 
   testWidgets('dompet pertama otomatis terpilih saat daftar dompet tiba', (tester) async {
@@ -204,6 +153,18 @@ void main() {
     expect(fake.saveCalls, 1);
     await tester.pump(const Duration(seconds: 4)); // tutup toast
   });
+
+  testWidgets('tanpa dompet: baris Dompet menawarkan "Buat Dompet"', (tester) async {
+    await pumpApp(
+      tester,
+      const InputTransactionScreen(initialIsExpense: true),
+      overrides: [inputTransactionProvider.overrideWith(_NoWalletNotifier.new)],
+      size: const Size(600, 1400),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Buat Dompet'), findsOneWidget);
+    expect(find.text('Buat dompet di menu utama!'), findsNothing);
+  });
 }
 
 class _ManyCategoriesNotifier extends InputTransactionNotifier {
@@ -221,4 +182,11 @@ class _ManyCategoriesNotifier extends InputTransactionNotifier {
     );
     return const InputTransactionState();
   }
+}
+
+class _NoWalletNotifier extends InputTransactionNotifier {
+  @override
+  InputTransactionState build() => const InputTransactionState(categories: [
+        {'id': 10, 'name': 'Makan', 'is_expense': true},
+      ]);
 }

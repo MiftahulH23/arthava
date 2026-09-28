@@ -46,9 +46,9 @@ void main() {
       expect(error, isNull);
     });
 
-    test('menolak jika saldo sumber tidak cukup', () {
+    test('saldo tidak lagi dicek di app (server menolak dengan saldo minimal)', () {
       final error = validateTransfer(source: source, dest: dest, amount: 150000);
-      expect(error, isNotNull);
+      expect(error, isNull);
     });
 
     test('menolak jika sumber dan tujuan sama', () {

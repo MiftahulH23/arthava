@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/money_rejection.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -231,6 +232,11 @@ class TransactionHistoryNotifier
       fetchTransactions();
 
       return "Data dihapus & saldo dompet disesuaikan!";
+    } on PostgrestException catch (e) {
+      debugPrint("Delete error: $e");
+      // P0001 = tolakan aturan (mis. menghapus pemasukan yang sudah terpakai).
+      if (e.code == 'P0001') throw MoneyRejection(e.message);
+      throw Exception("Gagal menghapus transaksi.");
     } catch (e) {
       debugPrint("Delete error: $e");
       throw Exception("Gagal menghapus transaksi.");

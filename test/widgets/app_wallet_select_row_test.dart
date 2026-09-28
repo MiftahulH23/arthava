@@ -38,4 +38,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(picked, 2);
   });
+
+  testWidgets('onCreate tanpa dompet: "Buat Dompet" memanggil onCreate dan memilih hasilnya', (tester) async {
+    int? picked;
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: AppWalletSelectRow(
+          wallets: const [],
+          selectedId: null,
+          onChanged: (v) => picked = v,
+          onCreate: () async => 7,
+        ),
+      ),
+    );
+    expect(find.text('Buat Dompet'), findsOneWidget);
+    await tester.tap(find.text('Buat Dompet'));
+    await tester.pumpAndSettle();
+    expect(picked, 7);
+  });
 }

@@ -11,6 +11,9 @@ class RecurringTransactionModel {
   final Map<String, dynamic>? category;
   final int? walletId;
 
+  /// Pesan saldo kurang bila jadwal tertahan (run_due_recurring); null = normal.
+  final String? blockedReason;
+
   RecurringTransactionModel({
     required this.id,
     required this.userId,
@@ -23,6 +26,7 @@ class RecurringTransactionModel {
     required this.isActive,
     this.category,
     this.walletId,
+    this.blockedReason,
   });
 
   factory RecurringTransactionModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +42,7 @@ class RecurringTransactionModel {
       isActive: json['is_active'],
       category: json['categories'], // Akan berisi relasi ke tabel categories
       walletId: json['wallet_id'],
+      blockedReason: json['blocked_reason'],
     );
   }
 }

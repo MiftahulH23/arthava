@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/money_rejection.dart';
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/category_visuals.dart';
 import 'package:catat_uang_app/core/transaction_tags.dart';
@@ -51,6 +52,8 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
       if (mounted) {
         AppNotification.success(context, message);
       }
+    } on MoneyRejection catch (e) {
+      if (mounted) AppNotification.error(context, e.message);
     } catch (e) {
       if (mounted) {
         AppNotification.error(context, "Gagal menghapus transaksi.");
