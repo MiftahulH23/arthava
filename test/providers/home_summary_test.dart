@@ -132,4 +132,12 @@ void main() {
     expect(pickDebt([debt(1, 500, due: DateTime(2026, 9, 22))])!.overdueDays(today), 2);
     expect(pickDebt([debt(1, 500, due: DateTime(2026, 9, 30))])!.overdueDays(today), 0);
   });
+
+  test('pickBlockedBills: hanya jadwal aktif yang punya blocked_reason', () {
+    RecurringTransactionModel r(int id, {String? blocked, bool active = true}) => RecurringTransactionModel(
+          id: id, userId: 'u', categoryId: 1, amount: 10000, frequency: 'Bulanan',
+          startDate: DateTime(2026, 9, 1), nextRunDate: DateTime(2026, 9, 1), isActive: active, blockedReason: blocked);
+    final picked = pickBlockedBills([r(1), r(2, blocked: 'Saldo dompet BCA tidak cukup!'), r(3, blocked: 'x', active: false)]);
+    expect(picked.map((e) => e.id), [2]);
+  });
 }

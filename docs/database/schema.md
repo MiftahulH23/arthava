@@ -97,6 +97,7 @@ Diekspor user dari SQL Editor pada 2026-09-24 (schema `public`). Sumber resmi un
 | `is_active` | boolean | ya | `true` |
 | `created_at` | timestamp with time zone | ya | `now()` |
 | `wallet_id` | bigint | ya |  |
+| `blocked_reason` | text | ya |  |
 
 ## `savings`
 
@@ -215,3 +216,4 @@ Fungsi: `handle_new_user`. Trigger di schema public: tidak ada (trigger `handle_
 - RPC Investasi & Zakat/Sedekah (migrasi `202609260008_tools_money.sql`, dijalankan 2026-09-26): `buy_investment(p_name, p_type, p_amount, p_wallet_id, p_date)`, `buy_sell_investment(p_investment_id, p_is_buy, p_amount, p_wallet_id, p_date)` (galat `Saldo dompet tidak mencukupi!` / `Nominal penarikan melebihi nilai aset saat ini!`), `pay_zakat_sedekah(p_is_zakat, p_wallet_id, p_amount, p_note, p_date)`, helper `lock_wallet_with_balance(p_wallet_id, p_amount, p_message)`; `system_category` sekarang punya argumen ke-4 opsional `p_icon` (default `'bank'`).
 - Migrasi `202609260009_sell_negative_wallet.sql` (dijalankan 2026-09-26): `lock_wallet_with_balance` hanya mengecek saldo bila ada uang keluar (`p_amount > 0`), jadi jual aset ke dompet bersaldo minus tetap bisa. `202609260006` kini juga mendefinisikan `system_category` 4 argumen supaya menjalankan ulang tidak membuat overload ganda (catatan: 0006 menimpa versi 0007 bila dijalankan ulang — jalankan 0007 sesudahnya).
 - Aturan saldo dompet (migrasi `202609280001_wallet_spend_guard.sql`, dijalankan 2026-09-28): `wallet_spend_guard(p_wallet_id, p_amount, p_suffix default '')` mengunci dompet dan menolak uang keluar yang melewati `balance − min_balance` dengan pesan tunggal `Saldo dompet <nama> tidak cukup! Bisa dipakai: Rp <jumlah>` (`rupiah_text`). Dipakai `save_transaction` (baru & edit, efek bersih per dompet), `delete_transaction` (hapus pemasukan), `transfer_between_wallets`, `deposit_to_target`, `saving_transaction`, `edit_saving_item`, `delete_saving_item`, `lock_wallet_with_balance` (investasi, zakat) dan `debt_move_wallet` (semua RPC utang; akhiran "Hapus saja" dipertahankan).
+- Tagihan rutin tertahan (migrasi `202609280002_recurring_blocked.sql`, dijalankan 2026-09-28): `run_due_recurring` tidak menjalankan periode pengeluaran yang melewati "bisa dipakai" dompet; `next_run_date` tetap di periode itu dan `blocked_reason` berisi pesan saldo (dikosongkan saat berhasil jalan). Beranda menampilkan jadwal aktif yang `blocked_reason`-nya terisi.

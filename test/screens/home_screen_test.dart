@@ -160,4 +160,32 @@ void main() {
     final fab = tester.getRect(find.byType(FloatingActionButton));
     expect(lastRow.bottom + 16, lessThanOrEqualTo(fab.top));
   });
+
+  testWidgets('tagihan tertahan tampil sebagai pemberitahuan di Beranda', (tester) async {
+    await pumpHome(
+      tester,
+      HomeState(
+        isLoading: false,
+        wallets: [wallet(1, 'BCA', 5000)],
+        summary: HomeSummary(
+          blockedBills: [
+            RecurringTransactionModel(
+              id: 4,
+              userId: 'u',
+              categoryId: 3,
+              amount: 1500000,
+              note: 'Bayar Kos',
+              frequency: 'Bulanan',
+              startDate: DateTime(2026, 9, 1),
+              nextRunDate: DateTime(2026, 9, 1),
+              isActive: true,
+              blockedReason: 'Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 5.000',
+            ),
+          ],
+        ),
+      ),
+    );
+    expect(find.text('Tagihan Bayar Kos belum terbayar'), findsOneWidget);
+    expect(find.text('Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 5.000'), findsOneWidget);
+  });
 }

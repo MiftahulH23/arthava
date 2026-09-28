@@ -19,6 +19,7 @@ import 'package:catat_uang_app/providers/home_summary.dart';
 import 'package:catat_uang_app/screens/all_features/all_features_screen.dart';
 import 'package:catat_uang_app/screens/all_features/app_feature.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_callout.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_hero_card.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
@@ -735,6 +736,28 @@ class _HomeSummaryGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Tagihan rutin yang tertahan karena saldo dompet kurang.
+        for (final bill in summary.blockedBills) ...[
+          GestureDetector(
+            onTap: () => onOpen(AppFeature.recurring),
+            child: AppCallout(
+              icon: PhosphorIconsFill.warningCircle,
+              tone: AppCalloutTone.accent,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tagihan ${(bill.note ?? '').isNotEmpty ? bill.note : (bill.category?['name'] ?? '')} belum terbayar',
+                    style: AppTextStyles.bodyStrong,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(bill.blockedReason!, style: AppTextStyles.caption),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text('RINGKASAN', style: AppTextStyles.groupLabel),

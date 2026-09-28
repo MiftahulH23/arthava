@@ -19,7 +19,10 @@ class HomeSummary {
   final RecurringTransactionModel? nextBill;
   final DebtModel? debt;
 
-  const HomeSummary({this.budget, this.target, this.nextBill, this.debt});
+  /// Jadwal aktif yang tertahan karena saldo dompet kurang.
+  final List<RecurringTransactionModel> blockedBills;
+
+  const HomeSummary({this.budget, this.target, this.nextBill, this.debt, this.blockedBills = const []});
 }
 
 /// Transaksi yang hanya memindahkan uang (tabungan / utang-piutang), bukan
@@ -68,6 +71,10 @@ RecurringTransactionModel? pickNextBill(List<RecurringTransactionModel> items) {
     ..sort((a, b) => a.nextRunDate.compareTo(b.nextRunDate));
   return bills.isEmpty ? null : bills.first;
 }
+
+/// Jadwal aktif yang tertahan karena saldo dompet kurang (run_due_recurring).
+List<RecurringTransactionModel> pickBlockedBills(List<RecurringTransactionModel> items) =>
+    items.where((r) => r.isActive && (r.blockedReason ?? '').isNotEmpty).toList();
 
 DebtModel? pickDebt(List<DebtModel> debts) {
   final open = debts

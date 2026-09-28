@@ -203,6 +203,59 @@ void main() {
     expect(_failures, isEmpty);
   }, skip: _skip, timeout: const Timeout(Duration(minutes: 3)));
 
+  test('tagihan rutin tertahan saat saldo kurang, jalan saat cukup', () async {
+    _failures.clear();
+    int? walletId;
+    int? catId;
+    int? recId;
+    try {
+      walletId = (await db.from('wallets').insert({'user_id': userId, 'name': 'E2E Guard Rutin', 'balance': 25000, 'min_balance': 0, 'color': '#1E3A8A'}).select('id').single())['id'] as int;
+      catId = (await db.from('categories').insert({'user_id': userId, 'name': 'E2E Guard Kos', 'is_expense': true, 'icon_name': 'tag'}).select('id').single())['id'] as int;
+      // run_due_recurring membatasi "hari ini" ke tanggal server + 1, jadi pakai
+      // tanggal nyata: tiga periode tertunggak tanggal 1 (dua bulan lalu, bulan
+      // lalu, bulan ini) @ 10.000.
+      String day(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      final now = DateTime.now();
+      final today = day(now);
+      final first = DateTime(now.year, now.month - 2, 1);
+      final thisMonth = day(DateTime(now.year, now.month, 1));
+      final nextMonth = day(DateTime(now.year, now.month + 1, 1));
+      recId = (await db.from('recurring_transactions').insert({
+        'user_id': userId, 'category_id': catId, 'wallet_id': walletId, 'amount': 10000, 'frequency': 'Bulanan',
+        'start_date': day(first), 'next_run_date': day(first), 'note': 'E2E Guard kos', 'is_active': true,
+      }).select('id').single())['id'] as int;
+
+      await db.rpc('run_due_recurring', params: {'p_today': today});
+      var row = await db.from('recurring_transactions').select('next_run_date, blocked_reason').eq('id', recId).single();
+      final trx1 = await db.from('transactions').select('id').eq('wallet_id', walletId);
+      check('R1 dua periode jalan (saldo 25.000), periode ketiga tertahan', trx1.length == 2, trx1.length);
+      check('R1 saldo 5.000 (tidak minus)', await balance(walletId) == 5000, await balance(walletId));
+      check('R2 next_run_date tetap di periode tertahan (tanggal 1 bulan ini)', row['next_run_date'] == thisMonth, row);
+      check('R2 blocked_reason berisi pesan saldo', (row['blocked_reason'] as String?)?.startsWith('Saldo dompet E2E Guard Rutin tidak cukup!') ?? false, row);
+
+      await db.rpc('run_due_recurring', params: {'p_today': today});
+      check('R3 dipanggil ulang saat masih kurang: tidak ada transaksi baru',
+          (await db.from('transactions').select('id').eq('wallet_id', walletId)).length == 2);
+
+      await db.from('wallets').update({'balance': 50000}).eq('id', walletId);
+      await db.rpc('run_due_recurring', params: {'p_today': today});
+      row = await db.from('recurring_transactions').select('next_run_date, blocked_reason').eq('id', recId).single();
+      check('R4 saldo cukup: periode tertahan jalan, blocked_reason kosong, jadwal maju ke bulan depan',
+          row['blocked_reason'] == null && row['next_run_date'] == nextMonth && await balance(walletId) == 40000,
+          (row, await balance(walletId)));
+    } finally {
+      if (recId != null) await db.from('recurring_transactions').delete().eq('id', recId);
+      if (walletId != null) {
+        await db.from('transactions').delete().eq('wallet_id', walletId);
+        await db.from('wallets').delete().eq('id', walletId);
+      }
+      if (catId != null) await db.from('categories').delete().eq('id', catId);
+      // ignore: avoid_print
+      print(_failures.isEmpty ? '\nSEMUA LULUS (tagihan tertahan)' : '\n${_failures.length} GAGAL: ${_failures.join(' | ')}');
+    }
+    expect(_failures, isEmpty);
+  }, skip: _skip, timeout: const Timeout(Duration(minutes: 2)));
+
   tearDownAll(() async {
     if (_skip) return;
     await db.auth.signOut();
