@@ -33,6 +33,35 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
   });
 
+  testWidgets('pesan sama diketuk berulang: toast yang tampil dipakai ulang, tidak dianimasikan ulang', (tester) async {
+    await pumpApp(
+      tester,
+      Builder(
+        builder: (context) => Scaffold(
+          // Di tengah: ketukan kedua tidak boleh mengenai toast (ketuk toast = tutup).
+          body: Center(
+            child: TextButton(
+              onPressed: () => AppNotification.info(context, 'Belum tersedia.'),
+              child: const Text('tes'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('tes'));
+    await tester.pump(const Duration(milliseconds: 300));
+    final first = find.text('Belum tersedia.').evaluate().single;
+    await tester.tap(find.text('tes'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Belum tersedia.'), findsOneWidget);
+    expect(identical(find.text('Belum tersedia.').evaluate().single, first), isTrue);
+    // Timer tetap diperpanjang: 2,9 detik setelah ketukan kedua toast masih ada.
+    await tester.pump(const Duration(milliseconds: 2600));
+    expect(find.text('Belum tersedia.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Belum tersedia.'), findsNothing);
+  });
+
   testWidgets('Toast info memakai ikon info biru di lingkaran primarySoft', (tester) async {
     await pumpApp(
       tester,

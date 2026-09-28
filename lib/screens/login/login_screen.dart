@@ -19,6 +19,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   int _tab = 0;
   final _loginEmail = TextEditingController();
+  // Naik tiap daftar berhasil → RegisterForm dibuat ulang dengan isian kosong.
+  int _registerRound = 0;
 
   @override
   void dispose() {
@@ -32,7 +34,22 @@ class _LoginScreenState extends State<LoginScreen> {
   void _onRegistered(String email) => setState(() {
         _loginEmail.text = email;
         _tab = 0;
+        _registerRound++;
       });
+
+  void _switchTab(int tab) {
+    // Kursor di tab yang disembunyikan jangan tetap aktif (keyboard nyasar).
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _tab = tab);
+  }
+
+  /// Kedua form tetap ter-mount (hanya disembunyikan) supaya request login/
+  /// daftar yang sedang berjalan tidak hilang saat pengguna pindah tab, dan
+  /// isian yang sudah diketik tetap ada.
+  Widget _tabBody(int tab, Widget form) => Offstage(
+        offstage: _tab != tab,
+        child: TickerMode(enabled: _tab == tab, child: form),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -51,12 +68,18 @@ class _LoginScreenState extends State<LoginScreen> {
         AppSegmentedControl(
           labels: const ['Masuk', 'Daftar'],
           selectedIndex: _tab,
-          onChanged: (i) => setState(() => _tab = i),
+          onChanged: _switchTab,
         ),
-        if (_tab == 0)
-          LoginForm(emailController: _loginEmail, onGoogle: _google)
-        else
-          RegisterForm(onRegistered: _onRegistered, onGoogle: _google),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _tabBody(0, LoginForm(emailController: _loginEmail, onGoogle: _google)),
+            _tabBody(
+              1,
+              RegisterForm(key: ValueKey(_registerRound), onRegistered: _onRegistered, onGoogle: _google),
+            ),
+          ],
+        ),
       ],
     );
   }

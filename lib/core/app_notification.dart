@@ -9,6 +9,8 @@ enum _ToastKind { success, error, info }
 class AppNotification {
   static OverlayEntry? _currentEntry;
   static Timer? _timer;
+  static String? _currentMessage;
+  static _ToastKind? _currentKind;
 
   // PESAN SUKSES (HIJAU)
   static void success(BuildContext context, String message) {
@@ -31,8 +33,18 @@ class AppNotification {
     String message, {
     required _ToastKind kind,
   }) {
+    // 0. Pesan yang sama masih tampil (mis. tombol diketuk berulang): cukup
+    // perpanjang waktunya, jangan animasikan ulang.
+    if (_currentEntry != null && _currentMessage == message && _currentKind == kind) {
+      _timer?.cancel();
+      _timer = Timer(const Duration(seconds: 3), _removeCurrentToast);
+      return;
+    }
+
     // 1. Hapus notifikasi lama jika masih ada (biar gak numpuk)
     _removeCurrentToast();
+    _currentMessage = message;
+    _currentKind = kind;
 
     final overlay = Overlay.of(context);
 
@@ -66,6 +78,8 @@ class AppNotification {
       _currentEntry?.remove();
       _currentEntry = null;
     }
+    _currentMessage = null;
+    _currentKind = null;
     if (_timer != null) {
       _timer?.cancel();
       _timer = null;

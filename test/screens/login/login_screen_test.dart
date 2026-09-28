@@ -120,6 +120,39 @@ void main() {
     expect(find.text('baru@contoh.com'), findsOneWidget);
   });
 
+  testWidgets('pindah tab tidak membuang form yang sedang memproses (tetap ter-mount)', (tester) async {
+    await pumpApp(tester, const LoginScreen());
+    final loginState = tester.state(find.byType(LoginForm));
+    await _toDaftar(tester);
+    final registerState = tester.state(find.byType(RegisterForm));
+    expect(loginState.mounted, isTrue);
+    expect(identical(tester.state(find.byType(LoginForm, skipOffstage: false)), loginState), isTrue);
+    await tester.tap(find.text('Masuk').first);
+    await tester.pumpAndSettle();
+    expect(registerState.mounted, isTrue);
+    expect(identical(tester.state(find.byType(RegisterForm, skipOffstage: false)), registerState), isTrue);
+  });
+
+  testWidgets('isian Daftar tetap ada setelah bolak-balik tab', (tester) async {
+    await pumpApp(tester, const LoginScreen());
+    await _toDaftar(tester);
+    await tester.enterText(find.byType(TextField).first, 'Miftahul Huda');
+    await tester.tap(find.text('Masuk').first);
+    await tester.pumpAndSettle();
+    await _toDaftar(tester);
+    expect(find.text('Miftahul Huda'), findsOneWidget);
+  });
+
+  testWidgets('setelah daftar berhasil, form Daftar kosong lagi', (tester) async {
+    await pumpApp(tester, const LoginScreen());
+    await _toDaftar(tester);
+    await tester.enterText(find.byType(TextField).first, 'Miftahul Huda');
+    tester.widget<RegisterForm>(find.byType(RegisterForm)).onRegistered('baru@contoh.com');
+    await tester.pumpAndSettle();
+    await _toDaftar(tester);
+    expect(find.text('Miftahul Huda'), findsNothing);
+  });
+
   for (final tab in ['Masuk', 'Daftar']) {
     testWidgets('tab $tab dengan keyboard di HP kecil tidak overflow', (tester) async {
       await pumpApp(tester, const LoginScreen(), size: const Size(320, 568));

@@ -96,16 +96,23 @@ void main() {
     expect(labelRect.left, greaterThan(tester.getRect(find.byIcon(PhosphorIconsRegular.envelopeSimple)).right));
   });
 
-  testWidgets('outlined + label pada teks 1.3x tidak overflow', (tester) async {
+  testWidgets('outlined + label pada teks 1.3x: tidak overflow, label tetap di atas teks dan di dalam kotak', (tester) async {
     tester.platformDispatcher.textScaleFactorTestValue = 1.3;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final controller = TextEditingController(text: 'nama.panjang.sekali@contoh.com');
     addTearDown(controller.dispose);
-    await pumpApp(tester, Scaffold(body: SizedBox(width: 280, child: AppTextField(
-      controller: controller, label: 'Email', icon: PhosphorIconsRegular.envelopeSimple, outlined: true))),
+    await pumpApp(tester, Scaffold(body: Center(child: SizedBox(width: 280, child: AppTextField(
+      controller: controller, label: 'Email', icon: PhosphorIconsRegular.envelopeSimple, outlined: true)))),
       size: const Size(320, 568));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+    final labelRect = tester.getRect(find.text('Email'));
+    final inputRect = tester.getRect(find.byType(EditableText));
+    final boxRect = tester.getRect(find.byType(AnimatedContainer));
+    expect(labelRect.bottom, lessThanOrEqualTo(inputRect.top + 1));
+    expect(labelRect.top, greaterThan(boxRect.top));
+    expect(inputRect.bottom, lessThanOrEqualTo(boxRect.bottom));
+    expect(labelRect.left, greaterThan(tester.getRect(find.byIcon(PhosphorIconsRegular.envelopeSimple)).right));
   });
 
   testWidgets('outlined memakai focusNode pemanggil tanpa men-dispose-nya', (tester) async {
