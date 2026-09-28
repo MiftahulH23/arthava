@@ -1,12 +1,9 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/home/home_screen.dart';
-import 'package:catat_uang_app/screens/login/auth_brand.dart';
+import 'package:catat_uang_app/screens/login/auth_layout.dart';
 import 'package:catat_uang_app/screens/register/register_screen.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -66,65 +63,50 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppPageScaffold(
+    return AuthLayout(
       title: 'DompetKu',
-      titleWidget: const AuthBrand(
-        icon: PhosphorIconsFill.wallet,
-        title: 'DompetKu',
-        subtitle: 'Cerdas mengelola, tenang finansial',
-      ),
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Selamat Datang!', style: AppTextStyles.title),
-            const SizedBox(height: 4),
-            Text('Silakan masuk untuk melanjutkan', style: AppTextStyles.subhead),
-          ],
+      subtitle: 'Cerdas mengelola, tenang finansial',
+      leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
+      sheetTitle: 'Masuk ke akunmu',
+      fields: [
+        AppTextField(
+          controller: _emailController,
+          hint: 'email@contoh.com',
+          icon: PhosphorIconsRegular.envelopeSimple,
+          keyboardType: TextInputType.emailAddress,
+          outlined: true,
         ),
-        AppGroupedSection(
-          insetSeparators: false,
-          children: [
-            AppTextField(
-              controller: _emailController,
-              hint: 'email@contoh.com',
-              icon: PhosphorIconsRegular.envelopeSimple,
-              keyboardType: TextInputType.emailAddress,
+        AppTextField(
+          controller: _passwordController,
+          hint: 'Masukkan password Anda',
+          icon: PhosphorIconsRegular.lockKey,
+          obscure: _isObscure,
+          outlined: true,
+          suffix: IconButton(
+            onPressed: () => setState(() => _isObscure = !_isObscure),
+            icon: Icon(
+              _isObscure ? PhosphorIconsRegular.eye : PhosphorIconsRegular.eyeSlash,
+              color: AppColors.textSecondary,
+              size: 20,
             ),
-            AppTextField(
-              controller: _passwordController,
-              hint: 'Masukkan password Anda',
-              icon: PhosphorIconsRegular.lockKey,
-              obscure: _isObscure,
-              suffix: IconButton(
-                onPressed: () => setState(() => _isObscure = !_isObscure),
-                icon: Icon(
-                  _isObscure
-                      ? PhosphorIconsRegular.eye
-                      : PhosphorIconsRegular.eyeSlash,
-                  color: AppColors.textSecondary,
-                  size: 20,
-                ),
-              ),
-            ),
-          ],
-        ),
-        AppPrimaryButton(
-          label: 'Masuk Sekarang',
-          onPressed: _isLoading ? null : _login,
-          loading: _isLoading,
-        ),
-        AuthFooter(
-          prompt: 'Belum punya akun? ',
-          action: 'Daftar Disini',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const RegisterScreen()),
-            );
-          },
+          ),
         ),
       ],
+      action: AppPrimaryButton(
+        label: 'Masuk Sekarang',
+        onPressed: _isLoading ? null : _login,
+        loading: _isLoading,
+      ),
+      footer: AuthFooter(
+        prompt: 'Belum punya akun? ',
+        action: 'Daftar Disini',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const RegisterScreen()),
+          );
+        },
+      ),
     );
   }
 }
