@@ -9,6 +9,7 @@ import 'package:catat_uang_app/screens/lock/lock_screen.dart';
 import 'package:catat_uang_app/screens/login/login_screen.dart';
 import 'package:catat_uang_app/screens/register/register_screen.dart';
 import 'package:catat_uang_app/screens/settings/settings_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_auth/local_auth.dart';
 // Transitif lewat local_auth; tipe parameter authenticate() yang di-override.
@@ -58,6 +59,15 @@ void main() {
     await pumpScreen(tester, const RegisterScreen());
     await tester.pumpAndSettle();
     await saveScreenshot(tester, 'b7_02_register');
+  }, skip: skip);
+
+  testWidgets('02b login fokus email', (tester) async {
+    await loadRealFonts(tester);
+    await pumpScreen(tester, const LoginScreen());
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'miftahul@contoh.com');
+    await tester.pumpAndSettle();
+    await saveScreenshot(tester, 'b7_01b_login_focus');
   }, skip: skip);
 
   testWidgets('03 kunci aplikasi (gagal → Buka Kunci)', (tester) async {
