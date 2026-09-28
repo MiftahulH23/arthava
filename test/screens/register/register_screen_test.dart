@@ -1,4 +1,5 @@
 import 'package:catat_uang_app/screens/register/register_screen.dart';
+import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -28,14 +29,18 @@ void main() {
   testWidgets('Daftar Akun menampilkan layout sesuai mockup', (tester) async {
     await _openRegister(tester);
 
-    expect(find.text('Daftar Akun'), findsWidgets);
+    expect(find.text('Buat akun baru'), findsOneWidget);
     expect(find.text('Gabung dan mulai atur keuanganmu'), findsOneWidget);
-    expect(find.text('Masuk'), findsOneWidget); // label tombol kembali nav bar
-    expect(find.byIcon(PhosphorIconsFill.userCirclePlus), findsOneWidget);
+    expect(find.text('Masuk'), findsOneWidget); // tombol kembali di hero
+    expect(find.byIcon(PhosphorIconsBold.caretLeft), findsOneWidget);
     expect(find.byIcon(PhosphorIconsRegular.user), findsOneWidget);
+    expect(find.text('Nama lengkap'), findsOneWidget); // hint
+    expect(find.text('Minimal 6 karakter.'), findsOneWidget);
     expect(find.text('Daftar Sekarang'), findsOneWidget);
     expect(find.text('Masuk Disini'), findsOneWidget);
-    expect(find.text('Nama Lengkap'), findsNothing);
+    final fields = tester.widgetList<AppTextField>(find.byType(AppTextField));
+    expect(fields.length, 3);
+    expect(fields.every((f) => f.outlined), isTrue);
   });
 
   testWidgets('Daftar kosong menampilkan toast validasi', (tester) async {
@@ -70,5 +75,18 @@ void main() {
     await tester.pump();
     expect(find.text('Semua kolom wajib diisi ya bos!'), findsOneWidget);
     await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('Daftar dengan keyboard terbuka di HP kecil tidak overflow', (tester) async {
+    await pumpApp(tester, const RegisterScreen(), size: const Size(320, 568));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(find.text('Daftar Sekarang'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daftar Sekarang'));
+    await tester.pump();
+    expect(find.text('Semua kolom wajib diisi ya bos!'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
   });
 }

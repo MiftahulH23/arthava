@@ -1,9 +1,8 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/login/auth_brand.dart';
+import 'package:catat_uang_app/screens/login/auth_layout.dart';
+import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -78,59 +77,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppPageScaffold(
-      title: 'Daftar Akun',
-      backLabel: 'Masuk',
-      titleWidget: const AuthBrand(
-        icon: PhosphorIconsFill.userCirclePlus,
-        title: 'Daftar Akun',
-        subtitle: 'Gabung dan mulai atur keuanganmu',
-        filled: false,
-      ),
-      children: [
-        AppGroupedSection(
-          insetSeparators: false,
-          children: [
-            AppTextField(
-              controller: _nameController,
-              hint: 'Masukkan nama asli bos',
-              icon: PhosphorIconsRegular.user,
-            ),
-            AppTextField(
-              controller: _emailController,
-              hint: 'email@contoh.com',
-              icon: PhosphorIconsRegular.envelopeSimple,
-              keyboardType: TextInputType.emailAddress,
-            ),
-            AppTextField(
-              controller: _passwordController,
-              hint: 'Buat password yang kuat',
-              icon: PhosphorIconsRegular.lockKey,
-              obscure: _isObscure,
-              suffix: IconButton(
-                onPressed: () => setState(() => _isObscure = !_isObscure),
-                icon: Icon(
-                  _isObscure
-                      ? PhosphorIconsRegular.eye
-                      : PhosphorIconsRegular.eyeSlash,
-                  color: AppColors.textSecondary,
-                  size: 20,
-                ),
-              ),
-            ),
-          ],
+    return AuthLayout(
+      title: 'Buat akun baru',
+      subtitle: 'Gabung dan mulai atur keuanganmu',
+      leading: AuthBackButton(label: 'Masuk', onTap: () => Navigator.pop(context)),
+      fields: [
+        AppTextField(
+          controller: _nameController,
+          hint: 'Nama lengkap',
+          icon: PhosphorIconsRegular.user,
+          outlined: true,
         ),
-        AppPrimaryButton(
-          label: 'Daftar Sekarang',
-          onPressed: _isLoading ? null : _register,
-          loading: _isLoading,
+        AppTextField(
+          controller: _emailController,
+          hint: 'email@contoh.com',
+          icon: PhosphorIconsRegular.envelopeSimple,
+          keyboardType: TextInputType.emailAddress,
+          outlined: true,
         ),
-        AuthFooter(
-          prompt: 'Sudah punya akun? ',
-          action: 'Masuk Disini',
-          onTap: () => Navigator.pop(context),
+        AppTextField(
+          controller: _passwordController,
+          hint: 'Buat password yang kuat',
+          icon: PhosphorIconsRegular.lockKey,
+          obscure: _isObscure,
+          outlined: true,
+          suffix: IconButton(
+            onPressed: () => setState(() => _isObscure = !_isObscure),
+            icon: Icon(
+              _isObscure ? PhosphorIconsRegular.eye : PhosphorIconsRegular.eyeSlash,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Text('Minimal 6 karakter.', style: AppTextStyles.caption),
         ),
       ],
+      action: AppPrimaryButton(
+        label: 'Daftar Sekarang',
+        onPressed: _isLoading ? null : _register,
+        loading: _isLoading,
+      ),
+      footer: AuthFooter(
+        prompt: 'Sudah punya akun? ',
+        action: 'Masuk Disini',
+        onTap: () => Navigator.pop(context),
+      ),
     );
   }
 }
