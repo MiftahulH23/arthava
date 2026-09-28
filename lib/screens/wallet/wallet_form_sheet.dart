@@ -17,9 +17,10 @@ final NumberFormat _walletThousands = NumberFormat.currency(locale: 'id_ID', sym
 /// Mengembalikan id dompet yang disimpan, atau null bila dibatalkan.
 /// [onSaved] menyegarkan daftar dompet milik layar pemanggil.
 Future<int?> showWalletFormSheet(
-BuildContext context, {
-WalletModel? wallet,
-required Future<void> Function() onSaved,
+  BuildContext context, {
+  WalletModel? wallet,
+  required Future<void> Function() onSaved,
+  @visibleForTesting Future<int> Function(String name, double balance, String color, double minBalance)? insertOverride,
 }) {
   final isEdit = wallet != null;
   final nameController = TextEditingController(text: isEdit ? wallet.name : '');
@@ -103,6 +104,7 @@ required Future<void> Function() onSaved,
               label: "Simpan Dompet",
               loading: isSubmitting,
               onPressed: () async {
+                if (isSubmitting) return; // ketuk ganda: jangan membuat dompet kembar
                 if (nameController.text.isEmpty || balanceController.text.isEmpty) {
                   AppNotification.error(sheetContext, "Harap isi semua data!");
                   return;
@@ -122,14 +124,22 @@ required Future<void> Function() onSaved,
                     );
                     id = wallet.id;
                   } else {
-                    id = await insertWallet(
-                      name: nameController.text.trim(),
-                      balance: cleanBalance,
-                      color: selectedColor,
-                      minBalance: minBalance,
-                    );
+                    id = insertOverride != null
+                        ? await insertOverride(nameController.text.trim(), cleanBalance, selectedColor, minBalance)
+                        : await insertWallet(
+                            name: nameController.text.trim(),
+                            balance: cleanBalance,
+                            color: selectedColor,
+                            minBalance: minBalance,
+                          );
                   }
-                  await onSaved();
+                  // Dompet sudah tersimpan: gagal menyegarkan daftar bukan kegagalan
+                  // (kalau dianggap gagal, user bisa menyimpan ulang → dompet kembar).
+                  try {
+                    await onSaved();
+                  } catch (e) {
+                    debugPrint('Refresh dompet gagal: $e');
+                  }
                   if (sheetContext.mounted) {
                     AppNotification.success(sheetContext, isEdit ? "Dompet diperbarui!" : "Dompet berhasil ditambahkan!");
                     Navigator.pop(sheetContext, id);

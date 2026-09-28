@@ -40,7 +40,7 @@ class AppWalletSelectRow extends StatelessWidget {
   final Future<int?> Function()? onCreate;
 
   Future<void> _create() async {
-    final id = await onCreate!();
+    final id = await runCreateOnce(onCreate!);
     if (id != null) onChanged(id);
   }
 

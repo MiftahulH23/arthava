@@ -53,7 +53,7 @@ class AppSelectRow<T> extends StatelessWidget {
   static const int _createIndex = -1;
 
   Future<void> _create() async {
-    final created = await onCreate!();
+    final created = await runCreateOnce(onCreate!);
     if (created != null) onChanged(created);
   }
 

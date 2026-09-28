@@ -60,4 +60,25 @@ void main() {
     expect(fake.transfers, [(2, 1, 10000.0)]);
     await tester.pumpAndSettle(const Duration(seconds: 5));
   });
+
+
+  testWidgets('satu dompet: Transfer tetap ada dan menawarkan membuat dompet kedua', (tester) async {
+    final fake = _OneWallet();
+    await pumpApp(tester, const WalletScreen(), overrides: [walletProvider.overrideWith(() => fake)], size: const Size(390, 1400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Transfer'));
+    await tester.pumpAndSettle();
+    expect(find.text('Butuh 2 dompet'), findsOneWidget);
+    expect(find.text('Buat Dompet'), findsOneWidget);
+  });
+}
+
+class _OneWallet extends WalletNotifier {
+  @override
+  WalletState build() => WalletState(isLoading: false, wallets: [
+        WalletModel(id: 1, userId: 'u', name: 'A', balance: 100000, color: '#1E3A8A'),
+      ]);
+
+  @override
+  Future<void> fetchWallets() async {}
 }

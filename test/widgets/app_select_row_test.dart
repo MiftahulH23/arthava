@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/widgets/app_select_row.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/pump_app.dart';
@@ -172,5 +173,32 @@ void main() {
     await tester.tap(find.text('Dompet'));
     await tester.pumpAndSettle();
     expect(created, 1);
+  });
+
+
+  testWidgets('ketuk ganda "Buat Dompet" hanya membuka satu form', (tester) async {
+    var created = 0;
+    final gate = Completer<int?>();
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: AppSelectRow<int>(
+          title: 'Dompet',
+          value: null,
+          options: const [],
+          onChanged: (_) {},
+          onCreate: () {
+            created++;
+            return gate.future;
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.text('Dompet'));
+    await tester.tap(find.text('Dompet'));
+    await tester.pump();
+    expect(created, 1);
+    gate.complete(null);
+    await tester.pumpAndSettle();
   });
 }

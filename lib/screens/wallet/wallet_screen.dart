@@ -87,7 +87,12 @@ class WalletScreen extends ConsumerWidget {
         confirmLabel: 'Buat Dompet',
         destructive: false,
       );
-      if (ok && context.mounted) await createWallet(context);
+      if (!ok || !context.mounted) return;
+      final id = await createWallet(context);
+      // Sudah 2 dompet: langsung lanjut ke Transfer.
+      if (id != null && wallets.length >= 2 && context.mounted) {
+        await _showTransferSheet(context, ref, wallets);
+      }
       return;
     }
 
@@ -321,7 +326,7 @@ class WalletScreen extends ConsumerWidget {
       bottomBar: Center(
         heightFactor: 1,
         child: _WalletActionPill(
-          showTransfer: state.wallets.length >= 2,
+          showTransfer: state.wallets.isNotEmpty, // < 2 dompet: ditawari membuat dompet kedua
           onTransfer: () => _showTransferSheet(context, ref, state.wallets),
           onAdd: () => showWalletFormSheet(context, onSaved: ref.read(walletProvider.notifier).fetchWallets),
         ),

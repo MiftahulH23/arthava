@@ -20,3 +20,17 @@ class AppCreateRow extends StatelessWidget {
     );
   }
 }
+
+bool _createInFlight = false;
+
+/// Menjalankan [create] (mis. membuka form "Dompet Baru") sekali pada satu
+/// waktu: ketukan kedua selagi form pertama belum selesai diabaikan.
+Future<T?> runCreateOnce<T>(Future<T?> Function() create) async {
+  if (_createInFlight) return null;
+  _createInFlight = true;
+  try {
+    return await create();
+  } finally {
+    _createInFlight = false;
+  }
+}
