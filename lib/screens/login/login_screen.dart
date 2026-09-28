@@ -1,15 +1,14 @@
 import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/home/home_screen.dart';
 import 'package:catat_uang_app/screens/login/auth_layout.dart';
-import 'package:catat_uang_app/screens/register/register_screen.dart';
+import 'package:catat_uang_app/screens/login/auth_parts.dart';
+import 'package:catat_uang_app/screens/login/login_form.dart';
+import 'package:catat_uang_app/screens/login/register_form.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Layar auth tunggal: tab Masuk | Daftar di atas sheet putih.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -18,95 +17,46 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  // Getter (bukan field) supaya Supabase.instance baru diakses saat login
-  // benar-benar dijalankan — layar bisa dirender di widget test tanpa
-  // Supabase.initialize.
-  SupabaseClient get _supabase => Supabase.instance.client;
-
-  bool _isLoading = false;
-  bool _isObscure = true;
+  int _tab = 0;
+  final _loginEmail = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _loginEmail.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
-    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
-      AppNotification.error(context, "Email dan Password wajib diisi!");
-      return;
-    }
+  void _google() =>
+      AppNotification.info(context, 'Login Google belum tersedia. Pakai email dan password dulu ya.');
 
-    setState(() => _isLoading = true);
-    try {
-      await _supabase.auth.signInWithPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      if (mounted) {
-        AppNotification.success(context, "Selamat datang kembali!");
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    } catch (e) {
-      if (mounted) AppNotification.error(context, "Email atau password salah.");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+  void _onRegistered(String email) => setState(() {
+        _loginEmail.text = email;
+        _tab = 0;
+      });
 
   @override
   Widget build(BuildContext context) {
     return AuthLayout(
-      title: 'DompetKu',
-      subtitle: 'Cerdas mengelola, tenang finansial',
+      title: 'Yuk, atur keuanganmu',
+      subtitle: 'Masuk atau buat akun untuk mulai mencatat pemasukan dan pengeluaranmu.',
       leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
+      footer: _tab == 0
+          ? Text(
+              'Datamu hanya bisa dilihat dari akunmu sendiri.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption,
+            )
+          : null,
       children: [
-        Text('Masuk ke akunmu', style: AppTextStyles.title.copyWith(fontSize: 16)),
-        AppTextField(
-          controller: _emailController,
-          hint: 'email@contoh.com',
-          icon: PhosphorIconsRegular.envelopeSimple,
-          keyboardType: TextInputType.emailAddress,
-          outlined: true,
+        AppSegmentedControl(
+          labels: const ['Masuk', 'Daftar'],
+          selectedIndex: _tab,
+          onChanged: (i) => setState(() => _tab = i),
         ),
-        AppTextField(
-          controller: _passwordController,
-          hint: 'Masukkan password Anda',
-          icon: PhosphorIconsRegular.lockKey,
-          obscure: _isObscure,
-          outlined: true,
-          suffix: IconButton(
-            onPressed: () => setState(() => _isObscure = !_isObscure),
-            icon: Icon(
-              _isObscure ? PhosphorIconsRegular.eye : PhosphorIconsRegular.eyeSlash,
-              color: AppColors.textSecondary,
-              size: 20,
-            ),
-          ),
-        ),
-        AppPrimaryButton(
-        label: 'Masuk Sekarang',
-        onPressed: _isLoading ? null : _login,
-        loading: _isLoading,
-      ),
-        AuthFooter(
-        prompt: 'Belum punya akun? ',
-        action: 'Daftar Disini',
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const RegisterScreen()),
-          );
-        },
-      ),
+        if (_tab == 0)
+          LoginForm(emailController: _loginEmail, onGoogle: _google)
+        else
+          RegisterForm(onRegistered: _onRegistered, onGoogle: _google),
       ],
     );
   }

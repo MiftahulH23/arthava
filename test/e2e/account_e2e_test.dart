@@ -4,7 +4,7 @@ library;
 // E2E backend B7 (Login, Edit Profil, Pengaturan) terhadap Supabase sungguhan,
 // lewat kode ASLI app. Semua nilai akun (nama, saldo minimal, kunci biometrik)
 // dikembalikan ke nilai awal di akhir. Daftar akun sengaja TIDAK dijalankan ke
-// akun baru sungguhan (hindari akun sampah) — lihat test widget RegisterScreen.
+// akun baru sungguhan (hindari akun sampah) — lihat test widget tab Daftar di LoginScreen.
 //
 //   E2E_EMAIL=... E2E_PASSWORD=... flutter test test/e2e/account_e2e_test.dart
 //

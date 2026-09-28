@@ -4,8 +4,6 @@ import 'package:catat_uang_app/widgets/app_system_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-export 'auth_parts.dart' show AuthLogo, AuthFooter, AuthBackButton;
-
 /// Kerangka layar auth (gaya referensi Rotta): hero gradasi biru berdekorasi
 /// lingkaran tipis, lalu sheet putih bersudut atas membulat. [children]
 /// tersusun dari atas dengan jarak 12; [footer] opsional menempel di dasar.

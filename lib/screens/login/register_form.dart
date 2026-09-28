@@ -1,6 +1,6 @@
 import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/login/auth_layout.dart';
+import 'package:catat_uang_app/screens/login/auth_parts.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
@@ -8,19 +8,24 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+/// Tab "Daftar". Setelah berhasil, [onRegistered] menerima email baru —
+/// [LoginScreen] pindah ke tab Masuk (dulu Navigator.pop ke layar Login).
+class RegisterForm extends StatefulWidget {
+  const RegisterForm({required this.onRegistered, required this.onGoogle, super.key});
+
+  final ValueChanged<String> onRegistered;
+  final VoidCallback onGoogle;
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<RegisterForm> createState() => _RegisterFormState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterFormState extends State<RegisterForm> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // Getter lazy: lihat catatan di LoginScreen.
+  // Getter lazy: lihat catatan di LoginForm.
   SupabaseClient get _supabase => Supabase.instance.client;
 
   bool _isLoading = false;
@@ -65,7 +70,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             context,
             "Registrasi Berhasil! Silakan Login.",
           );
-          Navigator.pop(context);
+          widget.onRegistered(_emailController.text);
         }
       }
     } catch (e) {
@@ -77,26 +82,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AuthLayout(
-      title: 'Buat akun baru',
-      subtitle: 'Gabung dan mulai atur keuanganmu',
-      leading: AuthBackButton(label: 'Masuk', onTap: () => Navigator.pop(context)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppTextField(
           controller: _nameController,
-          hint: 'Nama lengkap',
+          label: 'Nama lengkap',
+          hint: 'Masukkan nama asli bos',
           icon: PhosphorIconsRegular.user,
           outlined: true,
         ),
+        const SizedBox(height: 12),
         AppTextField(
           controller: _emailController,
+          label: 'Email',
           hint: 'email@contoh.com',
           icon: PhosphorIconsRegular.envelopeSimple,
           keyboardType: TextInputType.emailAddress,
           outlined: true,
         ),
+        const SizedBox(height: 12),
         AppTextField(
           controller: _passwordController,
+          label: 'Password',
           hint: 'Buat password yang kuat',
           icon: PhosphorIconsRegular.lockKey,
           obscure: _isObscure,
@@ -110,20 +118,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.only(left: 4),
           child: Text('Minimal 6 karakter.', style: AppTextStyles.caption),
         ),
-        AppPrimaryButton(
-        label: 'Daftar Sekarang',
-        onPressed: _isLoading ? null : _register,
-        loading: _isLoading,
-      ),
-        AuthFooter(
-        prompt: 'Sudah punya akun? ',
-        action: 'Masuk Disini',
-        onTap: () => Navigator.pop(context),
-      ),
+        const SizedBox(height: 18),
+        AppPrimaryButton(label: 'Daftar Sekarang', onPressed: _isLoading ? null : _register, loading: _isLoading),
+        const SizedBox(height: 18),
+        const AuthDivider(label: 'atau daftar dengan'),
+        const SizedBox(height: 18),
+        AuthGoogleButton(label: 'Lanjut dengan Google', onTap: widget.onGoogle),
       ],
     );
   }

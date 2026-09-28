@@ -16,13 +16,13 @@ Widget _layout({bool withFooter = true}) => AuthLayout(
       title: 'Yuk, atur keuanganmu',
       subtitle: 'Tagline',
       leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
+      footer: withFooter ? const Text('Kaki') : null,
       children: [
         AppTextField(controller: TextEditingController(), label: 'A', hint: 'a', outlined: true),
         AppTextField(controller: TextEditingController(), label: 'B', hint: 'b', outlined: true),
         AppTextField(controller: TextEditingController(), label: 'C', hint: 'c', outlined: true),
         AppPrimaryButton(label: 'Aksi', onPressed: () => tapped++),
       ],
-      footer: withFooter ? const Text('Kaki') : null,
     );
 
 void main() {
