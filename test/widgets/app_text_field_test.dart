@@ -47,30 +47,65 @@ void main() {
     expect(find.byType(Column), findsNothing);
   });
 
-  BoxDecoration ring(WidgetTester tester) =>
+  BoxDecoration box(WidgetTester tester) =>
       tester.widget<AnimatedContainer>(find.byType(AnimatedContainer)).decoration! as BoxDecoration;
+  BoxDecoration ring(WidgetTester tester) => box(tester);
+  Color borderColor(WidgetTester tester) => (box(tester).border! as Border).top.color;
   Color prefixColor(WidgetTester tester) =>
       tester.widget<Icon>(find.byIcon(PhosphorIconsRegular.envelopeSimple)).color!;
 
-  testWidgets('outlined: garis tepi track, fokus menampilkan cincin dan ikon biru', (tester) async {
+  testWidgets('outlined: kotak bergaris track, fokus jadi biru dengan cincin', (tester) async {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
     await pumpApp(tester, Scaffold(body: AppTextField(
       controller: controller, hint: 'email', icon: PhosphorIconsRegular.envelopeSimple, outlined: true)));
 
     final deco = tester.widget<TextField>(find.byType(TextField)).decoration!;
-    final enabled = deco.enabledBorder! as OutlineInputBorder;
-    expect(enabled.borderSide.color, AppColors.track);
-    expect(enabled.borderSide.width, 1.5);
-    expect((deco.focusedBorder! as OutlineInputBorder).borderSide.color, AppColors.primary);
-    expect(ring(tester).boxShadow, anyOf(isNull, isEmpty));
+    expect(deco.border, InputBorder.none);
+    expect(deco.enabledBorder, InputBorder.none);
+    expect(deco.focusedBorder, InputBorder.none);
+    expect(borderColor(tester), AppColors.track);
+    expect((box(tester).border! as Border).top.width, 1.5);
+    expect(box(tester).boxShadow, anyOf(isNull, isEmpty));
     expect(prefixColor(tester), AppColors.textSecondary);
 
     await tester.tap(find.byType(TextField));
     await tester.pumpAndSettle();
-    expect(ring(tester).boxShadow!.single.color, AppColors.focusRing);
-    expect(ring(tester).boxShadow!.single.spreadRadius, 4);
+    expect(borderColor(tester), AppColors.primary);
+    expect(box(tester).boxShadow!.single.color, AppColors.focusRing);
+    expect(box(tester).boxShadow!.single.spreadRadius, 4);
     expect(prefixColor(tester), AppColors.primary);
+  });
+
+  testWidgets('outlined + label: label kecil di dalam kotak, di atas teks isian', (tester) async {
+    final controller = TextEditingController(text: 'miftahul@contoh.com');
+    addTearDown(controller.dispose);
+    await pumpApp(tester, Scaffold(body: Padding(
+      padding: const EdgeInsets.all(16),
+      child: AppTextField(controller: controller, label: 'Email', hint: 'email@contoh.com',
+          icon: PhosphorIconsRegular.envelopeSimple, outlined: true),
+    )));
+
+    expect(tester.widget<TextField>(find.byType(TextField)).decoration!.labelText, 'Email');
+    expect(find.descendant(of: find.byType(AnimatedContainer), matching: find.text('Email')), findsOneWidget);
+    final labelRect = tester.getRect(find.text('Email'));
+    final inputRect = tester.getRect(find.byType(EditableText));
+    final boxRect = tester.getRect(find.byType(AnimatedContainer));
+    expect(labelRect.bottom, lessThanOrEqualTo(inputRect.top + 1));
+    expect(labelRect.top, greaterThan(boxRect.top));
+    expect(labelRect.left, greaterThan(tester.getRect(find.byIcon(PhosphorIconsRegular.envelopeSimple)).right));
+  });
+
+  testWidgets('outlined + label pada teks 1.3x tidak overflow', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final controller = TextEditingController(text: 'nama.panjang.sekali@contoh.com');
+    addTearDown(controller.dispose);
+    await pumpApp(tester, Scaffold(body: SizedBox(width: 280, child: AppTextField(
+      controller: controller, label: 'Email', icon: PhosphorIconsRegular.envelopeSimple, outlined: true))),
+      size: const Size(320, 568));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('outlined memakai focusNode pemanggil tanpa men-dispose-nya', (tester) async {

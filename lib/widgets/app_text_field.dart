@@ -86,11 +86,9 @@ class _AppTextFieldState extends State<AppTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final outlined = widget.outlined;
-    final radius = BorderRadius.circular(outlined ? 14 : 16);
-    final idleSide = outlined ? const BorderSide(color: AppColors.track, width: 1.5) : BorderSide.none;
-    final iconColor = outlined && _focused ? AppColors.primary : AppColors.textSecondary;
-    Widget field = TextField(
+    if (widget.outlined) return _buildOutlined();
+    final radius = BorderRadius.circular(16);
+    final field = TextField(
       controller: widget.controller,
       focusNode: _node,
       autofocus: widget.autofocus,
@@ -107,31 +105,19 @@ class _AppTextFieldState extends State<AppTextField> {
       decoration: InputDecoration(
         hintText: widget.hint,
         hintStyle: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
-        prefixIcon: widget.icon == null ? null : Icon(widget.icon, size: 20, color: iconColor),
+        prefixIcon: widget.icon == null ? null : Icon(widget.icon, size: 20, color: AppColors.textSecondary),
         suffixIcon: widget.suffix,
         filled: true,
         fillColor: widget.readOnly ? AppColors.track : AppColors.surface,
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: outlined ? 14 : 16),
-        border: OutlineInputBorder(borderRadius: radius, borderSide: idleSide),
-        enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: idleSide),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: radius,
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
       ),
     );
-    if (outlined) {
-      field = AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        decoration: BoxDecoration(
-          borderRadius: radius,
-          boxShadow: _focused
-              ? const [BoxShadow(color: AppColors.focusRing, spreadRadius: 4)]
-              : const [],
-        ),
-        child: field,
-      );
-    }
     if (widget.label == null) return field;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,6 +129,54 @@ class _AppTextFieldState extends State<AppTextField> {
         ),
         field,
       ],
+    );
+  }
+
+  /// Kotak terpisah bergaris tepi. Garis & cincin digambar kotak pembungkus
+  /// (bukan InputBorder) supaya label bisa duduk di dalam kotak, bukan di
+  /// garis tepi seperti OutlineInputBorder.
+  Widget _buildOutlined() {
+    final radius = BorderRadius.circular(14);
+    final labelStyle = AppTextStyles.subhead.copyWith(fontWeight: FontWeight.w600);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        color: widget.readOnly ? AppColors.track : AppColors.surface,
+        borderRadius: radius,
+        border: Border.all(color: _focused ? AppColors.primary : AppColors.track, width: 1.5),
+        boxShadow: _focused ? const [BoxShadow(color: AppColors.focusRing, spreadRadius: 4)] : const [],
+      ),
+      child: TextField(
+        controller: widget.controller,
+        focusNode: _node,
+        autofocus: widget.autofocus,
+        textCapitalization: widget.textCapitalization,
+        obscureText: widget.obscure,
+        keyboardType: widget.keyboardType,
+        readOnly: widget.readOnly,
+        maxLines: widget.obscure ? 1 : widget.maxLines,
+        onTap: widget.onTap,
+        onChanged: widget.onChanged,
+        inputFormatters: widget.inputFormatters,
+        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+        cursorColor: AppColors.primary,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          labelStyle: labelStyle,
+          floatingLabelStyle: labelStyle,
+          hintText: widget.hint,
+          hintStyle: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          prefixIcon: widget.icon == null
+              ? null
+              : Icon(widget.icon, size: 20, color: _focused ? AppColors.primary : AppColors.textSecondary),
+          suffixIcon: widget.suffix,
+          contentPadding: EdgeInsets.fromLTRB(16, widget.label == null ? 14 : 10, 16, widget.label == null ? 14 : 10),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+      ),
     );
   }
 }
