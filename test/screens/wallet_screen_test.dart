@@ -96,9 +96,9 @@ void main() {
     expect(find.text('Transfer'), findsNothing);
   });
 
-  testWidgets('satu dompet: tombol Transfer tidak tampil', (tester) async {
+  testWidgets('satu dompet: Transfer tampil (menawarkan dompet kedua); tanpa dompet: tidak', (tester) async {
     await pumpWallet(tester, [sample().first]);
-    expect(find.text('Transfer'), findsNothing);
+    expect(find.text('Transfer'), findsOneWidget);
   });
 
   testWidgets('sheet Tambah Dompet punya isian Saldo Minimal (Opsional)', (tester) async {
