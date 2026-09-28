@@ -3,8 +3,10 @@ import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Field putih radius 16 tanpa border (gaya iOS).
-class AppTextField extends StatelessWidget {
+/// Field putih gaya iOS. Default tanpa border (radius 16); [outlined] =
+/// isian terpisah radius 14 bergaris tepi 1.5px, fokus menampilkan garis
+/// biru + cincin 4px (layar Login/Daftar).
+class AppTextField extends StatefulWidget {
   const AppTextField({
     required this.controller,
     this.hint,
@@ -21,6 +23,7 @@ class AppTextField extends StatelessWidget {
     this.label,
     this.onChanged,
     this.inputFormatters,
+    this.outlined = false,
     super.key,
   });
 
@@ -42,31 +45,70 @@ class AppTextField extends StatelessWidget {
   final String? label;
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
+  final bool outlined;
+
+  @override
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  FocusNode? _ownNode;
+  FocusNode get _node => widget.focusNode ?? (_ownNode ??= FocusNode());
+  bool _focused = false;
+
+  void _onFocusChange() {
+    if (_focused != _node.hasFocus) setState(() => _focused = _node.hasFocus);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _node.addListener(_onFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(AppTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final previous = oldWidget.focusNode ?? _ownNode;
+    if (previous != _node) {
+      previous?.removeListener(_onFocusChange);
+      _node.addListener(_onFocusChange);
+      _focused = _node.hasFocus;
+    }
+  }
+
+  @override
+  void dispose() {
+    _node.removeListener(_onFocusChange);
+    _ownNode?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.outlined) return _buildOutlined();
     final radius = BorderRadius.circular(16);
     final field = TextField(
-      controller: controller,
-      focusNode: focusNode,
-      autofocus: autofocus,
-      textCapitalization: textCapitalization,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      readOnly: readOnly,
-      maxLines: obscure ? 1 : maxLines,
-      onTap: onTap,
-      onChanged: onChanged,
-      inputFormatters: inputFormatters,
+      controller: widget.controller,
+      focusNode: _node,
+      autofocus: widget.autofocus,
+      textCapitalization: widget.textCapitalization,
+      obscureText: widget.obscure,
+      keyboardType: widget.keyboardType,
+      readOnly: widget.readOnly,
+      maxLines: widget.obscure ? 1 : widget.maxLines,
+      onTap: widget.onTap,
+      onChanged: widget.onChanged,
+      inputFormatters: widget.inputFormatters,
       style: AppTextStyles.body,
       cursorColor: AppColors.primary,
       decoration: InputDecoration(
-        hintText: hint,
+        hintText: widget.hint,
         hintStyle: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
-        prefixIcon: icon == null ? null : Icon(icon, size: 20, color: AppColors.textSecondary),
-        suffixIcon: suffix,
+        prefixIcon: widget.icon == null ? null : Icon(widget.icon, size: 20, color: AppColors.textSecondary),
+        suffixIcon: widget.suffix,
         filled: true,
-        fillColor: readOnly ? AppColors.track : AppColors.surface,
+        fillColor: widget.readOnly ? AppColors.track : AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
@@ -76,17 +118,65 @@ class AppTextField extends StatelessWidget {
         ),
       ),
     );
-    if (label == null) return field;
+    if (widget.label == null) return field;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: Text(label!, style: AppTextStyles.caption),
+          child: Text(widget.label!, style: AppTextStyles.caption),
         ),
         field,
       ],
+    );
+  }
+
+  /// Kotak terpisah bergaris tepi. Garis & cincin digambar kotak pembungkus
+  /// (bukan InputBorder) supaya label bisa duduk di dalam kotak, bukan di
+  /// garis tepi seperti OutlineInputBorder.
+  Widget _buildOutlined() {
+    final radius = BorderRadius.circular(14);
+    final labelStyle = AppTextStyles.subhead.copyWith(fontWeight: FontWeight.w600);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        color: widget.readOnly ? AppColors.track : AppColors.surface,
+        borderRadius: radius,
+        border: Border.all(color: _focused ? AppColors.primary : AppColors.track, width: 1.5),
+        boxShadow: _focused ? const [BoxShadow(color: AppColors.focusRing, spreadRadius: 4)] : const [],
+      ),
+      child: TextField(
+        controller: widget.controller,
+        focusNode: _node,
+        autofocus: widget.autofocus,
+        textCapitalization: widget.textCapitalization,
+        obscureText: widget.obscure,
+        keyboardType: widget.keyboardType,
+        readOnly: widget.readOnly,
+        maxLines: widget.obscure ? 1 : widget.maxLines,
+        onTap: widget.onTap,
+        onChanged: widget.onChanged,
+        inputFormatters: widget.inputFormatters,
+        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+        cursorColor: AppColors.primary,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          labelStyle: labelStyle,
+          floatingLabelStyle: labelStyle,
+          hintText: widget.hint,
+          hintStyle: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          prefixIcon: widget.icon == null
+              ? null
+              : Icon(widget.icon, size: 20, color: _focused ? AppColors.primary : AppColors.textSecondary),
+          suffixIcon: widget.suffix,
+          contentPadding: EdgeInsets.fromLTRB(16, widget.label == null ? 14 : 10, 16, widget.label == null ? 14 : 10),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+      ),
     );
   }
 }

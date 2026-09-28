@@ -7,8 +7,8 @@ import 'package:catat_uang_app/providers/edit_profile_provider.dart';
 import 'package:catat_uang_app/screens/edit_profile/edit_profile_screen.dart';
 import 'package:catat_uang_app/screens/lock/lock_screen.dart';
 import 'package:catat_uang_app/screens/login/login_screen.dart';
-import 'package:catat_uang_app/screens/register/register_screen.dart';
 import 'package:catat_uang_app/screens/settings/settings_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_auth/local_auth.dart';
 // Transitif lewat local_auth; tipe parameter authenticate() yang di-override.
@@ -55,9 +55,31 @@ void main() {
 
   testWidgets('02 daftar akun', (tester) async {
     await loadRealFonts(tester);
-    await pumpScreen(tester, const RegisterScreen());
+    await pumpScreen(tester, const LoginScreen());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daftar'));
     await tester.pumpAndSettle();
     await saveScreenshot(tester, 'b7_02_register');
+  }, skip: skip);
+
+  testWidgets('02c toast Google', (tester) async {
+    await loadRealFonts(tester);
+    await pumpScreen(tester, const LoginScreen());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lanjut dengan Google'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+    await saveScreenshot(tester, 'b7_02c_google_toast');
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+  }, skip: skip);
+
+  testWidgets('02b login fokus email', (tester) async {
+    await loadRealFonts(tester);
+    await pumpScreen(tester, const LoginScreen());
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'miftahul@contoh.com');
+    await tester.pumpAndSettle();
+    await saveScreenshot(tester, 'b7_01b_login_focus');
   }, skip: skip);
 
   testWidgets('03 kunci aplikasi (gagal → Buka Kunci)', (tester) async {

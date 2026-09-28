@@ -20,6 +20,7 @@ class AppColors {
   static const Color track = Color(0xFFE5E5EA); // Track segmented/progress, switch off
   static const Color separator = Color(0xFFD8D8DD); // Garis pemisah baris grouped list
   static const Color primarySoft = Color(0xFFE5F1FF); // Latar tombol soft, callout info
+  static const Color focusRing = Color(0x21007AFF); // Cincin fokus isian bergaris tepi (biru 13%)
   static const Color accentSoft = Color(0xFFFFF1DC); // Callout rekomendasi, chip tempo
   static const Color tintRed = Color(0xFFE0564F);
   static const Color tintOrange = Color(0xFFF0913A); // Peringatan >80%, tombol Transfer/Tarik
@@ -32,6 +33,12 @@ class AppColors {
   static const Color tintGreen = Color(0xFF2E9E68);
   static const Color tintSky = Color(0xFF3AA6D8);
   static const Color tintGray = Color(0xFF8E8E93); // Ikon netral (mutasi internal)
+
+  // Logo "G" tombol Google (warna merek resmi).
+  static const Color googleBlue = Color(0xFF4285F4);
+  static const Color googleRed = Color(0xFFEA4335);
+  static const Color googleYellow = Color(0xFFFBBC05);
+  static const Color googleGreen = Color(0xFF34A853);
 
   // Statistik kecil di kartu hero Beranda (pastel supaya terbaca di atas gradasi biru).
   static const Color heroStatIncome = Color(0xFF9BF0C4);

@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:catat_uang_app/widgets/app_system_ui.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,10 +108,13 @@ class MyApp extends StatelessWidget {
           home: user != null ? const AppEntryGate() : const LoginScreen(),
 
           // 5. Bungkus dengan FTheme supaya widget forui tersedia di semua
-          // screen yang dinavigasi lewat MaterialApp ini.
-          builder: (context, child) => FTheme(
-            data: appForuiTheme,
-            child: child!,
+          // screen yang dinavigasi lewat MaterialApp ini, dan AppSystemUi
+          // sebagai gaya status bar default (dipulihkan setelah layar auth).
+          builder: (context, child) => AppSystemUi(
+            child: FTheme(
+              data: appForuiTheme,
+              child: child!,
+            ),
           ),
         );
       },

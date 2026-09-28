@@ -1,17 +1,14 @@
 import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/home/home_screen.dart';
-import 'package:catat_uang_app/screens/login/auth_brand.dart';
-import 'package:catat_uang_app/screens/register/register_screen.dart';
+import 'package:catat_uang_app/screens/login/auth_layout.dart';
+import 'package:catat_uang_app/screens/login/auth_parts.dart';
+import 'package:catat_uang_app/screens/login/login_form.dart';
+import 'package:catat_uang_app/screens/login/register_form.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Layar auth tunggal: tab Masuk | Daftar di atas sheet putih.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -20,109 +17,68 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  // Getter (bukan field) supaya Supabase.instance baru diakses saat login
-  // benar-benar dijalankan — layar bisa dirender di widget test tanpa
-  // Supabase.initialize.
-  SupabaseClient get _supabase => Supabase.instance.client;
-
-  bool _isLoading = false;
-  bool _isObscure = true;
+  int _tab = 0;
+  final _loginEmail = TextEditingController();
+  // Naik tiap daftar berhasil → RegisterForm dibuat ulang dengan isian kosong.
+  int _registerRound = 0;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _loginEmail.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
-    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
-      AppNotification.error(context, "Email dan Password wajib diisi!");
-      return;
-    }
+  void _google() =>
+      AppNotification.info(context, 'Login Google belum tersedia. Pakai email dan password dulu ya.');
 
-    setState(() => _isLoading = true);
-    try {
-      await _supabase.auth.signInWithPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      if (mounted) {
-        AppNotification.success(context, "Selamat datang kembali!");
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    } catch (e) {
-      if (mounted) AppNotification.error(context, "Email atau password salah.");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  void _onRegistered(String email) => setState(() {
+        _loginEmail.text = email;
+        _tab = 0;
+        _registerRound++;
+      });
+
+  void _switchTab(int tab) {
+    // Kursor di tab yang disembunyikan jangan tetap aktif (keyboard nyasar).
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _tab = tab);
   }
+
+  /// Kedua form tetap ter-mount (hanya disembunyikan) supaya request login/
+  /// daftar yang sedang berjalan tidak hilang saat pengguna pindah tab, dan
+  /// isian yang sudah diketik tetap ada.
+  Widget _tabBody(int tab, Widget form) => Offstage(
+        offstage: _tab != tab,
+        child: TickerMode(enabled: _tab == tab, child: form),
+      );
 
   @override
   Widget build(BuildContext context) {
-    return AppPageScaffold(
-      title: 'DompetKu',
-      titleWidget: const AuthBrand(
-        icon: PhosphorIconsFill.wallet,
-        title: 'DompetKu',
-        subtitle: 'Cerdas mengelola, tenang finansial',
-      ),
+    return AuthLayout(
+      title: 'Yuk, atur keuanganmu',
+      subtitle: 'Masuk atau buat akun untuk mulai mencatat pemasukan dan pengeluaranmu.',
+      leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
+      footer: _tab == 0
+          ? Text(
+              'Datamu hanya bisa dilihat dari akunmu sendiri.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption,
+            )
+          : null,
       children: [
+        AppSegmentedControl(
+          labels: const ['Masuk', 'Daftar'],
+          selectedIndex: _tab,
+          onChanged: _switchTab,
+        ),
         Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Selamat Datang!', style: AppTextStyles.title),
-            const SizedBox(height: 4),
-            Text('Silakan masuk untuk melanjutkan', style: AppTextStyles.subhead),
-          ],
-        ),
-        AppGroupedSection(
-          insetSeparators: false,
-          children: [
-            AppTextField(
-              controller: _emailController,
-              hint: 'email@contoh.com',
-              icon: PhosphorIconsRegular.envelopeSimple,
-              keyboardType: TextInputType.emailAddress,
-            ),
-            AppTextField(
-              controller: _passwordController,
-              hint: 'Masukkan password Anda',
-              icon: PhosphorIconsRegular.lockKey,
-              obscure: _isObscure,
-              suffix: IconButton(
-                onPressed: () => setState(() => _isObscure = !_isObscure),
-                icon: Icon(
-                  _isObscure
-                      ? PhosphorIconsRegular.eye
-                      : PhosphorIconsRegular.eyeSlash,
-                  color: AppColors.textSecondary,
-                  size: 20,
-                ),
-              ),
+            _tabBody(0, LoginForm(emailController: _loginEmail, onGoogle: _google)),
+            _tabBody(
+              1,
+              RegisterForm(key: ValueKey(_registerRound), onRegistered: _onRegistered, onGoogle: _google),
             ),
           ],
-        ),
-        AppPrimaryButton(
-          label: 'Masuk Sekarang',
-          onPressed: _isLoading ? null : _login,
-          loading: _isLoading,
-        ),
-        AuthFooter(
-          prompt: 'Belum punya akun? ',
-          action: 'Daftar Disini',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const RegisterScreen()),
-            );
-          },
         ),
       ],
     );

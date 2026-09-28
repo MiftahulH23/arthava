@@ -29,6 +29,18 @@ void main() {
     expect(tester.widget<Text>(find.text('Pemasukan')).style!.color, AppColors.textPrimary);
   });
 
+  testWidgets('segmen diumumkan pembaca layar sebagai grup pilihan tunggal', (tester) async {
+    await pumpApp(tester, Scaffold(body: AppSegmentedControl(
+      labels: const ['Masuk', 'Daftar'], selectedIndex: 0, onChanged: (_) {},
+    )));
+    final segments = tester
+        .widgetList<Semantics>(find.descendant(of: find.byType(AppSegmentedControl), matching: find.byType(Semantics)))
+        .where((s) => s.properties.button == true)
+        .toList();
+    expect(segments.length, 2);
+    expect(segments.every((s) => s.properties.inMutuallyExclusiveGroup == true), isTrue);
+  });
+
   testWidgets('tinggi 36', (tester) async {
     await pumpApp(tester, Scaffold(body: AppSegmentedControl(
       labels: const ['A', 'B', 'C'], selectedIndex: 2, onChanged: (_) {},

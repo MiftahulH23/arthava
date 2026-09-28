@@ -36,6 +36,7 @@ class AppSegmentedControl extends StatelessWidget {
               child: Semantics(
                 button: true,
                 selected: i == selectedIndex,
+                inMutuallyExclusiveGroup: true,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
