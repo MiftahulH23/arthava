@@ -256,6 +256,71 @@ void main() {
     expect(_failures, isEmpty);
   }, skip: _skip, timeout: const Timeout(Duration(minutes: 2)));
 
+  test('perbaikan review: hapus utang dgn pengembalian, pembulatan, pemasukan dulu', () async {
+    _failures.clear();
+    final wallets = <int>[];
+    final cats = <int>[];
+    final recs = <int>[];
+    String day(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final today = day(DateTime.now());
+    Future<int> wallet(String name, num bal) async {
+      final id = (await db.from('wallets').insert({'user_id': userId, 'name': name, 'balance': bal, 'min_balance': 0, 'color': '#1E3A8A'}).select('id').single())['id'] as int;
+      wallets.add(id);
+      return id;
+    }
+
+    try {
+      // F1 hapus utang + kembalikan saldo: efek bersih yang muat harus diterima.
+      final a = await wallet('E2E Guard Utang W', 0);
+      final debtId = await db.rpc('create_debt', params: {
+        'p_name': 'E2E Guard Pinjam', 'p_type': 'payable', 'p_amount': 1000000, 'p_loan_date': today,
+        'p_due_date': null, 'p_notes': null, 'p_wallet_id': a,
+      }) as int; // A: 1.000.000
+      await db.rpc('add_debt_payment', params: {'p_debt_id': debtId, 'p_amount': 900000, 'p_date': today, 'p_wallet_id': a}); // A: 100.000
+      await db.from('wallets').update({'balance': 500000}).eq('id', a);
+      final e1 = await rpcError('delete_debt', {'p_debt_id': debtId, 'p_refund': true});
+      check('F1 hapus & kembalikan (bersih −100.000 dari 500.000) diterima', e1 == null && await balance(a) == 400000, (e1, await balance(a)));
+
+      // F2 "Bisa dipakai" tidak dibulatkan ke atas.
+      final b = await wallet('E2E Guard Pecahan', 1000.6);
+      final food = (await db.from('categories').insert({'user_id': userId, 'name': 'E2E Guard Jajan', 'is_expense': true, 'icon_name': 'tag'}).select('id').single())['id'] as int;
+      cats.add(food);
+      final e2 = await rpcError('save_transaction', {'p_id': null, 'p_category_id': food, 'p_wallet_id': b, 'p_amount': 1001, 'p_date': _today, 'p_note': 'E2E Guard'});
+      check('F2 pesan menampilkan Rp 1.000 (dibulatkan ke bawah)', e2 == 'Saldo dompet E2E Guard Pecahan tidak cukup! Bisa dipakai: Rp 1.000', e2);
+
+      // F3 pemasukan rutin dijalankan sebelum pengeluaran rutin di dompet yang sama.
+      final c = await wallet('E2E Guard Rutin2', 0);
+      final salary = (await db.from('categories').insert({'user_id': userId, 'name': 'E2E Guard Gaji2', 'is_expense': false, 'icon_name': 'tag'}).select('id').single())['id'] as int;
+      cats.add(salary);
+      for (final (cat, note) in [(food, 'E2E Guard keluar'), (salary, 'E2E Guard masuk')]) {
+        recs.add((await db.from('recurring_transactions').insert({
+          'user_id': userId, 'category_id': cat, 'wallet_id': c, 'amount': 10000, 'frequency': 'Bulanan',
+          'start_date': today, 'next_run_date': today, 'note': note, 'is_active': true,
+        }).select('id').single())['id'] as int);
+      }
+      await db.rpc('run_due_recurring', params: {'p_today': today});
+      final held = await db.from('recurring_transactions').select('blocked_reason').inFilter('id', recs);
+      check('F3 pemasukan dulu: pengeluaran 10.000 tidak tertahan, saldo 0',
+          held.every((r) => r['blocked_reason'] == null) && await balance(c) == 0, (held, await balance(c)));
+    } finally {
+      for (final id in recs) {
+        await db.from('recurring_transactions').delete().eq('id', id);
+      }
+      await db.from('debts').delete().eq('user_id', userId).like('name', 'E2E Guard%');
+      for (final id in wallets) {
+        await db.from('transactions').delete().eq('wallet_id', id);
+        await db.from('wallets').delete().eq('id', id);
+      }
+      for (final id in cats) {
+        await db.from('transactions').delete().eq('category_id', id);
+        await db.from('categories').delete().eq('id', id);
+      }
+      // ignore: avoid_print
+      print(_failures.isEmpty ? '\nSEMUA LULUS (perbaikan review)' : '\n${_failures.length} GAGAL: ${_failures.join(' | ')}');
+    }
+    expect(_failures, isEmpty);
+  }, skip: _skip, timeout: const Timeout(Duration(minutes: 2)));
+
   tearDownAll(() async {
     if (_skip) return;
     await db.auth.signOut();

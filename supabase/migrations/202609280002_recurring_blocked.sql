@@ -19,9 +19,11 @@ declare
 begin
   if v_user is null then return 0; end if;
   for r in
-    select * from recurring_transactions
-    where user_id = v_user and is_active = true and next_run_date <= v_today
-    order by wallet_id nulls last, id
+    select rt.* from recurring_transactions rt
+    where rt.user_id = v_user and rt.is_active = true and rt.next_run_date <= v_today
+    order by rt.wallet_id nulls last,
+             coalesce((select c.is_expense from categories c where c.id = rt.category_id), true), -- pemasukan dulu (sama dengan 202609280003)
+             rt.id
     for update skip locked
   loop
     continue when r.frequency not in ('Harian', 'Mingguan', 'Bulanan', 'Tahunan');

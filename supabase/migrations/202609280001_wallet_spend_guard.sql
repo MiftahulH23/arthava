@@ -4,8 +4,9 @@
 -- Satu pesan untuk semua fitur: "Saldo dompet <nama> tidak cukup! Bisa dipakai: Rp <jumlah>".
 
 create or replace function public.rupiah_text(p numeric)
-returns text language sql immutable set search_path = public as $$
-  select 'Rp ' || replace(to_char(round(greatest(coalesce(p, 0), 0)), 'FM999,999,999,999,990'), ',', '.');
+returns text language sql stable set search_path = public as $$
+  -- Dibulatkan ke bawah (sama dengan 202609280003).
+  select 'Rp ' || replace(to_char(floor(greatest(coalesce(p, 0), 0)), 'FM999,999,999,999,990'), ',', '.');
 $$;
 
 -- Kunci dompet milik user, lalu tolak uang keluar p_amount yang melewati batas.
