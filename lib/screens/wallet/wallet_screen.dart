@@ -99,17 +99,28 @@ class WalletScreen extends ConsumerWidget {
                         showBalance: true,
                       );
                       if (picked == null || !sheetContext.mounted) return;
-                      if (picked == destId) {
-                        AppNotification.error(sheetContext, "Dompet asal dan tujuan tidak boleh sama!");
-                        return;
-                      }
-                      setSheetState(() => sourceId = picked);
+                      setSheetState(() {
+                        if (picked == destId) destId = sourceId; // tukar otomatis
+                        sourceId = picked;
+                      });
                     },
+                  ),
+                  Center(
+                    heightFactor: 1,
+                    child: IconButton(
+                      tooltip: 'Tukar arah',
+                      icon: const Icon(PhosphorIconsBold.arrowsDownUp, color: AppColors.primary),
+                      onPressed: () => setSheetState(() {
+                        final s = sourceId;
+                        sourceId = destId;
+                        destId = s;
+                      }),
+                    ),
                   ),
                   AppListRow(
                     leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: dest.displayColor, filled: true),
                     title: 'Ke Dompet (Tujuan)',
-                    subtitle: dest.name,
+                    subtitle: '${dest.name} (Sisa: ${formatRupiah(dest.balance)})',
                     showChevron: true,
                     onTap: () async {
                       final picked = await _pickWallet(
@@ -119,11 +130,10 @@ class WalletScreen extends ConsumerWidget {
                         selectedId: destId,
                       );
                       if (picked == null || !sheetContext.mounted) return;
-                      if (picked == sourceId) {
-                        AppNotification.error(sheetContext, "Dompet tujuan dan asal tidak boleh sama!");
-                        return;
-                      }
-                      setSheetState(() => destId = picked);
+                      setSheetState(() {
+                        if (picked == sourceId) sourceId = destId; // tukar otomatis
+                        destId = picked;
+                      });
                     },
                   ),
                 ],
