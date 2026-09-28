@@ -4,25 +4,32 @@ import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+enum _ToastKind { success, error, info }
+
 class AppNotification {
   static OverlayEntry? _currentEntry;
   static Timer? _timer;
 
   // PESAN SUKSES (HIJAU)
   static void success(BuildContext context, String message) {
-    _showTopToast(context, message, isError: false);
+    _showTopToast(context, message, kind: _ToastKind.success);
   }
 
   // PESAN ERROR (MERAH)
   static void error(BuildContext context, String message) {
-    _showTopToast(context, _translateError(message), isError: true);
+    _showTopToast(context, _translateError(message), kind: _ToastKind.error);
+  }
+
+  // PESAN INFO (BIRU), mis. fitur yang belum tersedia
+  static void info(BuildContext context, String message) {
+    _showTopToast(context, message, kind: _ToastKind.info);
   }
 
   // LOGIKA TAMPIL DI ATAS
   static void _showTopToast(
     BuildContext context,
     String message, {
-    required bool isError,
+    required _ToastKind kind,
   }) {
     // 1. Hapus notifikasi lama jika masih ada (biar gak numpuk)
     _removeCurrentToast();
@@ -39,7 +46,7 @@ class AppNotification {
         right: 20,
         child: _ToastWidget(
           message: message,
-          isError: isError,
+          kind: kind,
           onDismiss: _removeCurrentToast,
         ),
       ),
@@ -82,12 +89,12 @@ class AppNotification {
 // WIDGET UI KEREN (SHADCN STYLE)
 class _ToastWidget extends StatefulWidget {
   final String message;
-  final bool isError;
+  final _ToastKind kind;
   final VoidCallback onDismiss;
 
   const _ToastWidget({
     required this.message,
-    required this.isError,
+    required this.kind,
     required this.onDismiss,
   });
 
@@ -158,18 +165,24 @@ class _ToastWidgetState extends State<_ToastWidget>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: widget.isError
-                          ? AppColors.expenseSoft
-                          : AppColors.incomeSoft, // Merah Muda / Hijau Muda
+                      color: switch (widget.kind) {
+                        _ToastKind.error => AppColors.expenseSoft,
+                        _ToastKind.info => AppColors.primarySoft,
+                        _ToastKind.success => AppColors.incomeSoft,
+                      },
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      widget.isError
-                          ? PhosphorIcons.warning(PhosphorIconsStyle.bold)
-                          : PhosphorIcons.check(PhosphorIconsStyle.bold),
-                      color: widget.isError
-                          ? AppColors.expense
-                          : AppColors.income,
+                      switch (widget.kind) {
+                        _ToastKind.error => PhosphorIcons.warning(PhosphorIconsStyle.bold),
+                        _ToastKind.info => PhosphorIcons.info(PhosphorIconsStyle.bold),
+                        _ToastKind.success => PhosphorIcons.check(PhosphorIconsStyle.bold),
+                      },
+                      color: switch (widget.kind) {
+                        _ToastKind.error => AppColors.expense,
+                        _ToastKind.info => AppColors.primary,
+                        _ToastKind.success => AppColors.income,
+                      },
                       size: 20,
                     ),
                   ),

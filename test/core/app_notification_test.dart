@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../helpers/pump_app.dart';
 
@@ -29,6 +30,31 @@ void main() {
     final icons = tester.widgetList<Icon>(find.byType(Icon)).where((i) => i.color == AppColors.expense);
     expect(icons, isNotEmpty);
 
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('Toast info memakai ikon info biru di lingkaran primarySoft', (tester) async {
+    await pumpApp(
+      tester,
+      Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () => AppNotification.info(context, 'Login Google belum tersedia.'),
+            child: const Text('tes'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('tes'));
+    await tester.pump();
+
+    expect(find.text('Login Google belum tersedia.'), findsOneWidget);
+    final icon = tester.widget<Icon>(find.byIcon(PhosphorIcons.info(PhosphorIconsStyle.bold)));
+    expect(icon.color, AppColors.primary);
+    final circle = tester.widget<Container>(
+      find.ancestor(of: find.byWidget(icon), matching: find.byType(Container)).first,
+    );
+    expect((circle.decoration! as BoxDecoration).color, AppColors.primarySoft);
     await tester.pump(const Duration(seconds: 4));
   });
 }
