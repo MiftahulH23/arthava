@@ -751,7 +751,8 @@ class _HomeSummaryGrid extends StatelessWidget {
                     style: AppTextStyles.bodyStrong,
                   ),
                   const SizedBox(height: 2),
-                  Text(bill.blockedReason!, style: AppTextStyles.caption),
+                  // Spasi tak-putus: "Rp" tidak terpisah dari angkanya saat turun baris.
+                  Text(bill.blockedReason!.replaceAll('Rp ', 'Rp '), style: AppTextStyles.caption),
                 ],
               ),
             ),

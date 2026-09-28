@@ -186,6 +186,6 @@ void main() {
       ),
     );
     expect(find.text('Tagihan Bayar Kos belum terbayar'), findsOneWidget);
-    expect(find.text('Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 5.000'), findsOneWidget);
+    expect(find.text('Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 5.000'), findsOneWidget);
   });
 }
