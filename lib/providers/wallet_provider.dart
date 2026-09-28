@@ -18,8 +18,7 @@ class WalletState {
 }
 
 /// Mengembalikan pesan error kalau transfer tidak valid, atau null kalau valid.
-/// Diekstrak dari logic validasi di WalletScreen._showTransferSheet's tombol
-/// "Transfer Sekarang" supaya bisa diuji unit tanpa Supabase.
+/// Saldo & saldo minimal dicek server (wallet_spend_guard), bukan di sini.
 String? validateTransfer({
   required WalletModel source,
   required WalletModel dest,
@@ -27,7 +26,6 @@ String? validateTransfer({
 }) {
   if (amount <= 0) return 'Nominal tidak boleh kosong!';
   if (source.id == dest.id) return 'Dompet asal dan tujuan tidak boleh sama!';
-  if (source.balance < amount) return 'Saldo di ${source.name} tidak cukup!';
   return null;
 }
 

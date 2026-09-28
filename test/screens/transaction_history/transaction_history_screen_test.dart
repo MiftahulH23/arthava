@@ -1,3 +1,4 @@
+import 'package:catat_uang_app/core/money_rejection.dart';
 import 'package:catat_uang_app/models/category_model.dart';
 import 'package:catat_uang_app/models/transaction_model.dart';
 import 'package:catat_uang_app/providers/transaction_history_provider.dart';
@@ -21,12 +22,14 @@ class FakeTransactionHistoryNotifier extends TransactionHistoryNotifier {
 
   final TransactionHistoryState seed;
   final deleted = <TransactionModel>[];
+  String? rejectWith;
 
   @override
   TransactionHistoryState build(bool isExpense) => seed;
 
   @override
   Future<String> deleteTransaction(TransactionModel trx) async {
+    if (rejectWith != null) throw MoneyRejection(rejectWith!);
     deleted.add(trx);
     return 'Data dihapus & saldo dompet disesuaikan!';
   }
@@ -194,5 +197,23 @@ void main() {
     await tester.pumpAndSettle();
     final chip = tester.renderObject<RenderParagraph>(find.text('Mutasi Internal'));
     expect(chip.didExceedMaxLines, isFalse);
+  });
+
+  testWidgets('hapus ditolak server menampilkan pesan tolakan, bukan pesan umum', (tester) async {
+    await _pump(
+      tester,
+      const TransactionHistoryScreen(isExpense: true),
+      _state([_trx(7, sep24, note: 'Nasi Padang')]),
+    );
+    _createdFakes.last.rejectWith = 'Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 5.000';
+    await tester.drag(find.text('Nasi Padang'), const Offset(-240, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 5.000'), findsOneWidget);
+    expect(find.text('Gagal menghapus transaksi.'), findsNothing);
+    await tester.pump(const Duration(seconds: 4));
   });
 }

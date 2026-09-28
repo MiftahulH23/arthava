@@ -237,7 +237,8 @@ class InputTransactionNotifier extends AutoDisposeNotifier<InputTransactionState
           ? const TransactionSaveResult(true, "Transaksi berhasil & Saldo dompet terupdate!")
           : const TransactionSaveResult(true, "Transaksi berhasil diperbarui!");
     } on PostgrestException catch (e) {
-      return TransactionSaveResult(false, "Gagal: ${e.message}");
+      // P0001 = tolakan aturan (mis. saldo dompet kurang): tampilkan apa adanya.
+      return TransactionSaveResult(false, e.code == 'P0001' ? e.message : "Gagal: ${e.message}");
     } catch (e) {
       return TransactionSaveResult(false, "Gagal: ${e.toString()}");
     } finally {

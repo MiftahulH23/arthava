@@ -120,14 +120,7 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
       categoryName = "Sedekah";
     }
 
-    // Cek saldo dompet
-    final selectedWallet = _wallets.firstWhere((w) => w['id'] == _selectedWalletId);
-    final double currentBalance = (selectedWallet['balance'] as num).toDouble();
-    if (amountToPay > currentBalance) {
-      AppNotification.error(context, "Saldo dompet tidak mencukupi!");
-      return;
-    }
-
+    // Saldo & saldo minimal dicek server (pesan tolakan lewat ZakatRejection).
     setState(() => _isLoading = true);
 
     try {

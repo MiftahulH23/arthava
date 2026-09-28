@@ -153,22 +153,6 @@ class WalletScreen extends ConsumerWidget {
                     AppNotification.error(sheetContext, error);
                     return;
                   }
-                  final warning = minBalanceWarningMessage(
-                    walletName: source.name,
-                    balance: source.balance,
-                    minBalance: source.minBalance,
-                    amount: cleanAmount,
-                  );
-                  if (warning != null) {
-                    final ok = await showAppConfirmDialog(
-                      context: sheetContext,
-                      title: 'Di bawah saldo minimal',
-                      message: warning,
-                      confirmLabel: 'Lanjutkan',
-                      destructive: false,
-                    );
-                    if (!ok || !sheetContext.mounted) return;
-                  }
                   setSheetState(() => isSubmitting = true);
                   try {
                     await ref.read(walletProvider.notifier).transfer(

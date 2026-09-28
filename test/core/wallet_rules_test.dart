@@ -65,33 +65,4 @@ void main() {
       expect(spendableOf(w(1, 100, min: 300)), 0);
     });
   });
-
-  group('wouldBreachMinBalance', () {
-    test('tanpa saldo minimal tidak pernah melanggar', () {
-      expect(wouldBreachMinBalance(balance: 100, minBalance: 0, amount: 500), isFalse);
-    });
-
-    test('melanggar bila sisa < saldo minimal', () {
-      expect(wouldBreachMinBalance(balance: 100000, minBalance: 50000, amount: 60000), isTrue);
-    });
-
-    test('tepat sama dengan saldo minimal tidak melanggar', () {
-      expect(wouldBreachMinBalance(balance: 100000, minBalance: 50000, amount: 50000), isFalse);
-    });
-
-    test('nominal 0 / kosong tidak pernah memicu peringatan', () {
-      expect(wouldBreachMinBalance(balance: 10000, minBalance: 50000, amount: 0), isFalse);
-    });
-
-    test('pesan peringatan memakai nama dompet dan saldo minimal', () {
-      expect(
-        minBalanceWarningMessage(walletName: 'BCA', balance: 100000, minBalance: 50000, amount: 60000),
-        'Saldo BCA akan di bawah saldo minimal (Rp 50.000). Lanjutkan?',
-      );
-      expect(
-        minBalanceWarningMessage(walletName: 'BCA', balance: 100000, minBalance: 50000, amount: 10000),
-        isNull,
-      );
-    });
-  });
 }
