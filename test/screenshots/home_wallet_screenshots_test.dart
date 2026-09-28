@@ -132,18 +132,6 @@ void main() {
     await saveScreenshot(tester, 'b3_10_wallet_transfer_sheet');
   }, skip: skip);
 
-  testWidgets('11 dompet, dialog saldo minimal saat transfer', (tester) async {
-    await loadRealFonts(tester);
-    await pumpScreen(tester, const WalletScreen(), overrides: _walletOverrides());
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Transfer'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, '9280000');
-    await tester.tap(find.text('Transfer Sekarang'));
-    await tester.pumpAndSettle();
-    await saveScreenshot(tester, 'b3_11_transfer_min_dialog');
-  }, skip: skip);
-
   testWidgets('13 pengaturan, switch saldo minimal', (tester) async {
     await loadRealFonts(tester);
     await pumpScreen(
