@@ -379,8 +379,8 @@ void main() {
       ]);
       final errors = results.whereType<Object>().toList();
       check('C2 dua transfer bersamaan: tepat satu berhasil', errors.length == 1, results);
-      check('C2 pesan penolakan "Saldo di E2E CX tidak cukup!"',
-          errors.length == 1 && errors.single.toString().contains('Saldo di E2E CX tidak cukup!'), errors);
+      check('C2 pesan penolakan "Saldo dompet E2E CX tidak cukup!"',
+          errors.length == 1 && errors.single.toString().contains('Saldo dompet E2E CX tidak cukup!'), errors);
       check('C2 saldo X 50.000 & Y 100.000', await balance(cx) == 50000 && await balance(cy) == 100000,
           '${await balance(cx)} / ${await balance(cy)}');
 
@@ -605,8 +605,8 @@ void main() {
       } catch (e) {
         err11 = e;
       }
-      check('C11 transfer ditolak server "Saldo di E2E CP tidak cukup!"',
-          err11.toString().contains('Saldo di E2E CP tidak cukup!'), err11);
+      check('C11 transfer ditolak server "Saldo dompet E2E CP tidak cukup!"',
+          err11.toString().contains('Saldo dompet E2E CP tidak cukup!'), err11);
       final shown = container.read(walletProvider).wallets.firstWhere((w) => w.id == p).balance;
       check('C11 saldo di layar ikut diperbarui ke 30.000', shown == 30000, shown);
 

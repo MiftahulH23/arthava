@@ -261,8 +261,8 @@ void main() {
       check('T3 transaksi bertanda [SAVING_ID:T-id] dari dompet', trx.length == 1 && trx.single['wallet_id'] == walletId, trx);
 
       final r2 = await target.depositToTarget(target: current(), rawAmount: 999999, walletId: walletId);
-      check('T4 nabung melebihi saldo ditolak dengan pesan lama',
-          r2 == 'Saldo dompet E2E Target W tidak cukup!', r2);
+      check('T4 nabung melebihi saldo ditolak dengan pesan saldo',
+          r2?.startsWith('Saldo dompet E2E Target W tidak cukup! Bisa dipakai:') ?? false, r2);
       check('T4 saldo tidak berubah', await balance(walletId) == 400000, await balance(walletId));
 
       await target.fetchWallets();
@@ -343,7 +343,7 @@ void main() {
 
       await savings.fetchWallets();
       final d2 = await savings.processSavingTransaction(isDeposit: true, savingName: name, amount: 5000000, walletId: walletId);
-      check('S5 setor melebihi saldo dompet ditolak "Saldo dompet tidak cukup!"', d2 == 'Saldo dompet tidak cukup!', d2);
+      check('S5 setor melebihi saldo dompet ditolak dengan pesan saldo', d2?.startsWith('Saldo dompet E2E Tabungan W tidak cukup!') ?? false, d2);
 
       await savings.fetchWallets();
       await Future.wait([
