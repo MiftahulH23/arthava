@@ -29,6 +29,47 @@ String? validateTransfer({
   return null;
 }
 
+/// Menyimpan dompet baru dan mengembalikan id-nya. Top-level supaya bisa
+/// dipanggil dari layar mana pun (form "Dompet Baru") tanpa bergantung pada
+/// WalletNotifier yang sedang hidup.
+Future<int> insertWallet({
+  required String name,
+  required double balance,
+  required String color,
+  double minBalance = 0,
+}) async {
+  final client = Supabase.instance.client;
+  final row = await client
+      .from('wallets')
+      .insert({
+        'user_id': client.auth.currentUser!.id,
+        'name': name,
+        'balance': balance,
+        'color': color,
+        'icon': 'wallet',
+        'min_balance': minBalance,
+      })
+      .select('id')
+      .single();
+  return row['id'] as int;
+}
+
+Future<void> updateWalletRow({
+  required int id,
+  required String name,
+  required double balance,
+  required String color,
+  double minBalance = 0,
+}) async {
+  await Supabase.instance.client.from('wallets').update({
+    'name': name,
+    'balance': balance,
+    'color': color,
+    'icon': 'wallet',
+    'min_balance': minBalance,
+  }).eq('id', id);
+}
+
 class WalletNotifier extends AutoDisposeNotifier<WalletState> {
   SupabaseClient get _supabase => Supabase.instance.client;
 
@@ -64,22 +105,15 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
     }
   }
 
-  Future<void> addWallet({
+  Future<int> addWallet({
     required String name,
     required double balance,
     required String color,
     double minBalance = 0,
   }) async {
-    final userId = _supabase.auth.currentUser!.id;
-    await _supabase.from('wallets').insert({
-      'user_id': userId,
-      'name': name,
-      'balance': balance,
-      'color': color,
-      'icon': 'wallet',
-      'min_balance': minBalance,
-    });
+    final id = await insertWallet(name: name, balance: balance, color: color, minBalance: minBalance);
     await fetchWallets();
+    return id;
   }
 
   Future<void> updateWallet({
@@ -89,13 +123,7 @@ class WalletNotifier extends AutoDisposeNotifier<WalletState> {
     required String color,
     double minBalance = 0,
   }) async {
-    await _supabase.from('wallets').update({
-      'name': name,
-      'balance': balance,
-      'color': color,
-      'icon': 'wallet',
-      'min_balance': minBalance,
-    }).eq('id', id);
+    await updateWalletRow(id: id, name: name, balance: balance, color: color, minBalance: minBalance);
     await fetchWallets();
   }
 

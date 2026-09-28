@@ -153,7 +153,7 @@ class InputTransactionNotifier extends AutoDisposeNotifier<InputTransactionState
     if (state.wallets.isEmpty && !isFromSaving) {
       return const TransactionSaveResult(
         false,
-        "Kamu belum membuat dompet. Silakan buat di Beranda > Dompet.",
+        "Kamu belum membuat dompet. Ketuk \"Buat Dompet\" dulu.",
       );
     }
     if (!isFromSaving && selectedWalletId == null) {

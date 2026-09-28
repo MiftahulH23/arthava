@@ -44,7 +44,7 @@ void main() {
     await pumpApp(tester, const ZakatSedekahScreen());
     await tester.pump();
 
-    expect(find.text('Belum ada dompet'), findsOneWidget);
+    expect(find.text('Buat Dompet'), findsOneWidget);
     await tester.tap(find.text('Bayar Zakat'));
     await tester.pump();
 

@@ -122,4 +122,55 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('BCA (Sisa: Rp 9.300.000)'), findsOneWidget);
   });
+
+  testWidgets('onCreate: baris "Dompet Baru" di sheet membuat & memilih opsi baru', (tester) async {
+    int? picked;
+    var options = const [AppSelectOption(1, 'BCA')];
+    await pumpApp(
+      tester,
+      StatefulBuilder(
+        builder: (context, setState) => Scaffold(
+          body: AppSelectRow<int>(
+            title: 'Dompet',
+            value: picked ?? 1,
+            options: options,
+            onChanged: (v) => setState(() => picked = v),
+            onCreate: () async {
+              setState(() => options = const [AppSelectOption(1, 'BCA'), AppSelectOption(9, 'Jago')]);
+              return 9;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Dompet'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dompet Baru'));
+    await tester.pumpAndSettle();
+    expect(picked, 9);
+    expect(find.text('Jago'), findsOneWidget);
+  });
+
+  testWidgets('onCreate tanpa opsi: baris langsung membuat (placeholder "Buat Dompet")', (tester) async {
+    var created = 0;
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: AppSelectRow<int>(
+          title: 'Dompet',
+          value: null,
+          options: const [],
+          onChanged: (_) {},
+          onCreate: () async {
+            created++;
+            return null;
+          },
+        ),
+      ),
+    );
+    expect(find.text('Buat Dompet'), findsOneWidget);
+    await tester.tap(find.text('Dompet'));
+    await tester.pumpAndSettle();
+    expect(created, 1);
+  });
 }

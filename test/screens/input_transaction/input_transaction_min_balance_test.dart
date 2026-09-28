@@ -153,6 +153,18 @@ void main() {
     expect(fake.saveCalls, 1);
     await tester.pump(const Duration(seconds: 4)); // tutup toast
   });
+
+  testWidgets('tanpa dompet: baris Dompet menawarkan "Buat Dompet"', (tester) async {
+    await pumpApp(
+      tester,
+      const InputTransactionScreen(initialIsExpense: true),
+      overrides: [inputTransactionProvider.overrideWith(_NoWalletNotifier.new)],
+      size: const Size(600, 1400),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Buat Dompet'), findsOneWidget);
+    expect(find.text('Buat dompet di menu utama!'), findsNothing);
+  });
 }
 
 class _ManyCategoriesNotifier extends InputTransactionNotifier {
@@ -170,4 +182,11 @@ class _ManyCategoriesNotifier extends InputTransactionNotifier {
     );
     return const InputTransactionState();
   }
+}
+
+class _NoWalletNotifier extends InputTransactionNotifier {
+  @override
+  InputTransactionState build() => const InputTransactionState(categories: [
+        {'id': 10, 'name': 'Makan', 'is_expense': true},
+      ]);
 }

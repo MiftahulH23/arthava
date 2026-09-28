@@ -17,6 +17,8 @@ import 'package:catat_uang_app/widgets/app_searchable_group.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:catat_uang_app/screens/wallet/wallet_form_sheet.dart';
+import 'package:catat_uang_app/widgets/app_create_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -265,11 +267,21 @@ class _InputTransactionScreenState
     });
   }
 
+  Future<int?> _createWallet() async {
+    final id = await showWalletFormSheet(context, onSaved: ref.read(inputTransactionProvider.notifier).fetchWallets);
+    if (id != null && mounted) setState(() => _selectedWalletId = id);
+    return id;
+  }
+
   void _showWalletPicker(List<Map<String, dynamic>> wallets) {
     showAppFormSheet<void>(
       context: context,
       title: "Pilih Dompet",
-      builder: (sheetContext) => AppSearchableGroup<Map<String, dynamic>>(
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSearchableGroup<Map<String, dynamic>>(
         items: wallets,
         searchText: (wallet) => wallet['name'].toString(),
         hint: 'Cari dompet',
@@ -284,6 +296,18 @@ class _InputTransactionScreenState
               setState(() => _selectedWalletId = wallet['id'] as int);
             },
           ),
+          ),
+          const SizedBox(height: 12),
+          AppGroupedSection(children: [
+            AppCreateRow(
+              label: 'Dompet Baru',
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _createWallet();
+              },
+            ),
+          ]),
+        ],
       ),
     );
   }
@@ -358,9 +382,10 @@ class _InputTransactionScreenState
         title: "Dompet",
         value: selected != null
             ? selected['name'].toString()
-            : (state.wallets.isEmpty ? "Buat dompet di menu utama!" : "Pilih Dompet..."),
-        showChevron: state.wallets.isNotEmpty,
-        onTap: state.wallets.isEmpty ? null : () => _showWalletPicker(state.wallets),
+            : (state.wallets.isEmpty ? "Buat Dompet" : "Pilih Dompet..."),
+        valueColor: selected == null && state.wallets.isEmpty ? AppColors.primary : null,
+        showChevron: true,
+        onTap: state.wallets.isEmpty ? _createWallet : () => _showWalletPicker(state.wallets),
       );
     }
 

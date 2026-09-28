@@ -16,6 +16,7 @@ import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_sheet.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:catat_uang_app/widgets/app_wallet_select_row.dart';
+import 'package:catat_uang_app/screens/wallet/wallet_form_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -34,7 +35,7 @@ class InvestmentScreen extends ConsumerWidget {
     final nameController = TextEditingController();
     final typeController = TextEditingController();
     final amountController = TextEditingController();
-    final wallets = ref.read(investmentProvider).wallets;
+    var wallets = ref.read(investmentProvider).wallets;
     int? selectedWalletId = wallets.isNotEmpty ? wallets.first['id'] as int : null;
     bool isSubmitting = false;
 
@@ -59,6 +60,14 @@ class InvestmentScreen extends ConsumerWidget {
               wallets: wallets,
               selectedId: selectedWalletId,
               onChanged: (v) => setSheetState(() => selectedWalletId = v),
+              onCreate: () async {
+                final id = await showWalletFormSheet(
+                  context,
+                  onSaved: () => ref.read(investmentProvider.notifier).fetchData(showLoading: false),
+                );
+                wallets = ref.read(investmentProvider).wallets;
+                return id;
+              },
             ),
             const SizedBox(height: 20),
             AppPrimaryButton(
@@ -165,7 +174,7 @@ class InvestmentScreen extends ConsumerWidget {
 
   void _showBuySellSheet(BuildContext context, WidgetRef ref, InvestmentModel inv, bool isBuy) {
     final amountController = TextEditingController();
-    final wallets = ref.read(investmentProvider).wallets;
+    var wallets = ref.read(investmentProvider).wallets;
     int? selectedWalletId = wallets.isNotEmpty ? wallets.first['id'] as int : null;
     bool isSubmitting = false;
     final color = isBuy ? AppColors.income : AppColors.expense;
@@ -185,6 +194,14 @@ class InvestmentScreen extends ConsumerWidget {
               wallets: wallets,
               selectedId: selectedWalletId,
               onChanged: (v) => setSheetState(() => selectedWalletId = v),
+              onCreate: () async {
+                final id = await showWalletFormSheet(
+                  context,
+                  onSaved: () => ref.read(investmentProvider.notifier).fetchData(showLoading: false),
+                );
+                wallets = ref.read(investmentProvider).wallets;
+                return id;
+              },
             ),
             const SizedBox(height: 20),
             AppPrimaryButton(

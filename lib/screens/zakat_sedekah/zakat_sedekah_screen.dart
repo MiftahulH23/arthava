@@ -13,6 +13,7 @@ import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:catat_uang_app/widgets/app_surface_card.dart';
 import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:catat_uang_app/widgets/app_wallet_select_row.dart';
+import 'package:catat_uang_app/screens/wallet/wallet_form_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -175,6 +176,7 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
           wallets: _wallets,
           selectedId: _selectedWalletId,
           onChanged: (val) => setState(() => _selectedWalletId = val),
+          onCreate: () => showWalletFormSheet(context, onSaved: _fetchWallets),
         ),
       ],
     );

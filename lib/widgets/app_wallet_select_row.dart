@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/core/formatters.dart';
+import 'package:catat_uang_app/widgets/app_create_row.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
 import 'package:catat_uang_app/widgets/app_searchable_group.dart';
@@ -22,6 +23,7 @@ class AppWalletSelectRow extends StatelessWidget {
     this.header,
     this.placeholder = 'Pilih Dompet...',
     this.emptyLabel = 'Belum ada dompet',
+    this.onCreate,
     super.key,
   });
 
@@ -31,6 +33,16 @@ class AppWalletSelectRow extends StatelessWidget {
   final String? header;
   final String placeholder;
   final String emptyLabel;
+
+  /// Membuat dompet baru (form bersama) dan mengembalikan id-nya; bila diisi,
+  /// sheet pemilih mendapat baris "+ Dompet Baru" dan baris kosong menjadi
+  /// "Buat Dompet". Dompet baru langsung dipilih.
+  final Future<int?> Function()? onCreate;
+
+  Future<void> _create() async {
+    final id = await onCreate!();
+    if (id != null) onChanged(id);
+  }
 
   Map<String, dynamic>? get _selected {
     for (final w in wallets) {
@@ -43,22 +55,38 @@ class AppWalletSelectRow extends StatelessWidget {
     final picked = await showAppFormSheet<int>(
       context: context,
       title: 'Pilih Dompet',
-      builder: (sheetContext) => AppSearchableGroup<Map<String, dynamic>>(
-        items: wallets,
-        searchText: (w) => w['name'].toString(),
-        hint: 'Cari dompet',
-        rowBuilder: (_, w) => AppListRow(
-          leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: walletColorOf(w), filled: true),
-          title: w['name'].toString(),
-          value: formatRupiah(w['balance'] as num),
-          trailing: w['id'] == selectedId
-              ? const Icon(PhosphorIconsBold.check, color: AppColors.primary, size: 18)
-              : null,
-          onTap: () => Navigator.pop(sheetContext, w['id'] as int),
-        ),
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSearchableGroup<Map<String, dynamic>>(
+            items: wallets,
+            searchText: (w) => w['name'].toString(),
+            hint: 'Cari dompet',
+            rowBuilder: (_, w) => AppListRow(
+              leading: AppIconTile(icon: PhosphorIconsFill.wallet, color: walletColorOf(w), filled: true),
+              title: w['name'].toString(),
+              value: formatRupiah(w['balance'] as num),
+              trailing: w['id'] == selectedId
+                  ? const Icon(PhosphorIconsBold.check, color: AppColors.primary, size: 18)
+                  : null,
+              onTap: () => Navigator.pop(sheetContext, w['id'] as int),
+            ),
+          ),
+          if (onCreate != null) ...[
+            const SizedBox(height: 12),
+            AppGroupedSection(children: [
+              AppCreateRow(label: 'Dompet Baru', onTap: () => Navigator.pop(sheetContext, -1)),
+            ]),
+          ],
+        ],
       ),
     );
-    if (picked != null) onChanged(picked);
+    if (picked == -1) {
+      await _create();
+    } else if (picked != null) {
+      onChanged(picked);
+    }
   }
 
   @override
@@ -74,11 +102,14 @@ class AppWalletSelectRow extends StatelessWidget {
             color: selected != null ? walletColorOf(selected) : AppColors.tintGray,
             filled: selected != null,
           ),
-          title: selected?['name']?.toString() ?? (isEmpty ? emptyLabel : placeholder),
-          titleColor: selected == null ? AppColors.textSecondary : null,
+          title: selected?['name']?.toString() ??
+              (isEmpty ? (onCreate != null ? 'Buat Dompet' : emptyLabel) : placeholder),
+          titleColor: selected != null
+              ? null
+              : (isEmpty && onCreate != null ? AppColors.primary : AppColors.textSecondary),
           value: selected != null ? formatRupiah(selected['balance'] as num) : null,
-          showChevron: !isEmpty,
-          onTap: isEmpty ? null : () => _openPicker(context),
+          showChevron: !isEmpty || onCreate != null,
+          onTap: isEmpty ? (onCreate != null ? _create : null) : () => _openPicker(context),
         ),
       ],
     );

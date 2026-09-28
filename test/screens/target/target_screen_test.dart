@@ -191,7 +191,7 @@ void main() {
       TargetState(isLoading: false, targets: empty.targets, savingNames: empty.savingNames, totalSavings: empty.totalSavings),
     );
     await openDeposit(tester);
-    expect(find.text('Belum ada dompet'), findsOneWidget);
+    expect(find.text('Buat Dompet'), findsOneWidget);
 
     fake.state = fake.state.copyWith(wallets: const [
       {'id': 1, 'name': 'BCA', 'balance': 9300000},
