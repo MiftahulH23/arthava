@@ -96,7 +96,7 @@ void main() {
     expect(find.text('Transfer'), findsNothing);
   });
 
-  testWidgets('satu dompet: Transfer tampil (menawarkan dompet kedua); tanpa dompet: tidak', (tester) async {
+  testWidgets('satu dompet: Transfer tetap tampil (menawarkan dompet kedua)', (tester) async {
     await pumpWallet(tester, [sample().first]);
     expect(find.text('Transfer'), findsOneWidget);
   });
