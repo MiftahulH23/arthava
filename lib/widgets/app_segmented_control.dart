@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -58,7 +59,7 @@ class AppSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final listenable = position;
+    final listenable = position ?? AppSwipeTabs.maybePositionOf(context, labels.length);
     return Container(
       height: _height,
       padding: const EdgeInsets.all(_pad),
