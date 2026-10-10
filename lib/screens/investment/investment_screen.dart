@@ -7,7 +7,6 @@ import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:catat_uang_app/widgets/app_amount_display.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
 import 'package:catat_uang_app/widgets/app_callout.dart';
-import 'package:catat_uang_app/widgets/app_dialogs.dart';
 import 'package:catat_uang_app/widgets/app_empty_state.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_hero_card.dart';
@@ -21,15 +20,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 
 class InvestmentScreen extends ConsumerWidget {
   const InvestmentScreen({super.key});
 
-  static final _inputFormat = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: '',
-    decimalDigits: 0,
-  );
+  static final _inputFormat = NumberFormat.currency(locale: 'id_ID', symbol: '', decimalDigits: 0);
 
   void _showAddInvestmentSheet(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
@@ -85,7 +81,9 @@ class InvestmentScreen extends ConsumerWidget {
                 final amount = parseRupiah(amountController.text).toDouble();
                 setSheetState(() => isSubmitting = true);
                 try {
-                  await ref.read(investmentProvider.notifier).buyInvestment(
+                  await ref
+                      .read(investmentProvider.notifier)
+                      .buyInvestment(
                         name: nameController.text.trim(),
                         type: typeController.text.trim(),
                         amount: amount,
@@ -149,22 +147,6 @@ class InvestmentScreen extends ConsumerWidget {
                   _showUpdateValueSheet(context, ref, inv);
                 },
               ),
-              AppListRow(
-                leading: const AppIconTile(icon: PhosphorIconsFill.trash, color: AppColors.tintGray),
-                title: "Hapus Portofolio",
-                titleColor: AppColors.textSecondary,
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  // Semua hapus di app dikonfirmasi dulu (G12/G17); dulu langsung terhapus.
-                  final confirmed = await showAppConfirmDialog(
-                    context: context,
-                    title: 'Hapus Portofolio?',
-                    message: "Aset '${inv.name}' dihapus dari daftar. Saldo dompet tidak berubah.",
-                  );
-                  if (!confirmed || !context.mounted) return;
-                  await ref.read(investmentProvider.notifier).deleteInvestment(inv.id);
-                },
-              ),
             ],
           ),
         ],
@@ -214,12 +196,9 @@ class InvestmentScreen extends ConsumerWidget {
                 final amount = parseRupiah(amountController.text).toDouble();
                 setSheetState(() => isSubmitting = true);
                 try {
-                  await ref.read(investmentProvider.notifier).buySellInvestment(
-                        inv: inv,
-                        isBuy: isBuy,
-                        amount: amount,
-                        walletId: selectedWalletId!,
-                      );
+                  await ref
+                      .read(investmentProvider.notifier)
+                      .buySellInvestment(inv: inv, isBuy: isBuy, amount: amount, walletId: selectedWalletId!);
                   if (sheetContext.mounted) {
                     Navigator.pop(sheetContext);
                     AppNotification.success(sheetContext, isBuy ? "Top up berhasil!" : "Penjualan berhasil!");
@@ -347,7 +326,14 @@ class InvestmentScreen extends ConsumerWidget {
                   header: 'Daftar Portofolio',
                   children: [
                     for (final inv in investments)
-                      _InvestmentRow(inv: inv, onTap: () => _showActionSheet(context, ref, inv)),
+                      AppSwipeActions(
+                        key: ValueKey('inv-${inv.id}'),
+                        // Semua hapus di app dikonfirmasi dulu (G12/G17).
+                        deleteConfirmTitle: 'Hapus Portofolio?',
+                        deleteConfirmMessage: "Aset '${inv.name}' dihapus dari daftar. Saldo dompet tidak berubah.",
+                        onDelete: () => ref.read(investmentProvider.notifier).deleteInvestment(inv.id),
+                        child: _InvestmentRow(inv: inv, onTap: () => _showActionSheet(context, ref, inv)),
+                      ),
                   ],
                 ),
             ],
@@ -365,10 +351,7 @@ class _ReturnPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(999),
-      ),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(999)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

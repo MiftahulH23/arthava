@@ -25,11 +25,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 
 Widget _fieldLabel(String text) => Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-      child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
-    );
+  padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+  child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
+);
 
 class RecurringScreen extends ConsumerStatefulWidget {
   const RecurringScreen({super.key});
@@ -123,7 +124,8 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
                     value: selectedWalletId,
                     options: [for (final w in wallets) AppSelectOption(w['id'] as int, "${w['name']}")],
                     onChanged: (val) => setSheetState(() => selectedWalletId = val),
-                    onCreate: () => showWalletFormSheet(context, onSaved: ref.read(recurringProvider.notifier).fetchWallets),
+                    onCreate: () =>
+                        showWalletFormSheet(context, onSaved: ref.read(recurringProvider.notifier).fetchWallets),
                   ),
                   AppSelectRow<int>(
                     leading: AppIconTile(
@@ -248,7 +250,12 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
                       if (item.note != null && item.note!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Text(item.note!, style: AppTextStyles.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            item.note!,
+                            style: AppTextStyles.caption,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       const SizedBox(height: 6),
                       Wrap(
@@ -268,9 +275,7 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
                   children: [
                     Text(
                       formatRupiahSigned(item.amount, isIncome: !isExpense),
-                      style: AppTextStyles.amountRow.copyWith(
-                        color: item.isActive ? color : AppColors.textSecondary,
-                      ),
+                      style: AppTextStyles.amountRow.copyWith(color: item.isActive ? color : AppColors.textSecondary),
                     ),
                     const SizedBox(height: 8),
                     AppSwitch(value: item.isActive, onChanged: (val) => _toggleActive(item, val)),
@@ -303,16 +308,6 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                AppNavAction.icon(
-                  PhosphorIconsRegular.pencilSimple,
-                  color: AppColors.tintBlue,
-                  onPressed: () => _showAddEditSheet(item: item),
-                ),
-                AppNavAction.icon(
-                  PhosphorIconsRegular.trash,
-                  color: AppColors.expense,
-                  onPressed: () => _confirmDelete(item),
-                ),
               ],
             ),
           ],
@@ -341,7 +336,15 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
         else if (recurringList.isEmpty)
           const AppEmptyState(icon: PhosphorIconsFill.calendarPlus, title: "Belum ada jadwal otomatis")
         else
-          for (final item in recurringList) _buildCard(item, walletNames),
+          for (final item in recurringList)
+            AppSwipeActions(
+              key: ValueKey('recurring-${item.id}'),
+              borderRadius: BorderRadius.circular(24),
+              confirmDelete: false,
+              onEdit: () => _showAddEditSheet(item: item),
+              onDelete: () => _confirmDelete(item),
+              child: _buildCard(item, walletNames),
+            ),
       ],
     );
   }

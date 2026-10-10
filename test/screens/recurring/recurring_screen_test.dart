@@ -132,7 +132,9 @@ void main() {
 
   testWidgets('hapus jadwal: dialog teks lama → deleteItem + "Jadwal otomatis dihapus"', (tester) async {
     final fake = await _pump(tester, filled());
-    await tester.tap(find.byIcon(PhosphorIconsRegular.trash).first);
+    await tester.drag(find.text('Kos'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
     await tester.pumpAndSettle();
     expect(find.text('Hapus Jadwal?'), findsOneWidget);
     expect(find.text('Jadwal otomatis ini akan dihentikan dan dihapus dari daftar.'), findsOneWidget);
@@ -158,7 +160,9 @@ void main() {
 
   testWidgets('edit jadwal yang dompet & kategorinya sudah dihapus → validasi, tidak menyimpan id lama', (tester) async {
     final fake = await _pump(tester, filled());
-    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).last);
+    await tester.drag(find.text('Hiburan'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     expect(find.text('Edit Jadwal Tagihan'), findsOneWidget);
     await tester.ensureVisible(find.text('Perbarui Jadwal'));
@@ -167,5 +171,15 @@ void main() {
     expect(find.text('Nominal, Kategori, dan Dompet wajib diisi!'), findsOneWidget);
     expect(fake.calls, isEmpty);
     await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('kartu jadwal tanpa ikon pensil/sampah; geser membuka Edit dan Hapus', (tester) async {
+    await _pump(tester, filled());
+    expect(find.byIcon(PhosphorIconsRegular.trash), findsNothing);
+    expect(find.byIcon(PhosphorIconsRegular.pencilSimple), findsNothing);
+    await tester.drag(find.text('Kos'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit'), findsOneWidget);
+    expect(find.text('Hapus'), findsOneWidget);
   });
 }

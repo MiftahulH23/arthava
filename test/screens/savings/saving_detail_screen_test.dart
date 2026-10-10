@@ -89,7 +89,9 @@ void main() {
   testWidgets('Edit dengan nominal kosong tidak crash dan tidak menyimpan (Review Focus #2)', (tester) async {
     await pump(tester);
 
-    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).first);
+    await tester.drag(find.text('Setoran Tabungan'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     expect(find.text('Edit Setoran'), findsOneWidget);
 
@@ -105,7 +107,9 @@ void main() {
 
   testWidgets('Edit Tarikan menyimpan nominal & teks trim → "Perubahan disimpan!"', (tester) async {
     await pump(tester);
-    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).last);
+    await tester.drag(find.text('Penarikan Dana'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     expect(find.text('Edit Tarikan'), findsOneWidget);
 
@@ -122,7 +126,9 @@ void main() {
 
   testWidgets('hapus histori: dialog teks lama → deleteSavingItem + toast', (tester) async {
     await pump(tester);
-    await tester.tap(find.byIcon(PhosphorIconsRegular.trash).first);
+    await tester.drag(find.text('Setoran Tabungan'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
     await tester.pumpAndSettle();
     expect(find.text('Hapus Histori?'), findsOneWidget);
     expect(find.text('Catatan ini dihapus dan saldonya dikembalikan ke dompet.'), findsOneWidget);
@@ -136,7 +142,9 @@ void main() {
 
   testWidgets('ketuk ganda Simpan Perubahan → edit diproses sekali', (tester) async {
     await pump(tester);
-    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).first);
+    await tester.drag(find.text('Setoran Tabungan'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     final button = find.text('Simpan Perubahan');
     await tester.tap(button);
@@ -149,7 +157,9 @@ void main() {
   testWidgets('edit ditolak server: pesan tolakan tampil, sheet tetap terbuka', (tester) async {
     await pump(tester);
     notifier.rejectWith = 'Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 0';
-    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).first);
+    await tester.drag(find.text('Setoran Tabungan'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Simpan Perubahan'));
     await tester.pump();
@@ -157,5 +167,15 @@ void main() {
     expect(find.text('Saldo dompet BCA tidak cukup! Bisa dipakai: Rp 0'), findsOneWidget);
     expect(find.text('Edit Setoran'), findsOneWidget);
     await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets('baris riwayat tanpa ikon pensil/sampah; geser membuka Edit dan Hapus', (tester) async {
+    await pump(tester);
+    expect(find.byIcon(PhosphorIconsRegular.trash), findsNothing);
+    expect(find.byIcon(PhosphorIconsRegular.pencilSimple), findsNothing);
+    await tester.drag(find.text('Setoran Tabungan'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit'), findsOneWidget);
+    expect(find.text('Hapus'), findsOneWidget);
   });
 }

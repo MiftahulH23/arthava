@@ -117,9 +117,9 @@ void main() {
     final fake = FakeInvestmentNotifier(_state());
     await pumpApp(tester, const InvestmentScreen(), overrides: [investmentProvider.overrideWith(() => fake)]);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Saham BBCA'));
+    await tester.drag(find.text('Saham BBCA'), const Offset(-250, 0));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hapus Portofolio'));
+    await tester.tap(find.text('Hapus'));
     await tester.pumpAndSettle();
     return fake;
   }
@@ -144,5 +144,14 @@ void main() {
         overrides: [investmentProvider.overrideWith(() => FakeInvestmentNotifier(_state()))]);
     await tester.pumpAndSettle();
     expect(find.text('Saham · Modal: Rp 8.000.000'), findsOneWidget);
+  });
+
+  testWidgets('lembar opsi investasi tidak lagi berisi Hapus Portofolio', (tester) async {
+    await pumpApp(tester, const InvestmentScreen(),
+        overrides: [investmentProvider.overrideWith(() => FakeInvestmentNotifier(_state()))]);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Saham BBCA'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus Portofolio'), findsNothing);
   });
 }

@@ -172,7 +172,9 @@ void main() {
 
   testWidgets('hapus tabungan: dialog teks lama → deleteGroup + "Tabungan dihapus"', (tester) async {
     final fake = await _pump(tester, filled());
-    await tester.tap(find.byIcon(PhosphorIconsRegular.trash).first);
+    await tester.drag(find.text('Dana Darurat'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
     await tester.pumpAndSettle();
     expect(find.text('Hapus Tabungan?'), findsOneWidget);
     expect(find.textContaining("Anda yakin ingin menghapus 'Dana Darurat'?"), findsOneWidget);
@@ -244,5 +246,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     expect(fake.calls, hasLength(1));
     await settleToast(tester);
+  });
+
+  testWidgets('kartu tabungan tanpa ikon pensil/sampah; geser membuka Edit dan Hapus', (tester) async {
+    await _pump(tester, filled());
+    expect(find.byIcon(PhosphorIconsRegular.trash), findsNothing);
+    expect(find.byIcon(PhosphorIconsRegular.pencilSimple), findsNothing);
+    await tester.drag(find.text('Dana Darurat'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit'), findsOneWidget);
+    expect(find.text('Hapus'), findsOneWidget);
   });
 }

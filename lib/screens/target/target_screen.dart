@@ -23,11 +23,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 
 Widget _fieldLabel(String text) => Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-      child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
-    );
+  padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+  child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
+);
 
 String _plainAmount(num value) => NumberFormat.decimalPattern('id_ID').format(value.round());
 
@@ -67,9 +68,7 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
       focusNode: focusNode,
       optionsBuilder: (TextEditingValue textEditingValue) {
         if (textEditingValue.text.isEmpty) return savingNames;
-        return savingNames.where(
-          (option) => option.toLowerCase().contains(textEditingValue.text.toLowerCase()),
-        );
+        return savingNames.where((option) => option.toLowerCase().contains(textEditingValue.text.toLowerCase()));
       },
       onSelected: (selection) => controller.text = selection,
       fieldViewBuilder: (context, textController, fieldFocus, onFieldSubmitted) => AppTextField(
@@ -89,9 +88,7 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
             child: ListView(
               padding: EdgeInsets.zero,
               shrinkWrap: true,
-              children: [
-                for (final option in options) AppListRow(title: option, onTap: () => onSelected(option)),
-              ],
+              children: [for (final option in options) AppListRow(title: option, onTap: () => onSelected(option))],
             ),
           ),
         ),
@@ -153,7 +150,9 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
                 onPressed: () async {
                   if (nameController.text.isEmpty || targetController.text.isEmpty) return;
                   try {
-                    await ref.read(targetProvider.notifier).addTarget(
+                    await ref
+                        .read(targetProvider.notifier)
+                        .addTarget(
                           name: nameController.text,
                           targetAmount: parseRupiah(targetController.text).toDouble(),
                           storageLocation: locationController.text.isNotEmpty ? locationController.text : null,
@@ -238,7 +237,9 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
                 onPressed: () async {
                   if (nameController.text.isEmpty || targetController.text.isEmpty) return;
                   try {
-                    await ref.read(targetProvider.notifier).editTarget(
+                    await ref
+                        .read(targetProvider.notifier)
+                        .editTarget(
                           id: target.id,
                           name: nameController.text,
                           targetAmount: parseRupiah(targetController.text).toDouble(),
@@ -277,84 +278,83 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
           final wallets = ref.watch(targetProvider.select((s) => s.wallets));
           if (selectedWalletId == null && wallets.isNotEmpty) selectedWalletId = wallets.first['id'] as int;
           return StatefulBuilder(
-        builder: (context, setSheetState) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppCallout(
-              icon: PhosphorIconsFill.info,
-              child: Text(
-                target.storageLocation != null
-                    ? "Disimpan di: ${target.storageLocation}"
-                    : "Lokasi penyimpanan belum ditentukan.",
-                style: AppTextStyles.subhead.copyWith(color: AppColors.textPrimary),
-              ),
-            ),
-            const SizedBox(height: 14),
-            AppGroupedSection(
-              header: "Tarik Dana Dari Dompet Mana?",
+            builder: (context, setSheetState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AppSelectRow<int>(
-                  leading: const AppIconTile(icon: PhosphorIconsFill.wallet, color: AppColors.primary),
-                  title: "Dompet",
-                  placeholder: wallets.isEmpty ? "Belum ada dompet" : "Pilih Dompet",
-                  value: selectedWalletId,
-                  options: [
-                    for (final w in wallets)
-                      AppSelectOption(
-                        w['id'] as int,
-                        "${w['name']} (Sisa: ${formatRupiah(w['balance'] as num)})",
-                        shortLabel: "${w['name']}",
-                      ),
+                AppCallout(
+                  icon: PhosphorIconsFill.info,
+                  child: Text(
+                    target.storageLocation != null
+                        ? "Disimpan di: ${target.storageLocation}"
+                        : "Lokasi penyimpanan belum ditentukan.",
+                    style: AppTextStyles.subhead.copyWith(color: AppColors.textPrimary),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AppGroupedSection(
+                  header: "Tarik Dana Dari Dompet Mana?",
+                  children: [
+                    AppSelectRow<int>(
+                      leading: const AppIconTile(icon: PhosphorIconsFill.wallet, color: AppColors.primary),
+                      title: "Dompet",
+                      placeholder: wallets.isEmpty ? "Belum ada dompet" : "Pilih Dompet",
+                      value: selectedWalletId,
+                      options: [
+                        for (final w in wallets)
+                          AppSelectOption(
+                            w['id'] as int,
+                            "${w['name']} (Sisa: ${formatRupiah(w['balance'] as num)})",
+                            shortLabel: "${w['name']}",
+                          ),
+                      ],
+                      onChanged: (val) => setSheetState(() => selectedWalletId = val),
+                      onCreate: () =>
+                          showWalletFormSheet(context, onSaved: ref.read(targetProvider.notifier).fetchWallets),
+                    ),
                   ],
-                  onChanged: (val) => setSheetState(() => selectedWalletId = val),
-                  onCreate: () => showWalletFormSheet(context, onSaved: ref.read(targetProvider.notifier).fetchWallets),
+                ),
+                const SizedBox(height: 14),
+                AppSurfaceCard(
+                  child: AppAmountField(
+                    controller: amountController,
+                    label: "Mau nabung berapa hari ini?",
+                    color: AppColors.income,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                AppPrimaryButton(
+                  label: "Setor Tabungan",
+                  color: AppColors.income,
+                  loading: busy,
+                  onPressed: () async {
+                    if (busy || amountController.text.isEmpty || selectedWalletId == null) return;
+                    busy = true;
+                    setSheetState(() {});
+                    try {
+                      final rawAmount = parseRupiah(amountController.text).toDouble();
+                      final result = await ref
+                          .read(targetProvider.notifier)
+                          .depositToTarget(target: target, rawAmount: rawAmount, walletId: selectedWalletId!);
+                      if (result != null) {
+                        if (context.mounted) AppNotification.error(context, result);
+                        return;
+                      }
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        AppNotification.success(context, "Berhasil nabung Rp ${amountController.text}!");
+                      }
+                    } catch (e) {
+                      debugPrint(e.toString());
+                    } finally {
+                      busy = false;
+                      if (context.mounted) setSheetState(() {});
+                    }
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            AppSurfaceCard(
-              child: AppAmountField(
-                controller: amountController,
-                label: "Mau nabung berapa hari ini?",
-                color: AppColors.income,
-              ),
-            ),
-            const SizedBox(height: 20),
-            AppPrimaryButton(
-              label: "Setor Tabungan",
-              color: AppColors.income,
-              loading: busy,
-              onPressed: () async {
-                if (busy || amountController.text.isEmpty || selectedWalletId == null) return;
-                busy = true;
-                setSheetState(() {});
-                try {
-                  final rawAmount = parseRupiah(amountController.text).toDouble();
-                  final result = await ref.read(targetProvider.notifier).depositToTarget(
-                        target: target,
-                        rawAmount: rawAmount,
-                        walletId: selectedWalletId!,
-                      );
-                  if (result != null) {
-                    if (context.mounted) AppNotification.error(context, result);
-                    return;
-                  }
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    AppNotification.success(context, "Berhasil nabung Rp ${amountController.text}!");
-                  }
-                } catch (e) {
-                  debugPrint(e.toString());
-                } finally {
-                  busy = false;
-                  if (context.mounted) setSheetState(() {});
-                }
-              },
-            ),
-          ],
-        ),
-      );
+          );
         },
       ),
     );
@@ -428,16 +428,6 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
                       ),
                   ],
                 ),
-              ),
-              AppNavAction.icon(
-                PhosphorIconsRegular.pencilSimple,
-                color: AppColors.textSecondary,
-                onPressed: () => _showEditSheet(item),
-              ),
-              AppNavAction.icon(
-                PhosphorIconsRegular.trash,
-                color: AppColors.textSecondary,
-                onPressed: () => _confirmDelete(item.id, item.name),
               ),
             ],
           ),
@@ -529,7 +519,15 @@ class _TargetScreenState extends ConsumerState<TargetScreen> {
         else if (targets.isEmpty)
           const AppEmptyState(icon: PhosphorIconsFill.target, title: "Belum ada target")
         else
-          for (final item in targets) _buildTargetCard(item),
+          for (final item in targets)
+            AppSwipeActions(
+              key: ValueKey('target-${item.id}'),
+              borderRadius: BorderRadius.circular(24),
+              confirmDelete: false,
+              onEdit: () => _showEditSheet(item),
+              onDelete: () => _confirmDelete(item.id, item.name),
+              child: _buildTargetCard(item),
+            ),
       ],
     );
   }

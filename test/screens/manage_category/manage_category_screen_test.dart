@@ -56,8 +56,8 @@ void main() {
     expect(find.text('Makan'), findsOneWidget);
     expect(find.text('Bawaan Aplikasi'), findsOneWidget);
     expect(find.text('Bensin'), findsOneWidget);
-    expect(find.byIcon(PhosphorIconsFill.pencilSimple), findsOneWidget);
-    expect(find.byIcon(PhosphorIconsFill.trash), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsFill.pencilSimple), findsNothing);
+    expect(find.byIcon(PhosphorIconsFill.trash), findsNothing);
   });
 
   testWidgets('segmented Pemasukan memanggil fetchCategories(isExpense: false)', (tester) async {
@@ -93,11 +93,13 @@ void main() {
 
   testWidgets('hapus kategori lewat dialog konfirmasi', (tester) async {
     final fake = await _pump(tester);
-    await tester.tap(find.byIcon(PhosphorIconsFill.trash));
+    await tester.drag(find.text('Bensin'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
     await tester.pumpAndSettle();
     expect(find.text('Hapus Kategori?'), findsOneWidget);
     expect(find.text("Yakin mau hapus 'Bensin'?"), findsOneWidget);
-    await tester.tap(find.text('Hapus'));
+    await tester.tap(find.text('Hapus').last);
     await tester.pumpAndSettle();
     expect(fake.calls, contains('delete:5'));
     await tester.pump(const Duration(seconds: 4));
@@ -108,5 +110,17 @@ void main() {
     await tester.timedDrag(find.text('Kelola Kategori'), const Offset(-250, 0), const Duration(milliseconds: 800));
     await tester.pumpAndSettle();
     expect(fake.calls, contains('fetch:false'));
+  });
+
+  testWidgets('kategori bawaan tidak bisa digeser hapus; kategori user bisa diedit lewat geser', (tester) async {
+    await _pump(tester);
+    await tester.drag(find.text('Makan'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus'), findsNothing);
+    await tester.drag(find.text('Bensin'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Kategori'), findsOneWidget);
   });
 }

@@ -98,7 +98,9 @@ void main() {
   testWidgets('Edit Target dengan deadline lewat tidak crash saat buka date picker (Review Focus #1)', (tester) async {
     await _pump(tester, _state(pastDeadline: DateTime.now().subtract(const Duration(days: 10))));
 
-    await tester.tap(find.byIcon(PhosphorIconsRegular.pencilSimple).first);
+    await tester.drag(find.text('Beli iPhone 15'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     expect(find.text('Edit Target'), findsOneWidget);
 
@@ -158,7 +160,9 @@ void main() {
 
   testWidgets('hapus target: dialog konfirmasi teks lama → deleteTarget(id) + toast', (tester) async {
     final fake = await _pump(tester, _state());
-    await tester.tap(find.byIcon(PhosphorIconsRegular.trash).first);
+    await tester.drag(find.text('Beli iPhone 15'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
     await tester.pumpAndSettle();
     expect(find.text('Hapus Target?'), findsOneWidget);
     expect(find.textContaining("Anda yakin ingin menghapus target 'Beli iPhone 15'?"), findsOneWidget);
@@ -198,5 +202,15 @@ void main() {
     ]);
     await tester.pumpAndSettle();
     expect(find.text('BCA'), findsOneWidget);
+  });
+
+  testWidgets('kartu target tanpa ikon pensil/sampah; geser membuka Edit dan Hapus', (tester) async {
+    await _pump(tester, _state());
+    expect(find.byIcon(PhosphorIconsRegular.trash), findsNothing);
+    expect(find.byIcon(PhosphorIconsRegular.pencilSimple), findsNothing);
+    await tester.drag(find.text('Beli iPhone 15'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit'), findsOneWidget);
+    expect(find.text('Hapus'), findsOneWidget);
   });
 }

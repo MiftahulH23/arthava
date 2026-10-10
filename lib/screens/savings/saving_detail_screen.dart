@@ -21,11 +21,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 
 Widget _fieldLabel(String text) => Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-      child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
-    );
+  padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+  child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
+);
 
 class SavingDetailScreen extends ConsumerStatefulWidget {
   final String savingName;
@@ -118,57 +119,59 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
       title: "Edit ${isDeposit ? 'Setoran' : 'Tarikan'}",
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppSurfaceCard(
-            child: AppAmountField(
-              controller: amountController,
-              label: "Nominal",
-              color: isDeposit ? AppColors.income : AppColors.expense,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppSurfaceCard(
+              child: AppAmountField(
+                controller: amountController,
+                label: "Nominal",
+                color: isDeposit ? AppColors.income : AppColors.expense,
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          _fieldLabel("Tempat Simpan"),
-          AppTextField(controller: locationController, hint: "Contoh: Bank BCA", icon: PhosphorIconsFill.mapPin),
-          const SizedBox(height: 14),
-          _fieldLabel("Catatan"),
-          AppTextField(controller: notesController, hint: "Tulis catatan...", maxLines: 2),
-          const SizedBox(height: 20),
-          AppPrimaryButton(
-            label: "Simpan Perubahan",
-            loading: busy,
-            onPressed: () async {
-              if (busy) return;
-              final double rawAmount = parseRupiah(amountController.text).toDouble();
-              // [LOGIKA] Dulu double.parse('') melempar FormatException di luar try.
-              if (rawAmount <= 0) return;
-              busy = true;
-              setSheetState(() {});
-              try {
-                await ref.read(savingsProvider.notifier).editSavingItem(
-                      saving: saving,
-                      rawAmount: rawAmount,
-                      isDeposit: isDeposit,
-                      location: locationController.text.trim(),
-                      notes: notesController.text.trim(),
-                    );
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  AppNotification.success(context, "Perubahan disimpan!");
+            const SizedBox(height: 14),
+            _fieldLabel("Tempat Simpan"),
+            AppTextField(controller: locationController, hint: "Contoh: Bank BCA", icon: PhosphorIconsFill.mapPin),
+            const SizedBox(height: 14),
+            _fieldLabel("Catatan"),
+            AppTextField(controller: notesController, hint: "Tulis catatan...", maxLines: 2),
+            const SizedBox(height: 20),
+            AppPrimaryButton(
+              label: "Simpan Perubahan",
+              loading: busy,
+              onPressed: () async {
+                if (busy) return;
+                final double rawAmount = parseRupiah(amountController.text).toDouble();
+                // [LOGIKA] Dulu double.parse('') melempar FormatException di luar try.
+                if (rawAmount <= 0) return;
+                busy = true;
+                setSheetState(() {});
+                try {
+                  await ref
+                      .read(savingsProvider.notifier)
+                      .editSavingItem(
+                        saving: saving,
+                        rawAmount: rawAmount,
+                        isDeposit: isDeposit,
+                        location: locationController.text.trim(),
+                        notes: notesController.text.trim(),
+                      );
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    AppNotification.success(context, "Perubahan disimpan!");
+                  }
+                } on MoneyRejection catch (e) {
+                  if (context.mounted) AppNotification.error(context, e.message);
+                } catch (e) {
+                  if (context.mounted) AppNotification.error(context, "Gagal update data.");
+                } finally {
+                  busy = false;
+                  if (context.mounted) setSheetState(() {});
                 }
-              } on MoneyRejection catch (e) {
-                if (context.mounted) AppNotification.error(context, e.message);
-              } catch (e) {
-                if (context.mounted) AppNotification.error(context, "Gagal update data.");
-              } finally {
-                busy = false;
-                if (context.mounted) setSheetState(() {});
-              }
-            },
-          ),
-        ],
-      ),
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -180,70 +183,55 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
     final walletName = walletId != null ? walletNames[walletId] : null;
     final hasLocation = item.location != null && item.location!.isNotEmpty;
 
-    return AppListRow(
-      leading: AppIconTile(
-        icon: isWithdrawal ? PhosphorIconsFill.arrowUpRight : PhosphorIconsFill.downloadSimple,
-        color: cardColor,
-      ),
-      title: isWithdrawal ? "Penarikan Dana" : "Setoran Tabungan",
-      subtitleWidget: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (walletName != null || hasLocation)
+    return AppSwipeActions(
+      key: ValueKey('saving-item-${item.id}'),
+      confirmDelete: false,
+      onEdit: () => _showEditSheet(item),
+      onDelete: () => _confirmDeleteItem(item),
+      child: AppListRow(
+        leading: AppIconTile(
+          icon: isWithdrawal ? PhosphorIconsFill.arrowUpRight : PhosphorIconsFill.downloadSimple,
+          color: cardColor,
+        ),
+        title: isWithdrawal ? "Penarikan Dana" : "Setoran Tabungan",
+        subtitleWidget: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (walletName != null || hasLocation)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    if (walletName != null)
+                      AppChip(
+                        label: isWithdrawal ? "Ke: $walletName" : "Dari: $walletName",
+                        color: AppColors.primary,
+                        icon: PhosphorIconsFill.wallet,
+                      ),
+                    if (hasLocation) AppChip(label: item.location!, icon: PhosphorIconsFill.mapPin),
+                  ],
+                ),
+              ),
+            if (item.notes != null && item.notes!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(item.notes!, style: AppTextStyles.caption),
+              ),
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: [
-                  if (walletName != null)
-                    AppChip(
-                      label: isWithdrawal ? "Ke: $walletName" : "Dari: $walletName",
-                      color: AppColors.primary,
-                      icon: PhosphorIconsFill.wallet,
-                    ),
-                  if (hasLocation) AppChip(label: item.location!, icon: PhosphorIconsFill.mapPin),
-                ],
+              child: Text(
+                DateFormat('dd MMM yyyy, HH:mm').format(item.createdAt),
+                style: AppTextStyles.caption.copyWith(fontSize: 11),
               ),
             ),
-          if (item.notes != null && item.notes!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(item.notes!, style: AppTextStyles.caption),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              DateFormat('dd MMM yyyy, HH:mm').format(item.createdAt),
-              style: AppTextStyles.caption.copyWith(fontSize: 11),
-            ),
-          ),
-        ],
-      ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            (isWithdrawal ? "- " : "+ ") + formatRupiah(item.amount.abs()),
-            style: AppTextStyles.amountRow.copyWith(color: cardColor),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppNavAction.icon(
-                PhosphorIconsRegular.pencilSimple,
-                color: AppColors.tintBlue,
-                onPressed: () => _showEditSheet(item),
-              ),
-              AppNavAction.icon(
-                PhosphorIconsRegular.trash,
-                color: AppColors.expense,
-                onPressed: () => _confirmDeleteItem(item),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
+        trailing: Text(
+          (isWithdrawal ? "- " : "+ ") + formatRupiah(item.amount.abs()),
+          style: AppTextStyles.amountRow.copyWith(color: cardColor),
+        ),
       ),
     );
   }
@@ -253,9 +241,7 @@ class _SavingDetailScreenState extends ConsumerState<SavingDetailScreen> {
     final savingsState = ref.watch(savingsProvider);
     final history = savingsState.groupedSavings[widget.savingName] ?? [];
     final currentBalance = history.fold<double>(0, (sum, item) => sum + item.amount);
-    final Map<int, String> walletNames = {
-      for (final w in savingsState.wallets) w['id'] as int: w['name'].toString(),
-    };
+    final Map<int, String> walletNames = {for (final w in savingsState.wallets) w['id'] as int: w['name'].toString()};
     final isLoading = savingsState.isLoading || _isLoading;
 
     return AppPageScaffold(

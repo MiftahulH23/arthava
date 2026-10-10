@@ -3,7 +3,6 @@ import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/models/category_model.dart';
 import 'package:catat_uang_app/providers/category_provider.dart';
 import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_dialogs.dart';
 import 'package:catat_uang_app/widgets/app_empty_state.dart';
 import 'package:catat_uang_app/widgets/app_grouped_section.dart';
 import 'package:catat_uang_app/widgets/app_list_row.dart';
@@ -15,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
+import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 
 class ManageCategoryScreen extends ConsumerWidget {
   const ManageCategoryScreen({super.key});
@@ -155,36 +155,20 @@ class ManageCategoryScreen extends ConsumerWidget {
 
   Widget _buildCategoryRow(BuildContext context, WidgetRef ref, CategoryModel cat, Color color) {
     final isSystem = cat.userId == null;
-    return AppListRow(
+    final row = AppListRow(
       leading: AppIconTile(icon: _getCategoryIcon(cat.name, cat.iconName), color: color),
       title: cat.name,
       subtitle: isSystem ? "Bawaan Aplikasi" : null,
-      trailing: isSystem
-          ? null
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Edit',
-                  icon: const Icon(PhosphorIconsFill.pencilSimple, color: AppColors.tintBlue, size: 20),
-                  onPressed: () => _showInputSheet(context, ref, categoryToEdit: cat),
-                ),
-                IconButton(
-                  tooltip: 'Hapus',
-                  icon: const Icon(PhosphorIconsFill.trash, color: AppColors.expense, size: 20),
-                  onPressed: () async {
-                    final confirmed = await showAppConfirmDialog(
-                      context: context,
-                      title: "Hapus Kategori?",
-                      message: "Yakin mau hapus '${cat.name}'?",
-                    );
-                    if (confirmed && context.mounted) {
-                      _deleteCategory(context, ref, cat.id);
-                    }
-                  },
-                ),
-              ],
-            ),
+    );
+    // Kategori bawaan tidak bisa diubah/dihapus: tanpa aksi geser.
+    if (isSystem) return row;
+    return AppSwipeActions(
+      key: ValueKey('category-${cat.id}'),
+      deleteConfirmTitle: "Hapus Kategori?",
+      deleteConfirmMessage: "Yakin mau hapus '${cat.name}'?",
+      onEdit: () => _showInputSheet(context, ref, categoryToEdit: cat),
+      onDelete: () => _deleteCategory(context, ref, cat.id),
+      child: row,
     );
   }
 }

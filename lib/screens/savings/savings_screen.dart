@@ -22,11 +22,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 
 Widget _fieldLabel(String text) => Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
-      child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
-    );
+  padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+  child: Text(text.toUpperCase(), style: AppTextStyles.groupLabel),
+);
 
 /// Label dompet sama persis dengan versi lama: "Nama (Sisa: 9.300.000)" tanpa "Rp".
 String _walletOptionLabel(Map<String, dynamic> w) =>
@@ -76,9 +77,13 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                     title: "Dompet",
                     placeholder: "Pilih Dompet",
                     value: selectedWalletId,
-                    options: [for (final w in wallets) AppSelectOption(w['id'] as int, _walletOptionLabel(w), shortLabel: "${w['name']}")],
+                    options: [
+                      for (final w in wallets)
+                        AppSelectOption(w['id'] as int, _walletOptionLabel(w), shortLabel: "${w['name']}"),
+                    ],
                     onChanged: (v) => setSheetState(() => selectedWalletId = v),
-                    onCreate: () => showWalletFormSheet(context, onSaved: ref.read(savingsProvider.notifier).fetchWallets),
+                    onCreate: () =>
+                        showWalletFormSheet(context, onSaved: ref.read(savingsProvider.notifier).fetchWallets),
                   ),
                 ],
               ),
@@ -115,7 +120,9 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                   setSheetState(() {});
                   try {
                     if (amt > 0) {
-                      final error = await ref.read(savingsProvider.notifier).processSavingTransaction(
+                      final error = await ref
+                          .read(savingsProvider.notifier)
+                          .processSavingTransaction(
                             isDeposit: true,
                             savingName: nameController.text.trim(),
                             amount: amt,
@@ -131,7 +138,9 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                         }
                       }
                     } else {
-                      await ref.read(savingsProvider.notifier).addEmptyGroup(
+                      await ref
+                          .read(savingsProvider.notifier)
+                          .addEmptyGroup(
                             name: nameController.text.trim(),
                             location: locationController.text.trim(),
                             notes: notesController.text.trim(),
@@ -182,7 +191,9 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
             onPressed: () async {
               if (nameController.text.isEmpty) return;
               try {
-                await ref.read(savingsProvider.notifier).renameGroup(
+                await ref
+                    .read(savingsProvider.notifier)
+                    .renameGroup(
                       oldName: oldName,
                       newName: nameController.text.trim(),
                       location: locationController.text.trim(),
@@ -239,9 +250,13 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                     title: "Dompet",
                     placeholder: "Pilih Dompet",
                     value: selectedWalletId,
-                    options: [for (final w in wallets) AppSelectOption(w['id'] as int, _walletOptionLabel(w), shortLabel: "${w['name']}")],
+                    options: [
+                      for (final w in wallets)
+                        AppSelectOption(w['id'] as int, _walletOptionLabel(w), shortLabel: "${w['name']}"),
+                    ],
                     onChanged: (v) => setSheetState(() => selectedWalletId = v),
-                    onCreate: () => showWalletFormSheet(context, onSaved: ref.read(savingsProvider.notifier).fetchWallets),
+                    onCreate: () =>
+                        showWalletFormSheet(context, onSaved: ref.read(savingsProvider.notifier).fetchWallets),
                   ),
                 ],
               ),
@@ -265,7 +280,9 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                   // terlihat); sheet ditutup hanya bila berhasil.
                   busy = true;
                   setSheetState(() {});
-                  final error = await ref.read(savingsProvider.notifier).processSavingTransaction(
+                  final error = await ref
+                      .read(savingsProvider.notifier)
+                      .processSavingTransaction(
                         isDeposit: isDeposit,
                         savingName: groupName,
                         amount: amt,
@@ -289,10 +306,21 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
     );
   }
 
+  /// Kartu tabungan dengan Edit/Hapus lewat geser (dulu ikon pensil & sampah).
+  Widget _buildSwipeableGroup(String groupName, List<SavingModel> items) {
+    return AppSwipeActions(
+      key: ValueKey('saving-$groupName'),
+      borderRadius: BorderRadius.circular(24),
+      confirmDelete: false,
+      onEdit: () => _showEditSheet(groupName, items.last.location ?? '', items.last.notes ?? ''),
+      onDelete: () => _confirmDelete(groupName),
+      child: _buildGroupCard(groupName, items),
+    );
+  }
+
   Widget _buildGroupCard(String groupName, List<SavingModel> items) {
     final double groupTotal = items.fold(0, (sum, item) => sum + item.amount);
     final String loc = items.last.location ?? '';
-    final String note = items.last.notes ?? '';
 
     return AppSurfaceCard(
       child: Column(
@@ -322,23 +350,18 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
                               const Icon(PhosphorIconsFill.bank, size: 12, color: AppColors.textSecondary),
                               const SizedBox(width: 4),
                               Flexible(
-                                child: Text(loc, style: AppTextStyles.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  loc,
+                                  style: AppTextStyles.caption,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
                         ),
                     ],
                   ),
-                ),
-                AppNavAction.icon(
-                  PhosphorIconsRegular.pencilSimple,
-                  color: AppColors.textSecondary,
-                  onPressed: () => _showEditSheet(groupName, loc, note),
-                ),
-                AppNavAction.icon(
-                  PhosphorIconsRegular.trash,
-                  color: AppColors.textSecondary,
-                  onPressed: () => _confirmDelete(groupName),
                 ),
               ],
             ),
@@ -413,7 +436,7 @@ class _SavingsScreenState extends ConsumerState<SavingsScreen> {
         else if (groupedSavings.isEmpty)
           const AppEmptyState(icon: PhosphorIconsFill.vault, title: "Belum ada tabungan")
         else
-          for (final entry in groupedSavings.entries) _buildGroupCard(entry.key, entry.value),
+          for (final entry in groupedSavings.entries) _buildSwipeableGroup(entry.key, entry.value),
       ],
     );
   }
