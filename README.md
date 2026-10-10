@@ -20,7 +20,6 @@
   <img src="docs/images/screen-home.jpg" width="200" alt="Home">
   <img src="docs/images/screen-stats.jpg" width="200" alt="Statistics">
   <img src="docs/images/screen-wallets.jpg" width="200" alt="Wallets">
-  <img src="docs/images/screen-ai.jpg" width="200" alt="Ask AI">
 </p>
 
 > *Arthava* comes from the Sanskrit **artha**, meaning wealth and prosperity.
