@@ -16,12 +16,6 @@
   <a href="https://github.com/MiftahulH23/arthava/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/MiftahulH23/arthava/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
-<p align="center">
-  <img src="docs/images/screen-home.jpg" width="200" alt="Home">
-  <img src="docs/images/screen-stats.jpg" width="200" alt="Statistics">
-  <img src="docs/images/screen-wallets.jpg" width="200" alt="Wallets">
-</p>
-
 > *Arthava* comes from the Sanskrit **artha**, meaning wealth and prosperity.
 > The app's interface is in Bahasa Indonesia and formats money as Rupiah.
 
