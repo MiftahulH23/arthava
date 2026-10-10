@@ -36,10 +36,12 @@ class AppSegmentedControl extends StatelessWidget {
   Widget _thumb(double pos) {
     final n = labels.length;
     final x = n <= 1 ? 0.0 : -1 + 2 * (pos.clamp(0, n - 1) / (n - 1));
+    // Pecahan = sedang digeser jari: ikut langsung tanpa animasi.
+    final dragging = pos != pos.roundToDouble();
     return AnimatedAlign(
       key: const ValueKey('segmented-thumb'),
       alignment: Alignment(x, 0),
-      duration: const Duration(milliseconds: 220),
+      duration: dragging ? Duration.zero : const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
       child: FractionallySizedBox(
         widthFactor: 1 / n,
@@ -59,6 +61,10 @@ class AppSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Kopling implisit: tanpa [position], kontrol ini mengikuti geser halaman
+    // milik `AppSwipeTabs` terdekat di atasnya bila jumlah tabnya sama. Kontrol
+    // dengan jumlah opsi sama yang bukan penanda tab halaman harus diberi
+    // [position] sendiri atau ditaruh di luar `AppSwipeTabs`.
     final listenable = position ?? AppSwipeTabs.maybePositionOf(context, labels.length);
     return Container(
       height: _height,

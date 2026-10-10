@@ -77,21 +77,33 @@ class _AppSwipeTabsState extends State<AppSwipeTabs> {
   }
 
   void _onEnd(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
+    var velocity = details.primaryVelocity ?? 0;
     final dx = _drag.value;
+    final opposes = dx != 0 && velocity != 0 && velocity.sign != dx.sign;
+    // Lemparan berlawanan arah geser: membatalkan bila kencang, diabaikan bila pelan.
+    final cancelled = opposes && velocity.abs() > AppSwipeTabs.switchVelocity;
+    if (opposes) velocity = 0;
     var target = widget.index;
-    if ((dx < -_width * AppSwipeTabs.switchFraction || velocity < -AppSwipeTabs.switchVelocity) &&
-        widget.index < widget.count - 1) {
-      target = widget.index + 1;
-    } else if ((dx > _width * AppSwipeTabs.switchFraction || velocity > AppSwipeTabs.switchVelocity) &&
-        widget.index > 0) {
-      target = widget.index - 1;
+    if (!cancelled) {
+      if ((dx < -_width * AppSwipeTabs.switchFraction || velocity < -AppSwipeTabs.switchVelocity) &&
+          widget.index < widget.count - 1) {
+        target = widget.index + 1;
+      } else if ((dx > _width * AppSwipeTabs.switchFraction || velocity > AppSwipeTabs.switchVelocity) &&
+          widget.index > 0) {
+        target = widget.index - 1;
+      }
     }
     if (target == widget.index) {
       _reset();
     } else {
+      final from = widget.index;
       FocusManager.instance.primaryFocus?.unfocus();
       widget.onChanged(target);
+      // Bila parent mengabaikan perubahan (index tetap), kembalikan posisi.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.index == from) _reset();
+      });
+      WidgetsBinding.instance.scheduleFrame();
     }
   }
 

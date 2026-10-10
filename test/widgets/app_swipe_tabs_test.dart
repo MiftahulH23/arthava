@@ -139,4 +139,38 @@ void main() {
     expect(find.text('form 1'), findsOneWidget);
     expect(identical(key.currentContext, before), isTrue);
   });
+
+  testWidgets('lemparan berlawanan arah geser membatalkan pindah tab', (tester) async {
+    await pumpApp(tester, const _Host());
+    final gesture = await tester.startGesture(tester.getCenter(find.text('judul')));
+    await gesture.moveBy(const Offset(-20, 0), timeStamp: const Duration(milliseconds: 10));
+    await gesture.moveBy(const Offset(-180, 0), timeStamp: const Duration(milliseconds: 600));
+    for (var i = 1; i <= 4; i++) {
+      await gesture.moveBy(const Offset(8, 0), timeStamp: Duration(milliseconds: 600 + i * 10));
+    }
+    await gesture.up(timeStamp: const Duration(milliseconds: 645));
+    await tester.pumpAndSettle();
+    expect(find.text('isi 0'), findsOneWidget);
+  });
+
+  testWidgets('parent yang mengabaikan onChanged: isi kembali ke posisi semula', (tester) async {
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: AppSwipeTabs(
+          index: 0,
+          count: 2,
+          onChanged: (_) {},
+          child: ListView(children: const [
+            SizedBox(height: 40, child: Text('judul')),
+            AppSwipeTabBody(child: Text('isi')),
+          ]),
+        ),
+      ),
+    );
+    final x0 = tester.getTopLeft(find.text('isi')).dx;
+    await tester.timedDrag(find.text('judul'), const Offset(-250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('isi')).dx, x0);
+  });
 }

@@ -82,4 +82,16 @@ void main() {
     expect(x1, greaterThan(xHalf));
     expect((xHalf - (x0 + x1) / 2).abs(), lessThan(1));
   });
+
+  testWidgets('penanda mengikuti posisi pecahan langsung tanpa animasi', (tester) async {
+    final pos = ValueNotifier<double>(0);
+    await pumpApp(tester, Scaffold(body: AppSegmentedControl(
+      labels: const ['A', 'B'], selectedIndex: 0, position: pos, onChanged: (_) {},
+    )));
+    final thumb = find.descendant(of: find.byKey(const ValueKey('segmented-thumb')), matching: find.byType(DecoratedBox)).first;
+    final x0 = tester.getRect(thumb).left;
+    pos.value = 0.5;
+    await tester.pump();
+    expect(tester.getRect(thumb).left, greaterThan(x0));
+  });
 }
