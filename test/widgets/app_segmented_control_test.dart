@@ -1,5 +1,6 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -26,7 +27,7 @@ void main() {
       onChanged: (_) {},
     )));
     expect(tester.widget<Text>(find.text('Pengeluaran')).style!.color, AppColors.expense);
-    expect(tester.widget<Text>(find.text('Pemasukan')).style!.color, AppColors.textPrimary);
+    expect(tester.widget<Text>(find.text('Pemasukan')).style!.color, AppColors.textSecondary);
   });
 
   testWidgets('segmen diumumkan pembaca layar sebagai grup pilihan tunggal', (tester) async {
@@ -46,5 +47,39 @@ void main() {
       labels: const ['A', 'B', 'C'], selectedIndex: 2, onChanged: (_) {},
     )));
     expect(tester.getSize(find.byType(AppSegmentedControl)).height, 36);
+  });
+
+  testWidgets('jalur dan penanda berbentuk kapsul, penanda di segmen terpilih', (tester) async {
+    await pumpApp(tester, Scaffold(body: Center(child: SizedBox(width: 300, child: AppSegmentedControl(
+      labels: const ['Masuk', 'Daftar'], selectedIndex: 1, onChanged: (_) {},
+    )))));
+    await tester.pumpAndSettle();
+    final track = tester.widget<Container>(find.descendant(
+      of: find.byType(AppSegmentedControl), matching: find.byType(Container)).first);
+    expect((track.decoration! as BoxDecoration).borderRadius, BorderRadius.circular(999));
+    final thumb = find.byKey(const ValueKey('segmented-thumb'));
+    final thumbBox = tester.getRect(find.descendant(of: thumb, matching: find.byType(DecoratedBox)).first);
+    expect(thumbBox.center.dx, greaterThan(tester.getCenter(find.byType(AppSegmentedControl)).dx));
+    expect(tester.widget<Text>(find.text('Daftar')).style!.fontWeight, FontWeight.w700);
+  });
+
+  testWidgets('position pecahan menggeser penanda di antara segmen', (tester) async {
+    final position = ValueNotifier<double>(0);
+    addTearDown(position.dispose);
+    await pumpApp(tester, Scaffold(body: Center(child: SizedBox(width: 300, child: AppSegmentedControl(
+      labels: const ['A', 'B'], selectedIndex: 0, onChanged: (_) {}, position: position,
+    )))));
+    await tester.pumpAndSettle();
+    final thumb = find.descendant(of: find.byKey(const ValueKey('segmented-thumb')), matching: find.byType(DecoratedBox)).first;
+    final x0 = tester.getRect(thumb).left;
+    position.value = 0.5;
+    await tester.pumpAndSettle();
+    final xHalf = tester.getRect(thumb).left;
+    position.value = 1;
+    await tester.pumpAndSettle();
+    final x1 = tester.getRect(thumb).left;
+    expect(xHalf, greaterThan(x0));
+    expect(x1, greaterThan(xHalf));
+    expect((xHalf - (x0 + x1) / 2).abs(), lessThan(1));
   });
 }

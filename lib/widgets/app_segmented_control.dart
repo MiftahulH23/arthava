@@ -1,14 +1,19 @@
 import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Segmented control iOS (spec G6). Controlled: parent memegang [selectedIndex].
+/// Segmented control gaya kapsul iOS. Controlled: parent memegang
+/// [selectedIndex]. Penanda putih meluncur ke segmen terpilih; bila
+/// [position] (0..n-1, boleh pecahan) diberikan, penanda mengikuti nilai itu
+/// langsung — dipakai saat layar sedang digeser (lihat `AppSwipeTabs`).
 class AppSegmentedControl extends StatelessWidget {
   const AppSegmentedControl({
     required this.labels,
     required this.selectedIndex,
     required this.onChanged,
     this.selectedLabelColors,
+    this.position,
     super.key,
   });
 
@@ -16,6 +21,10 @@ class AppSegmentedControl extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
   final List<Color>? selectedLabelColors;
+  final ValueListenable<double>? position;
+
+  static const double _height = 36;
+  static const double _pad = 3;
 
   Color _selectedColor(int i) {
     final colors = selectedLabelColors;
@@ -23,49 +32,73 @@ class AppSegmentedControl extends StatelessWidget {
     return AppColors.textPrimary;
   }
 
+  Widget _thumb(double pos) {
+    final n = labels.length;
+    final x = n <= 1 ? 0.0 : -1 + 2 * (pos.clamp(0, n - 1) / (n - 1));
+    return AnimatedAlign(
+      key: const ValueKey('segmented-thumb'),
+      alignment: Alignment(x, 0),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      child: FractionallySizedBox(
+        widthFactor: 1 / n,
+        heightFactor: 1,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(color: AppColors.textPrimary.withValues(alpha: 0.10), blurRadius: 6, offset: const Offset(0, 2)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final listenable = position;
     return Container(
-      height: 36,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(10)),
-      child: Row(
+      height: _height,
+      padding: const EdgeInsets.all(_pad),
+      decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(999)),
+      child: Stack(
         children: [
-          for (var i = 0; i < labels.length; i++)
-            Expanded(
-              child: Semantics(
-                button: true,
-                selected: i == selectedIndex,
-                inMutuallyExclusiveGroup: true,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    if (i != selectedIndex) onChanged(i);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: i == selectedIndex ? AppColors.surface : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: i == selectedIndex
-                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 4, offset: const Offset(0, 1))]
-                          : null,
-                    ),
-                    child: Text(
-                      labels[i],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.subhead.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: i == selectedIndex ? _selectedColor(i) : AppColors.textPrimary,
+          Positioned.fill(
+            child: listenable == null
+                ? _thumb(selectedIndex.toDouble())
+                : ValueListenableBuilder<double>(valueListenable: listenable, builder: (_, pos, _) => _thumb(pos)),
+          ),
+          Row(
+            children: [
+              for (var i = 0; i < labels.length; i++)
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    selected: i == selectedIndex,
+                    inMutuallyExclusiveGroup: true,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        if (i != selectedIndex) onChanged(i);
+                      },
+                      child: Center(
+                        child: Text(
+                          labels[i],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.subhead.copyWith(
+                            fontWeight: i == selectedIndex ? FontWeight.w700 : FontWeight.w600,
+                            color: i == selectedIndex ? _selectedColor(i) : AppColors.textSecondary,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
+            ],
+          ),
         ],
       ),
     );
