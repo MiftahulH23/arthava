@@ -3,7 +3,8 @@ import 'package:catat_uang_app/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Field putih gaya iOS. Default tanpa border (radius 16); [outlined] =
+/// Field putih gaya iOS. Default tanpa border (radius 20, sama dengan kartu
+/// `AppGroupedSection` supaya garis fokus tidak terpotong); [outlined] =
 /// isian terpisah radius 14 bergaris tepi 1.5px, fokus menampilkan garis
 /// biru + cincin 4px (layar Login/Daftar).
 class AppTextField extends StatefulWidget {
@@ -87,7 +88,7 @@ class _AppTextFieldState extends State<AppTextField> {
   @override
   Widget build(BuildContext context) {
     if (widget.outlined) return _buildOutlined();
-    final radius = BorderRadius.circular(16);
+    final radius = BorderRadius.circular(20);
     final field = TextField(
       controller: widget.controller,
       focusNode: _node,

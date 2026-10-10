@@ -40,6 +40,17 @@ void main() {
     expect(labelTop, lessThan(inputTop));
   });
 
+  testWidgets('isian biasa: sudut garis fokus 20 = radius kartu grouped section', (tester) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    await pumpApp(tester, Scaffold(body: AppTextField(controller: controller, hint: 'Catatan')));
+    final deco = tester.widget<TextField>(find.byType(TextField)).decoration!;
+    final focused = deco.focusedBorder! as OutlineInputBorder;
+    expect(focused.borderRadius, BorderRadius.circular(20));
+    expect(focused.borderSide.color, AppColors.primary);
+    expect((deco.enabledBorder! as OutlineInputBorder).borderRadius, BorderRadius.circular(20));
+  });
+
   testWidgets('AppTextField tanpa label tidak menambah teks apa pun', (tester) async {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
