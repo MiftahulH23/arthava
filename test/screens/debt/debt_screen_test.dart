@@ -127,4 +127,37 @@ void main() {
     expect(find.text('Edit Utang'), findsOneWidget);
     expect(find.text('Rina'), findsWidgets);
   });
+
+  testWidgets('hapus dari daftar: cicilan yang menyentuh dompet memunculkan pilihan kembalikan saldo', (tester) async {
+    final fake = FakeDebtNotifier(state())..paymentsOnFetch = {2: [samplePayment(id: 11, debtId: 2)]};
+    await pumpApp(tester, const DebtScreen(), overrides: debtOverrides(fake), size: const Size(390, 1400));
+    await tester.pump();
+    await tester.drag(find.text('Rina'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus & kembalikan saldo'), findsOneWidget);
+    expect(find.textContaining('tidak terhubung ke saldo'), findsNothing);
+    await tester.tap(find.text('Hapus & kembalikan saldo'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, contains('deleteDebt:2:refund'));
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets('hapus dari daftar: gagal memuat cicilan tidak menghapus dan tidak salah klaim', (tester) async {
+    await prewarmToastFont();
+    final fake = FakeDebtNotifier(state())..failFetchPayments = true;
+    await pumpApp(tester, const DebtScreen(), overrides: debtOverrides(fake), size: const Size(390, 1400));
+    await tester.pump();
+    await tester.drag(find.text('Rina'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, contains('fetchPayments:2'));
+    expect(find.textContaining('tidak terhubung ke saldo'), findsNothing);
+    expect(find.text('Hapus Catatan?'), findsNothing);
+    expect(find.text('Gagal memuat cicilan. Coba lagi.'), findsOneWidget);
+    expect(fake.calls.where((c) => c.startsWith('deleteDebt')), isEmpty);
+    await flushToast(tester);
+  });
 }

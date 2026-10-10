@@ -1,5 +1,4 @@
 import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/models/debt_payment_model.dart';
 import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:catat_uang_app/widgets/app_dialogs.dart';
 import 'package:flutter/material.dart';
@@ -18,10 +17,13 @@ Future<bool?> confirmAndDeleteDebt(
 }) async {
   const intro = 'Data utang ini dan seluruh riwayat cicilannya akan dihapus permanen.';
   if (ref.read(debtProvider).payments[debt.id] == null) {
-    await ref.read(debtProvider.notifier).fetchPayments(debt.id);
+    await runWithAppLoading(context, () => ref.read(debtProvider.notifier).fetchPayments(debt.id));
     if (!context.mounted) return null;
   }
-  final payments = ref.read(debtProvider).payments[debt.id] ?? const <DebtPaymentModel>[];
+  // fetchPayments menelan error; bila riwayat tetap tidak diketahui, jangan
+  // dianggap kosong (pilihan kembalikan saldo bisa hilang) — batalkan.
+  final payments = ref.read(debtProvider).payments[debt.id];
+  if (payments == null) throw Exception('Gagal memuat cicilan. Coba lagi.');
   final linkedToWallet =
       (debt.transactionId != null && debt.walletId != null) || payments.any((p) => p.affectsWallet);
 

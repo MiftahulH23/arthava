@@ -72,6 +72,8 @@ class FakeDebtNotifier extends DebtNotifier {
   final List<String> calls = [];
   Completer<void>? gate;
   Object? error;
+  bool failFetchPayments = false;
+  Map<int, List<DebtPaymentModel>> paymentsOnFetch = {};
 
   @override
   DebtState build() => initial;
@@ -86,7 +88,11 @@ class FakeDebtNotifier extends DebtNotifier {
   Future<void> fetchData({bool silent = false}) async => calls.add('fetchData');
 
   @override
-  Future<void> fetchPayments(int debtId) async => calls.add('fetchPayments:$debtId');
+  Future<void> fetchPayments(int debtId) async {
+    calls.add('fetchPayments:$debtId');
+    if (failFetchPayments) return; // meniru provider asli: error ditelan, payments tetap null
+    state = state.copyWith(payments: {...state.payments, debtId: paymentsOnFetch[debtId] ?? state.payments[debtId] ?? const []});
+  }
 
   @override
   Future<int> createDebt({
