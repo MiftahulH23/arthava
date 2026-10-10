@@ -13,10 +13,15 @@ import 'package:forui/forui.dart';
 /// `mainAxisMaxRatio: null` mematikan batas tinggi 9/16 bawaan forui, dan
 /// isi sheet dibatasi setinggi layar dikurangi inset keyboard supaya tombol
 /// submit di bagian bawah tidak tertutup keyboard saat sedang mengetik.
+///
+/// Fokus halaman di belakang dilepas dulu: lembar pilihan (kategori, dompet,
+/// tanggal, …) tidak butuh keyboard, dan saat lembar ditutup keyboard tidak
+/// naik lagi (route bawah mengembalikan fokus ke node terakhir — kini tidak ada).
 Future<T?> showAppBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
 }) {
+  FocusManager.instance.primaryFocus?.unfocus();
   return showFSheet<T>(
     context: context,
     side: FLayout.btt,

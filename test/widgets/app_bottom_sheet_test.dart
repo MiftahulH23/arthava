@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';
 
+import '../helpers/pump_app.dart';
+
 void main() {
   testWidgets('showAppBottomSheet menampilkan konten builder', (tester) async {
     await tester.pumpWidget(
@@ -63,5 +65,42 @@ void main() {
 
     expect(find.text('halo dompet'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('membuka sheet melepas fokus isian; setelah ditutup keyboard tidak naik lagi', (tester) async {
+    final controller = TextEditingController();
+    final node = FocusNode();
+    addTearDown(controller.dispose);
+    addTearDown(node.dispose);
+    await pumpApp(
+      tester,
+      Builder(
+        builder: (context) => Scaffold(
+          body: Column(children: [
+            TextField(controller: controller, focusNode: node),
+            TextButton(
+              onPressed: () => showAppBottomSheet<void>(
+                context: context,
+                builder: (_) => const SizedBox(height: 200, child: Text('isi sheet')),
+              ),
+              child: const Text('buka'),
+            ),
+          ]),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(node.hasFocus, isTrue);
+
+    await tester.tap(find.text('buka'));
+    await tester.pumpAndSettle();
+    expect(find.text('isi sheet'), findsOneWidget);
+    expect(node.hasFocus, isFalse);
+
+    Navigator.of(tester.element(find.text('isi sheet'))).pop();
+    await tester.pumpAndSettle();
+    expect(node.hasFocus, isFalse);
+    expect(tester.testTextInput.isVisible, isFalse);
   });
 }
