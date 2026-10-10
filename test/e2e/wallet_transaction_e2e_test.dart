@@ -12,6 +12,7 @@ library;
 //   E2E_EMAIL=... E2E_PASSWORD=... flutter test test/e2e/wallet_transaction_e2e_test.dart
 //
 // Tanpa env, test di-skip (tidak ikut `flutter test` biasa).
+import '../../tool/e2e/e2e_env.dart';
 import 'dart:io';
 
 import 'package:catat_uang_app/models/transaction_model.dart';
@@ -30,6 +31,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final _email = Platform.environment['E2E_EMAIL'];
+final _env = readSupabaseEnv();
 final _password = Platform.environment['E2E_PASSWORD'];
 
 late SupabaseClient db;
@@ -55,16 +57,13 @@ String _day(DateTime d) =>
 
 void main() {
   setUpAll(() async {
-    if (_email == null || _password == null) return;
+    if (_email == null || _password == null || _env == null) return;
     HttpOverrides.global = null; // flutter test memblokir HTTP; E2E butuh jaringan sungguhan.
     SharedPreferences.setMockInitialValues({});
     await initializeDateFormatting('id_ID', null);
-    final src = File('lib/main.dart').readAsStringSync();
-    final url = RegExp(r"url:\s*'([^']+)'").firstMatch(src)!.group(1)!;
-    final anonKey = RegExp(r"anonKey:\s*'([^']+)'").firstMatch(src)!.group(1)!;
     await Supabase.initialize(
-      url: url,
-      anonKey: anonKey,
+      url: _env!.url,
+      anonKey: _env!.anonKey,
       authOptions: const FlutterAuthClientOptions(detectSessionInUri: false, localStorage: EmptyLocalStorage()),
     );
     db = Supabase.instance.client;
@@ -290,7 +289,7 @@ void main() {
       print(_failures.isEmpty ? '\nSEMUA LULUS' : '\n${_failures.length} GAGAL: ${_failures.join(' | ')}');
     }
     expect(_failures, isEmpty);
-  }, skip: _email == null || _password == null, timeout: const Timeout(Duration(minutes: 3)));
+  }, skip: _email == null || _password == null || _env == null, timeout: const Timeout(Duration(minutes: 3)));
 
   test('operasi uang bersamaan (B4b)', () async {
     _failures.clear();
@@ -496,7 +495,7 @@ void main() {
       print(_failures.isEmpty ? '\nSEMUA LULUS (konkuren)' : '\n${_failures.length} GAGAL (konkuren): ${_failures.join(' | ')}');
     }
     expect(_failures, isEmpty);
-  }, skip: _email == null || _password == null, timeout: const Timeout(Duration(minutes: 4)));
+  }, skip: _email == null || _password == null || _env == null, timeout: const Timeout(Duration(minutes: 4)));
 
   test('jadwal rutin & transfer (perbaikan review B4b)', () async {
     _failures.clear();
@@ -644,10 +643,10 @@ void main() {
       print(_failures.isEmpty ? '\nSEMUA LULUS (review)' : '\n${_failures.length} GAGAL (review): ${_failures.join(' | ')}');
     }
     expect(_failures, isEmpty);
-  }, skip: _email == null || _password == null, timeout: const Timeout(Duration(minutes: 3)));
+  }, skip: _email == null || _password == null || _env == null, timeout: const Timeout(Duration(minutes: 3)));
 
   tearDownAll(() async {
-    if (_email == null) return;
+    if (_email == null || _env == null) return;
     container.dispose();
     await db.auth.signOut();
   });

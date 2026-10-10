@@ -6,6 +6,7 @@ library;
 // dihapus lagi di akhir.
 //
 //   E2E_EMAIL=... E2E_PASSWORD=... flutter test test/e2e/balance_rules_e2e_test.dart
+import '../../tool/e2e/e2e_env.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -16,7 +17,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 final _email = Platform.environment['E2E_EMAIL'];
 final _password = Platform.environment['E2E_PASSWORD'];
-final _skip = _email == null || _password == null;
+final _env = readSupabaseEnv();
+final _skip = _email == null || _password == null || _env == null;
 
 late SupabaseClient db;
 late String userId;
@@ -49,10 +51,9 @@ void main() {
     HttpOverrides.global = null;
     SharedPreferences.setMockInitialValues({});
     await initializeDateFormatting('id_ID', null);
-    final src = File('lib/main.dart').readAsStringSync();
     await Supabase.initialize(
-      url: RegExp(r"url:\s*'([^']+)'").firstMatch(src)!.group(1)!,
-      anonKey: RegExp(r"anonKey:\s*'([^']+)'").firstMatch(src)!.group(1)!,
+      url: _env!.url,
+      anonKey: _env!.anonKey,
       authOptions: const FlutterAuthClientOptions(detectSessionInUri: false, localStorage: EmptyLocalStorage()),
     );
     db = Supabase.instance.client;

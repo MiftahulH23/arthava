@@ -4,7 +4,8 @@
 //
 //   E2E_EMAIL=... E2E_PASSWORD=... dart run tool/e2e/debt_rpc_e2e.dart
 //
-// URL & anon key dibaca dari lib/main.dart.
+// URL & anon key dibaca dari env.json (atau env var SUPABASE_URL / SUPABASE_ANON_KEY).
+import 'e2e_env.dart';
 import 'dart:io';
 
 // Paket murni Dart yang ikut lewat supabase_flutter; alat dev, bukan kode app.
@@ -46,11 +47,12 @@ Future<void> main() async {
     stderr.writeln('Set E2E_EMAIL dan E2E_PASSWORD.');
     exit(2);
   }
-  final main = File('lib/main.dart').readAsStringSync();
-  final url = RegExp(r"url:\s*'([^']+)'").firstMatch(main)!.group(1)!;
-  final anonKey = RegExp(r"anonKey:\s*'([^']+)'").firstMatch(main)!.group(1)!;
-
-  db = SupabaseClient(url, anonKey);
+  final env = readSupabaseEnv();
+  if (env == null) {
+    stderr.writeln('Isi SUPABASE_URL dan SUPABASE_ANON_KEY di env.json (lihat README).');
+    exit(2);
+  }
+  db = SupabaseClient(env.url, env.anonKey);
   final auth = await db.auth.signInWithPassword(email: email, password: password);
   final userId = auth.user!.id;
   stdout.writeln('Login sebagai $email');

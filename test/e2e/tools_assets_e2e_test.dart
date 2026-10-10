@@ -9,6 +9,7 @@ library;
 //   E2E_EMAIL=... E2E_PASSWORD=... flutter test test/e2e/tools_assets_e2e_test.dart
 //
 // Tanpa env, test di-skip (tidak ikut `flutter test` biasa).
+import '../../tool/e2e/e2e_env.dart';
 import 'dart:io';
 
 import 'package:catat_uang_app/models/investment_model.dart';
@@ -28,7 +29,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 final _email = Platform.environment['E2E_EMAIL'];
 final _password = Platform.environment['E2E_PASSWORD'];
-final _skip = _email == null || _password == null;
+final _env = readSupabaseEnv();
+final _skip = _email == null || _password == null || _env == null;
 
 late SupabaseClient db;
 late ProviderContainer container;
@@ -132,12 +134,9 @@ void main() {
     HttpOverrides.global = null; // flutter test memblokir HTTP; E2E butuh jaringan sungguhan.
     SharedPreferences.setMockInitialValues({});
     await initializeDateFormatting('id_ID', null);
-    final src = File('lib/main.dart').readAsStringSync();
-    final url = RegExp(r"url:\s*'([^']+)'").firstMatch(src)!.group(1)!;
-    final anonKey = RegExp(r"anonKey:\s*'([^']+)'").firstMatch(src)!.group(1)!;
     await Supabase.initialize(
-      url: url,
-      anonKey: anonKey,
+      url: _env!.url,
+      anonKey: _env!.anonKey,
       authOptions: const FlutterAuthClientOptions(detectSessionInUri: false, localStorage: EmptyLocalStorage()),
     );
     db = Supabase.instance.client;

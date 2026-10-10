@@ -46,3 +46,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Build config with keys (copy env.example.json -> env.json)
+env.json

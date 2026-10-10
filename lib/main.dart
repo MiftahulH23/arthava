@@ -1,4 +1,5 @@
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/core/env.dart';
 import 'package:catat_uang_app/core/theme_mode_manager.dart';
 import 'package:catat_uang_app/screens/login/login_screen.dart';
 import 'package:catat_uang_app/screens/lock/app_entry_gate.dart'; // [NEW] Import Halaman Gembok
@@ -15,12 +16,13 @@ import 'package:catat_uang_app/widgets/app_system_ui.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Pastikan URL dan Key Supabase kamu sudah benar di sini
-  await Supabase.initialize(
-   url: 'https://rsqdexzywegorsgmledp.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzcWRleHp5d2Vnb3JzZ21sZWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NTY0NDEsImV4cCI6MjA4MTUzMjQ0MX0.4UpocbbB-OUiTPEw0BLwc1DzMhcX13VboP4USN8ZYR0',
-  );
+  if (!Env.hasSupabase) {
+    throw StateError(
+      'SUPABASE_URL / SUPABASE_ANON_KEY kosong. Jalankan dengan '
+      '`flutter run --dart-define-from-file=env.json` (lihat README).',
+    );
+  }
+  await Supabase.initialize(url: Env.supabaseUrl, anonKey: Env.supabaseAnonKey);
 
   await initializeDateFormatting('id_ID', null);
 

@@ -1,10 +1,16 @@
 import 'dart:convert';
+import 'package:catat_uang_app/core/env.dart';
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
 
 class GeminiService {
-  static const String _apiKey = 'AIzaSyATo5LrF0gKD0pPT4Rgmstk7rwvHs0aVWw';
+  static String get _apiKey {
+    if (!Env.hasGemini) {
+      throw Exception('Fitur AI belum aktif: GEMINI_API_KEY belum diisi di env.json.');
+    }
+    return Env.geminiApiKey;
+  }
 
   static Future<Map<String, dynamic>?> scanReceipts(
     List<XFile> imageFiles,
@@ -72,7 +78,7 @@ class GeminiService {
     try {
       final model = GenerativeModel(
         model: 'gemini-2.5-flash',
-        apiKey: _apiKey, // Pastikan ini udah keisi API Key lu ya!
+        apiKey: _apiKey,
       );
 
       // Ini "Mantra" (System Prompt) biar AI-nya punya kepribadian dan pintar
