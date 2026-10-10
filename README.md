@@ -99,7 +99,7 @@ git config core.hooksPath .githooks
 Each contributor uses **their own** Supabase project, so you never touch anyone else's data.
 
 1. Create a new project at [supabase.com/dashboard](https://supabase.com/dashboard). Pick a region close to you and save the database password.
-2. Create the database. Open **SQL Editor** in the dashboard and run every file in [`supabase/migrations/`](supabase/migrations) **in filename order**, oldest first. The first one, the `_baseline.sql` file, creates all tables, Row Level Security policies, functions and the sign-up trigger. The others add later features on top.
+2. Create the database. Open **SQL Editor** in the dashboard and run every file in [`supabase/migrations/`](supabase/migrations) **in filename order**, oldest first. The first one, `202610100000_baseline.sql`, creates all tables, Row Level Security policies, database functions, the sign-up trigger and the default categories. Any newer files add later changes on top. (Don't run the files in `supabase/archive/`, because the baseline already contains them.)
 
    If you use the [Supabase CLI](https://supabase.com/docs/guides/cli) instead:
 

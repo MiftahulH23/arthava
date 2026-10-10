@@ -1,5 +1,7 @@
 # Skema Database Supabase (snapshot)
 
+> Sumber kebenaran untuk membuat database baru: `supabase/migrations/202610100000_baseline.sql` (diekspor 2026-10-10). Migrasi lama yang disebut di bawah sekarang ada di `supabase/archive/`.
+
 Diekspor user dari SQL Editor pada 2026-09-24 (schema `public`). Sumber resmi untuk plan dan agent; anon key tidak bisa membaca skema. Minta ekspor ulang bila ragu kolom sudah berubah.
 
 ## `budgets`

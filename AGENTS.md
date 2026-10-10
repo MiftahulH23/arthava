@@ -136,7 +136,8 @@ file to match what was approved.
   Every plan must pass the E2E for the features it touches before
   merge — fake-data widget tests alone don't prove the backend works.
   Money changes (wallet/savings balances) go through atomic RPCs
-  (`wallet_add` pattern, `supabase/migrations/202609260004_atomic_money.sql`),
+  (`wallet_add` pattern in `supabase/migrations/202610100000_baseline.sql`;
+  the original incremental migrations are archived in `supabase/archive/`),
   never read-then-write from the app. Migrations are applied with the
   local helper `.superpowers/sdd/tools/supa_sql.sh` (git-ignored; it
   reads a Supabase personal access token from `~/.dompetku_supabase_token`).

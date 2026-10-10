@@ -47,7 +47,7 @@ Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `style`, `perf`, `bui
 
 - Never edit a migration that has already been merged. Add a **new** file in `supabase/migrations/` named `YYYYMMDDHHMM_short_description.sql`.
 - Every table needs Row Level Security with policies scoped to `auth.uid()`.
-- **Money changes** (wallet or savings balances) go through a Postgres function that does the work in one transaction. Follow the `wallet_add` pattern in `202609260004_atomic_money.sql`. Don't read a balance in the app and write it back.
+- **Money changes** (wallet or savings balances) go through a Postgres function that does the work in one transaction. Follow the `wallet_add` pattern in `supabase/migrations/202610100000_baseline.sql`. Don't read a balance in the app and write it back.
 - Update the matching model in `lib/models/` and `docs/database/schema.md` in the same PR.
 - If your change touches money or the database, run the E2E tests against your own project (see the README) and say so in the PR.
 
