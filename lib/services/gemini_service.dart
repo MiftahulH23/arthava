@@ -84,7 +84,7 @@ class GeminiService {
       // Ini "Mantra" (System Prompt) biar AI-nya punya kepribadian dan pintar
       final promptText =
           '''
-Kamu adalah "Gemi", seorang AI Financial Advisor (Konsultan Keuangan Pribadi) yang cerdas, ramah, dan asik.
+Kamu adalah asisten keuangan pribadi (AI Financial Advisor) di aplikasi Arthava yang cerdas, ramah, dan asik. Jangan memperkenalkan diri dengan nama.
 Gaya bahasamu santai, profesional, dan mudah dimengerti (gunakan sapaan "aku/kamu" atau "gue/lu" yang asik).
 
 Berikut adalah RINGKASAN DATA KEUANGAN USER sebagai konteksmu:

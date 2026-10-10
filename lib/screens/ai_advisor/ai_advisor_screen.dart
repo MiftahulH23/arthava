@@ -57,7 +57,7 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
       _session.clearSession();
       final greeting = {
         'isUser': false,
-        'text': "Halo bos! 👋 Aku Gemi. Aku udah dapet akses VIP ke seluruh brankas tabungan dan riwayat keuanganmu nih! Mau bahas target nabung atau cek pengeluaran hari ini?"
+        'text': "Halo bos! 👋 Aku asisten keuanganmu. Aku udah dapet akses VIP ke seluruh brankas tabungan dan riwayat keuanganmu nih! Mau bahas target nabung atau cek pengeluaran hari ini?"
       };
       _messages.add(greeting);
       _session.messages.add(greeting);
@@ -130,7 +130,7 @@ class _AiAdvisorScreenState extends State<AiAdvisorScreen> {
   @override
   Widget build(BuildContext context) {
     return AppPageScaffold(
-      title: 'AI Advisor',
+      title: 'Tanya AI',
       backLabel: '',
       largeTitle: false,
       navTitleWidget: const _GemiTitle(),
@@ -212,9 +212,9 @@ class _GemiTitle extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("AI Advisor", style: AppTextStyles.bodyStrong.copyWith(fontSize: 15), overflow: TextOverflow.ellipsis),
+            Text("Tanya AI", style: AppTextStyles.bodyStrong.copyWith(fontSize: 15), overflow: TextOverflow.ellipsis),
             Text(
-              "Gemi - Siap bantu atur duitmu!",
+              "Siap bantu atur duitmu!",
               style: AppTextStyles.caption.copyWith(fontSize: 11),
               overflow: TextOverflow.ellipsis,
             ),
@@ -282,7 +282,7 @@ class _TypingBubble extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
             ),
             const SizedBox(width: 10),
-            Text("Gemi sedang menganalisa...", style: AppTextStyles.caption),
+            Text("AI sedang menganalisa...", style: AppTextStyles.caption),
           ],
         ),
       ),

@@ -55,7 +55,7 @@ void main() {
     expect(find.text('Jago'), findsNothing);
     expect(find.text('Lihat semua (5 dompet)'), findsOneWidget);
     expect(find.text('Semua Fitur'), findsOneWidget);
-    expect(find.text('AI Advisor'), findsNothing); // grid 12 menu sudah hilang
+    expect(find.text('Tanya AI'), findsNothing); // grid 12 menu sudah hilang
   });
 
   testWidgets('ringkasan kosong menampilkan empty state tiap kartu', (tester) async {

@@ -2,7 +2,7 @@ import 'package:arthava/core/transaction_tags.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// "Kertas contekan" keuangan user untuk Gemi (AI Advisor): saldo dompet,
+/// "Kertas contekan" keuangan user untuk asisten AI (Tanya AI): saldo dompet,
 /// tabungan, dan rekap 6 bulan terakhir tanpa mutasi tabungan/utang.
 /// Dipindah dari `_AiAdvisorScreenState._fetchFinancialContext` tanpa mengubah
 /// query/format supaya bisa diuji E2E.
@@ -85,7 +85,7 @@ Future<String> buildFinancialContext(SupabaseClient db) async {
   final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
   
   String contextStr = "=== INFORMASI KEKAYAAN SAAT INI ===\n";
-  // [NEW] Kasih tau Gemi saldo berdasarkan Dompet Fisik/Digital
+  // [NEW] Kasih tau AI saldo berdasarkan Dompet Fisik/Digital
   contextStr += "- Total Kekayaan (Semua Dompet): ${currency.format(totalWalletBalance)}\n";
   if (walletBreakdown.isNotEmpty) {
     contextStr += "- Rincian Posisi Uang (Dompet):\n";

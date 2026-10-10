@@ -40,7 +40,7 @@ enum AppFeature {
   investment('Investasi', PhosphorIconsFill.chartLineUp, AppColors.tintAmber, AppFeatureGroup.asetKewajiban, HomeRefreshAfter.homeData),
   debt('Utang & Piutang', PhosphorIconsFill.handCoins, AppColors.tintSky, AppFeatureGroup.asetKewajiban, HomeRefreshAfter.homeDataAndTabs),
   zakat('Zakat & Sedekah', PhosphorIconsFill.handHeart, AppColors.tintGreen, AppFeatureGroup.asetKewajiban, HomeRefreshAfter.homeData),
-  aiAdvisor('AI Advisor', PhosphorIconsFill.robot, AppColors.tintIndigo, AppFeatureGroup.alat, HomeRefreshAfter.none),
+  aiAdvisor('Tanya AI', PhosphorIconsFill.robot, AppColors.tintIndigo, AppFeatureGroup.alat, HomeRefreshAfter.none),
   exportReport('Export Laporan', PhosphorIconsFill.filePdf, AppColors.tintBlue, AppFeatureGroup.alat, HomeRefreshAfter.none);
 
   const AppFeature(this.label, this.icon, this.color, this.group, this.refreshAfter);

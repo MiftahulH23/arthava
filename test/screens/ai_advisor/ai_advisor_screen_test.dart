@@ -10,16 +10,17 @@ import '../../helpers/pump_app.dart';
 void main() {
   setUp(() => AiSessionManager().clearSession());
 
-  testWidgets('menampilkan judul tengah dan salam Gemi', (tester) async {
+  testWidgets('menampilkan judul tengah dan salam asisten', (tester) async {
     await pumpApp(tester, const AiAdvisorScreen());
     await tester.pump();
 
     expect(find.byType(AppPageScaffold), findsOneWidget);
-    // `title: 'AI Advisor'` juga bisa dirender AppPageScaffold (mis. semantics),
+    // `title: 'Tanya AI'` juga bisa dirender AppPageScaffold (mis. semantics),
     // jadi cukup pastikan minimal satu.
-    expect(find.text('AI Advisor'), findsAtLeastNWidgets(1));
-    expect(find.text('Gemi - Siap bantu atur duitmu!'), findsOneWidget);
-    expect(find.textContaining('Aku Gemi', findRichText: true), findsOneWidget);
+    expect(find.text('Tanya AI'), findsAtLeastNWidgets(1));
+    expect(find.text('Siap bantu atur duitmu!'), findsOneWidget);
+    expect(find.textContaining('Gemi', findRichText: true), findsNothing);
+    expect(find.textContaining('Aku asisten keuanganmu', findRichText: true), findsOneWidget);
     expect(find.text('Tanya soal keuanganmu...'), findsOneWidget);
   });
 
@@ -31,7 +32,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(MarkdownBody), findsOneWidget); // hanya salam
-    expect(find.text('Gemi sedang menganalisa...'), findsNothing);
+    expect(find.text('AI sedang menganalisa...'), findsNothing);
   });
 
   testWidgets('reset sesi menampilkan salam lagi dan toast', (tester) async {
@@ -42,7 +43,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Sesi chat diulang!'), findsOneWidget);
-    expect(find.textContaining('Aku Gemi', findRichText: true), findsOneWidget);
+    expect(find.textContaining('Aku asisten keuanganmu', findRichText: true), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
   });
 }

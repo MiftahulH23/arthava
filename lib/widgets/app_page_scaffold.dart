@@ -47,7 +47,7 @@ class AppPageScaffold extends StatelessWidget {
   /// Controller scroll isi halaman (mis. chat AI yang digulir ke bawah).
   final ScrollController? scrollController;
 
-  /// Pengganti judul kecil di tengah nav bar (mis. avatar + nama "Gemi");
+  /// Pengganti judul kecil di tengah nav bar (mis. avatar + judul "Tanya AI");
   /// hanya dipakai bila [largeTitle] false.
   final Widget? navTitleWidget;
 
