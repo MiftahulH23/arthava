@@ -151,4 +151,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Hapus'), findsNothing);
   });
+
+  testWidgets('confirmDelete false: onDelete langsung dipanggil tanpa dialog bawaan', (tester) async {
+    var deleted = 0;
+    await pumpApp(tester, Scaffold(body: AppSwipeActions(
+      onDelete: () => deleted++,
+      confirmDelete: false,
+      child: const ListTile(title: Text('Makan')),
+    )));
+    await tester.drag(find.text('Makan'), const Offset(-200, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus?'), findsNothing);
+    expect(deleted, 1);
+  });
+
+  testWidgets('borderRadius memotong baris sesuai radius kartu dan latar tidak putih', (tester) async {
+    await pumpApp(tester, Scaffold(body: AppSwipeActions(
+      onDelete: () {},
+      borderRadius: BorderRadius.circular(24),
+      child: const SizedBox(height: 80, child: Text('Kartu')),
+    )));
+    final clip = tester.widget<ClipRRect>(find.descendant(of: find.byType(AppSwipeActions), matching: find.byType(ClipRRect)).first);
+    expect(clip.borderRadius, BorderRadius.circular(24));
+    final material = tester.widget<Material>(find.descendant(of: find.byType(AppSwipeActions), matching: find.byType(Material)).first);
+    expect(material.type, MaterialType.transparency);
+  });
+
+  testWidgets('kartu ber-borderRadius tetap bisa diketuk saat tertutup', (tester) async {
+    var taps = 0;
+    await pumpApp(tester, Scaffold(body: AppSwipeActions(
+      onDelete: () {},
+      borderRadius: BorderRadius.circular(24),
+      child: GestureDetector(onTap: () => taps++, child: const SizedBox(height: 80, child: Text('Kartu'))),
+    )));
+    await tester.tap(find.text('Kartu'));
+    expect(taps, 1);
+  });
 }
