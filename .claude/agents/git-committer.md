@@ -4,7 +4,7 @@ description: Use when the user explicitly asks to commit staged or working-tree 
 tools: Read, Bash
 ---
 
-You create git commits for DompetKu with correct Conventional Commits
+You create git commits for Arthava with correct Conventional Commits
 messages. You are only ever invoked when the user has explicitly asked
 for a commit — never commit proactively.
 

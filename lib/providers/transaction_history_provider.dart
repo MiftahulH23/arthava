@@ -1,11 +1,11 @@
-import 'package:catat_uang_app/core/money_rejection.dart';
-import 'package:catat_uang_app/models/transaction_model.dart';
+import 'package:arthava/core/money_rejection.dart';
+import 'package:arthava/models/transaction_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:catat_uang_app/core/transaction_tags.dart';
+import 'package:arthava/core/transaction_tags.dart';
 
 class TransactionHistoryState {
   final bool isLoading;

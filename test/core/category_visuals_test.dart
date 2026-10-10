@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/core/category_visuals.dart';
-import 'package:catat_uang_app/core/colors.dart';
+import 'package:arthava/core/category_visuals.dart';
+import 'package:arthava/core/colors.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 

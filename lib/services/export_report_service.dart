@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/core/transaction_tags.dart';
-import 'package:catat_uang_app/models/transaction_model.dart';
+import 'package:arthava/core/transaction_tags.dart';
+import 'package:arthava/models/transaction_model.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

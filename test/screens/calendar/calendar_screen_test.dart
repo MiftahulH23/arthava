@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/models/category_model.dart';
-import 'package:catat_uang_app/models/transaction_model.dart';
-import 'package:catat_uang_app/providers/calendar_provider.dart';
-import 'package:catat_uang_app/screens/calendar/calendar_screen.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:arthava/models/category_model.dart';
+import 'package:arthava/models/transaction_model.dart';
+import 'package:arthava/providers/calendar_provider.dart';
+import 'package:arthava/screens/calendar/calendar_screen.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:table_calendar/table_calendar.dart';

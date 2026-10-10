@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/core/transaction_tags.dart';
+import 'package:arthava/core/transaction_tags.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

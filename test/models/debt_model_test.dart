@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/models/debt_payment_model.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/models/debt_payment_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 

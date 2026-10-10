@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/core/lock_policy.dart';
-import 'package:catat_uang_app/screens/home/home_screen.dart';
-import 'package:catat_uang_app/screens/lock/lock_screen.dart';
-import 'package:catat_uang_app/services/biometric_lock_setting.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/core/lock_policy.dart';
+import 'package:arthava/screens/home/home_screen.dart';
+import 'package:arthava/screens/lock/lock_screen.dart';
+import 'package:arthava/services/biometric_lock_setting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';

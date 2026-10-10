@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/core/money_rejection.dart';
-import 'package:catat_uang_app/models/saving_model.dart';
-import 'package:catat_uang_app/providers/savings_provider.dart';
-import 'package:catat_uang_app/screens/savings/saving_detail_screen.dart';
-import 'package:catat_uang_app/widgets/app_amount_display.dart';
+import 'package:arthava/core/money_rejection.dart';
+import 'package:arthava/models/saving_model.dart';
+import 'package:arthava/providers/savings_provider.dart';
+import 'package:arthava/screens/savings/saving_detail_screen.dart';
+import 'package:arthava/widgets/app_amount_display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';

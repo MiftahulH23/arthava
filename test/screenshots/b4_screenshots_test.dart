@@ -1,15 +1,15 @@
 @Tags(['screenshot'])
 library;
 
-import 'package:catat_uang_app/models/category_model.dart';
-import 'package:catat_uang_app/models/transaction_model.dart';
-import 'package:catat_uang_app/providers/input_transaction_provider.dart';
-import 'package:catat_uang_app/providers/stats_provider.dart';
-import 'package:catat_uang_app/providers/transaction_history_provider.dart';
-import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
-import 'package:catat_uang_app/screens/stats/stats_screen.dart';
-import 'package:catat_uang_app/screens/transaction_history/transactions_tab_screen.dart';
-import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
+import 'package:arthava/models/category_model.dart';
+import 'package:arthava/models/transaction_model.dart';
+import 'package:arthava/providers/input_transaction_provider.dart';
+import 'package:arthava/providers/stats_provider.dart';
+import 'package:arthava/providers/transaction_history_provider.dart';
+import 'package:arthava/screens/input_transaction/input_transaction_screen.dart';
+import 'package:arthava/screens/stats/stats_screen.dart';
+import 'package:arthava/screens/transaction_history/transactions_tab_screen.dart';
+import 'package:arthava/widgets/app_swipe_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

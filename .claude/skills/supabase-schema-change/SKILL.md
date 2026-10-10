@@ -1,6 +1,6 @@
 ---
 name: supabase-schema-change
-description: Use when changing Supabase table schema or RLS policies for DompetKu and keeping the Dart models/services in sync — a safe, ordered procedure so nothing drifts out of sync.
+description: Use when changing Supabase table schema or RLS policies for Arthava and keeping the Dart models/services in sync — a safe, ordered procedure so nothing drifts out of sync.
 ---
 
 # Changing Supabase Schema Safely

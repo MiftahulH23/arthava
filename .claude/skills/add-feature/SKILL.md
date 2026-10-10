@@ -1,9 +1,9 @@
 ---
 name: add-feature
-description: Use when adding a new feature or screen to DompetKu end-to-end (model, service, screen, navigation, styling), so nothing is missed and the result follows existing project conventions.
+description: Use when adding a new feature or screen to Arthava end-to-end (model, service, screen, navigation, styling), so nothing is missed and the result follows existing project conventions.
 ---
 
-# Adding a Feature/Screen to DompetKu
+# Adding a Feature/Screen to Arthava
 
 Checklist for adding a new feature end-to-end. Read `AGENTS.md` first
 for conventions (colors, icons, font, naming, file locations).

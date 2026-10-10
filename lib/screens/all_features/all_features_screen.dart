@@ -1,9 +1,9 @@
-import 'package:catat_uang_app/screens/all_features/app_feature.dart';
-import 'package:catat_uang_app/widgets/app_empty_state.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_list_row.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:arthava/screens/all_features/app_feature.dart';
+import 'package:arthava/widgets/app_empty_state.dart';
+import 'package:arthava/widgets/app_grouped_section.dart';
+import 'package:arthava/widgets/app_list_row.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
+import 'package:arthava/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 

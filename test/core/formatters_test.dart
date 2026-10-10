@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/core/formatters.dart';
+import 'package:arthava/core/formatters.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

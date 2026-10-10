@@ -1,18 +1,18 @@
 @Tags(['screenshot'])
 library;
 
-import 'package:catat_uang_app/models/category_model.dart';
-import 'package:catat_uang_app/models/investment_model.dart';
-import 'package:catat_uang_app/models/transaction_model.dart';
-import 'package:catat_uang_app/providers/calendar_provider.dart';
-import 'package:catat_uang_app/providers/category_provider.dart';
-import 'package:catat_uang_app/providers/investment_provider.dart';
-import 'package:catat_uang_app/screens/ai_advisor/ai_advisor_screen.dart';
-import 'package:catat_uang_app/screens/calendar/calendar_screen.dart';
-import 'package:catat_uang_app/screens/export/export_screen.dart';
-import 'package:catat_uang_app/screens/investment/investment_screen.dart';
-import 'package:catat_uang_app/screens/manage_category/manage_category_screen.dart';
-import 'package:catat_uang_app/screens/zakat_sedekah/zakat_sedekah_screen.dart';
+import 'package:arthava/models/category_model.dart';
+import 'package:arthava/models/investment_model.dart';
+import 'package:arthava/models/transaction_model.dart';
+import 'package:arthava/providers/calendar_provider.dart';
+import 'package:arthava/providers/category_provider.dart';
+import 'package:arthava/providers/investment_provider.dart';
+import 'package:arthava/screens/ai_advisor/ai_advisor_screen.dart';
+import 'package:arthava/screens/calendar/calendar_screen.dart';
+import 'package:arthava/screens/export/export_screen.dart';
+import 'package:arthava/screens/investment/investment_screen.dart';
+import 'package:arthava/screens/manage_category/manage_category_screen.dart';
+import 'package:arthava/screens/zakat_sedekah/zakat_sedekah_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

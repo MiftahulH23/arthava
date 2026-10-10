@@ -3,11 +3,11 @@ library;
 
 import 'dart:async';
 
-import 'package:catat_uang_app/providers/edit_profile_provider.dart';
-import 'package:catat_uang_app/screens/edit_profile/edit_profile_screen.dart';
-import 'package:catat_uang_app/screens/lock/lock_screen.dart';
-import 'package:catat_uang_app/screens/login/login_screen.dart';
-import 'package:catat_uang_app/screens/settings/settings_screen.dart';
+import 'package:arthava/providers/edit_profile_provider.dart';
+import 'package:arthava/screens/edit_profile/edit_profile_screen.dart';
+import 'package:arthava/screens/lock/lock_screen.dart';
+import 'package:arthava/screens/login/login_screen.dart';
+import 'package:arthava/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_auth/local_auth.dart';

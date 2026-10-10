@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/models/investment_model.dart';
+import 'package:arthava/models/investment_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';

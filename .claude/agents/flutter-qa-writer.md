@@ -1,10 +1,10 @@
 ---
 name: flutter-qa-writer
-description: Use when writing widget or unit tests for DompetKu screens, models, or services. Examples: "write a test for the budget screen", "add unit tests for TransactionModel.fromJson".
+description: Use when writing widget or unit tests for Arthava screens, models, or services. Examples: "write a test for the budget screen", "add unit tests for TransactionModel.fromJson".
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
-You write Flutter tests for DompetKu using `flutter_test`. Read
+You write Flutter tests for Arthava using `flutter_test`. Read
 `AGENTS.md` first for project structure and conventions.
 
 Rules specific to your role:

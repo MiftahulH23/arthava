@@ -1,22 +1,22 @@
 @Tags(['screenshot'])
 library;
 
-import 'package:catat_uang_app/models/budget_model.dart';
-import 'package:catat_uang_app/models/category_model.dart';
-import 'package:catat_uang_app/models/recurring_transaction_model.dart';
-import 'package:catat_uang_app/models/saving_model.dart';
-import 'package:catat_uang_app/models/target_model.dart';
-import 'package:catat_uang_app/providers/budget_provider.dart';
-import 'package:catat_uang_app/providers/recurring_provider.dart';
-import 'package:catat_uang_app/providers/savings_provider.dart';
-import 'package:catat_uang_app/providers/target_provider.dart';
-import 'package:catat_uang_app/screens/budget/budget_detail_screen.dart';
-import 'package:catat_uang_app/screens/budget/budget_screen.dart';
-import 'package:catat_uang_app/screens/recurring/recurring_screen.dart';
-import 'package:catat_uang_app/screens/savings/saving_detail_screen.dart';
-import 'package:catat_uang_app/screens/savings/savings_screen.dart';
-import 'package:catat_uang_app/screens/target/target_screen.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:arthava/models/budget_model.dart';
+import 'package:arthava/models/category_model.dart';
+import 'package:arthava/models/recurring_transaction_model.dart';
+import 'package:arthava/models/saving_model.dart';
+import 'package:arthava/models/target_model.dart';
+import 'package:arthava/providers/budget_provider.dart';
+import 'package:arthava/providers/recurring_provider.dart';
+import 'package:arthava/providers/savings_provider.dart';
+import 'package:arthava/providers/target_provider.dart';
+import 'package:arthava/screens/budget/budget_detail_screen.dart';
+import 'package:arthava/screens/budget/budget_screen.dart';
+import 'package:arthava/screens/recurring/recurring_screen.dart';
+import 'package:arthava/screens/savings/saving_detail_screen.dart';
+import 'package:arthava/screens/savings/savings_screen.dart';
+import 'package:arthava/screens/target/target_screen.dart';
+import 'package:arthava/widgets/app_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

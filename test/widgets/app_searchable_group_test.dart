@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/widgets/app_list_row.dart';
-import 'package:catat_uang_app/widgets/app_searchable_group.dart';
+import 'package:arthava/widgets/app_list_row.dart';
+import 'package:arthava/widgets/app_searchable_group.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

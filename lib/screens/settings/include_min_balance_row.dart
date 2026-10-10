@@ -1,10 +1,10 @@
-import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/providers/home_provider.dart';
-import 'package:catat_uang_app/providers/user_settings_provider.dart';
-import 'package:catat_uang_app/providers/wallet_provider.dart';
-import 'package:catat_uang_app/widgets/app_list_row.dart';
-import 'package:catat_uang_app/widgets/app_switch.dart';
+import 'package:arthava/core/app_notification.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/providers/home_provider.dart';
+import 'package:arthava/providers/user_settings_provider.dart';
+import 'package:arthava/providers/wallet_provider.dart';
+import 'package:arthava/widgets/app_list_row.dart';
+import 'package:arthava/widgets/app_switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';

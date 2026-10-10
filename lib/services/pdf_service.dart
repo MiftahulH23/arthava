@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-import 'package:catat_uang_app/models/transaction_model.dart';
+import 'package:arthava/models/transaction_model.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -312,4 +312,4 @@ class PdfService {
       ),
     );
   }
-}
+}

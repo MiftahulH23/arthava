@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/widgets/app_pickers.dart';
+import 'package:arthava/widgets/app_pickers.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 

@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/providers/stats_provider.dart';
-import 'package:catat_uang_app/screens/stats/stats_screen.dart';
+import 'package:arthava/providers/stats_provider.dart';
+import 'package:arthava/screens/stats/stats_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

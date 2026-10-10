@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/widgets/app_period_picker.dart';
+import 'package:arthava/widgets/app_period_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';

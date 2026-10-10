@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/core/colors.dart';
+import 'package:arthava/core/colors.dart';
 import 'package:flutter/widgets.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 

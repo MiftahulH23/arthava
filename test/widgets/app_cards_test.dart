@@ -1,7 +1,7 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/widgets/app_hero_card.dart';
-import 'package:catat_uang_app/widgets/app_summary_widget.dart';
-import 'package:catat_uang_app/widgets/app_surface_card.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/widgets/app_hero_card.dart';
+import 'package:arthava/widgets/app_summary_widget.dart';
+import 'package:arthava/widgets/app_surface_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';

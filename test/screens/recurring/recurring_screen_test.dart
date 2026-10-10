@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/models/recurring_transaction_model.dart';
-import 'package:catat_uang_app/providers/recurring_provider.dart';
-import 'package:catat_uang_app/screens/recurring/recurring_screen.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
-import 'package:catat_uang_app/widgets/app_switch.dart';
+import 'package:arthava/models/recurring_transaction_model.dart';
+import 'package:arthava/providers/recurring_provider.dart';
+import 'package:arthava/screens/recurring/recurring_screen.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
+import 'package:arthava/widgets/app_switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';

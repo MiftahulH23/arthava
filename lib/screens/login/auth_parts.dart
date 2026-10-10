@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 
 /// Kotak logo kecil di hero auth (putih 18% di atas gradasi).

@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/models/wallet_model.dart';
+import 'package:arthava/models/wallet_model.dart';
 
 const int kHomeFavoriteLimit = 5;
 const int kHomeTopWalletCount = 3;

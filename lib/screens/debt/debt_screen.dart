@@ -1,20 +1,20 @@
-import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/debt/debt_delete.dart';
-import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/providers/debt_provider.dart';
+import 'package:arthava/core/app_notification.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/screens/debt/debt_delete.dart';
+import 'package:arthava/widgets/app_swipe_actions.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/providers/debt_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'debt_detail_screen.dart';
-import 'package:catat_uang_app/screens/debt/widgets/debt_card.dart';
-import 'package:catat_uang_app/widgets/app_empty_state.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
-import 'package:catat_uang_app/widgets/app_segmented_control.dart';
-import 'package:catat_uang_app/screens/debt/debt_form_sheet.dart';
-import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
+import 'package:arthava/screens/debt/widgets/debt_card.dart';
+import 'package:arthava/widgets/app_empty_state.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
+import 'package:arthava/widgets/app_segmented_control.dart';
+import 'package:arthava/screens/debt/debt_form_sheet.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 
 class DebtScreen extends ConsumerStatefulWidget {
   const DebtScreen({super.key});

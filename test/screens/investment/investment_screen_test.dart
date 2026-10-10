@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/models/investment_model.dart';
-import 'package:catat_uang_app/providers/investment_provider.dart';
-import 'package:catat_uang_app/screens/investment/investment_screen.dart';
-import 'package:catat_uang_app/widgets/app_amount_display.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:arthava/models/investment_model.dart';
+import 'package:arthava/providers/investment_provider.dart';
+import 'package:arthava/screens/investment/investment_screen.dart';
+import 'package:arthava/widgets/app_amount_display.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

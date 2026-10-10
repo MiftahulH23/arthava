@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/screens/lock/app_entry_gate.dart';
+import 'package:arthava/screens/lock/app_entry_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

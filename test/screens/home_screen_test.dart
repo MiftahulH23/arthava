@@ -1,9 +1,9 @@
-import 'package:catat_uang_app/models/recurring_transaction_model.dart';
-import 'package:catat_uang_app/models/wallet_model.dart';
-import 'package:catat_uang_app/providers/home_provider.dart';
-import 'package:catat_uang_app/providers/home_summary.dart';
-import 'package:catat_uang_app/screens/home/home_screen.dart';
-import 'package:catat_uang_app/widgets/app_list_row.dart';
+import 'package:arthava/models/recurring_transaction_model.dart';
+import 'package:arthava/models/wallet_model.dart';
+import 'package:arthava/providers/home_provider.dart';
+import 'package:arthava/providers/home_summary.dart';
+import 'package:arthava/screens/home/home_screen.dart';
+import 'package:arthava/widgets/app_list_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

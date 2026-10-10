@@ -1,6 +1,6 @@
-import 'package:catat_uang_app/widgets/app_segmented_control.dart';
-import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
-import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
+import 'package:arthava/widgets/app_segmented_control.dart';
+import 'package:arthava/widgets/app_swipe_actions.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

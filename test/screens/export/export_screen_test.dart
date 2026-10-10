@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/screens/export/export_screen.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:arthava/screens/export/export_screen.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 

@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/core/wallet_rules.dart';
-import 'package:catat_uang_app/models/wallet_model.dart';
+import 'package:arthava/core/wallet_rules.dart';
+import 'package:arthava/models/wallet_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 WalletModel w(int id, double balance, {bool fav = false, double min = 0}) => WalletModel(

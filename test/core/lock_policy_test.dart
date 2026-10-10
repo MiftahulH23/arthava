@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/core/lock_policy.dart';
+import 'package:arthava/core/lock_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,9 +1,9 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/core/env.dart';
-import 'package:catat_uang_app/core/theme_mode_manager.dart';
-import 'package:catat_uang_app/screens/login/login_screen.dart';
-import 'package:catat_uang_app/screens/lock/app_entry_gate.dart'; // [NEW] Import Halaman Gembok
-import 'package:catat_uang_app/theme/app_forui_theme.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/core/env.dart';
+import 'package:arthava/core/theme_mode_manager.dart';
+import 'package:arthava/screens/login/login_screen.dart';
+import 'package:arthava/screens/lock/app_entry_gate.dart'; // [NEW] Import Halaman Gembok
+import 'package:arthava/theme/app_forui_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forui/forui.dart';
@@ -11,7 +11,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:catat_uang_app/widgets/app_system_ui.dart';
+import 'package:arthava/widgets/app_system_ui.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
       builder: (context, currentMode, child) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'DompetKu',
+          title: 'Arthava',
 
           // 2. Pasang Mode Tema Dinamis
           themeMode: currentMode,

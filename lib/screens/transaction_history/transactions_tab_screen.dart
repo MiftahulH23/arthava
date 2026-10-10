@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/transaction_history/transaction_history_screen.dart';
-import 'package:catat_uang_app/widgets/app_segmented_control.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/screens/transaction_history/transaction_history_screen.dart';
+import 'package:arthava/widgets/app_segmented_control.dart';
 import 'package:flutter/material.dart';
-import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 
 /// Wrapper yang menggabungkan tab Pemasukan & Pengeluaran ke dalam satu
 /// destinasi navigasi (dipakai oleh [HomeScreen] mobile & web), supaya

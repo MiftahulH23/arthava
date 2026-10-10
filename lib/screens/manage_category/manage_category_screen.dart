@@ -1,20 +1,20 @@
-import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/models/category_model.dart';
-import 'package:catat_uang_app/providers/category_provider.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_empty_state.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_list_row.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
-import 'package:catat_uang_app/widgets/app_segmented_control.dart';
-import 'package:catat_uang_app/widgets/app_sheet.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:arthava/core/app_notification.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/models/category_model.dart';
+import 'package:arthava/providers/category_provider.dart';
+import 'package:arthava/widgets/app_buttons.dart';
+import 'package:arthava/widgets/app_empty_state.dart';
+import 'package:arthava/widgets/app_grouped_section.dart';
+import 'package:arthava/widgets/app_list_row.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
+import 'package:arthava/widgets/app_segmented_control.dart';
+import 'package:arthava/widgets/app_sheet.dart';
+import 'package:arthava/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
-import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
+import 'package:arthava/widgets/app_swipe_actions.dart';
 
 class ManageCategoryScreen extends ConsumerWidget {
   const ManageCategoryScreen({super.key});

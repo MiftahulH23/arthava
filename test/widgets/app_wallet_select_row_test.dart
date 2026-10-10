@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/widgets/app_wallet_select_row.dart';
+import 'package:arthava/widgets/app_wallet_select_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

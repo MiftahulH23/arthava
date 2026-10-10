@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/theme/app_forui_theme.dart';
-import 'package:catat_uang_app/widgets/app_bottom_sheet.dart';
+import 'package:arthava/theme/app_forui_theme.dart';
+import 'package:arthava/widgets/app_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart';

@@ -1,13 +1,13 @@
-import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/edit_profile/edit_profile_screen.dart';
-import 'package:catat_uang_app/screens/login/login_screen.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_list_row.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
-import 'package:catat_uang_app/widgets/app_switch.dart';
-import 'package:catat_uang_app/screens/settings/include_min_balance_row.dart';
-import 'package:catat_uang_app/services/biometric_lock_setting.dart';
+import 'package:arthava/core/app_notification.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/screens/edit_profile/edit_profile_screen.dart';
+import 'package:arthava/screens/login/login_screen.dart';
+import 'package:arthava/widgets/app_grouped_section.dart';
+import 'package:arthava/widgets/app_list_row.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
+import 'package:arthava/widgets/app_switch.dart';
+import 'package:arthava/screens/settings/include_min_balance_row.dart';
+import 'package:arthava/services/biometric_lock_setting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
@@ -75,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           return;
         }
         try {
-          final ok = await _auth.authenticate(localizedReason: 'Konfirmasi untuk mengaktifkan kunci DompetKu');
+          final ok = await _auth.authenticate(localizedReason: 'Konfirmasi untuk mengaktifkan kunci Arthava');
           if (!ok || !mounted) return;
         } on LocalAuthException catch (e) {
           // local_auth 3.x melempar exception saat dibatalkan/gagal.
@@ -165,7 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Aplikasi DompetKu v1.0 by Miftahul Huda'),
+                    content: Text('Aplikasi Arthava v1.0 by Miftahul Huda'),
                   ),
                 );
               },

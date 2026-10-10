@@ -1,7 +1,7 @@
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/models/recurring_transaction_model.dart';
-import 'package:catat_uang_app/models/target_model.dart';
-import 'package:catat_uang_app/providers/home_summary.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/models/recurring_transaction_model.dart';
+import 'package:arthava/models/target_model.dart';
+import 'package:arthava/providers/home_summary.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 TargetModel target(int id, double saved, double goal, {DateTime? deadline}) =>

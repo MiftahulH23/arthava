@@ -1,10 +1,10 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/models/budget_model.dart';
-import 'package:catat_uang_app/models/category_model.dart';
-import 'package:catat_uang_app/providers/budget_provider.dart';
-import 'package:catat_uang_app/screens/budget/budget_detail_screen.dart';
-import 'package:catat_uang_app/widgets/app_chip.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/models/budget_model.dart';
+import 'package:arthava/models/category_model.dart';
+import 'package:arthava/providers/budget_provider.dart';
+import 'package:arthava/screens/budget/budget_detail_screen.dart';
+import 'package:arthava/widgets/app_chip.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

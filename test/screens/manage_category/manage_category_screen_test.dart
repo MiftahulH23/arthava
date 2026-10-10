@@ -1,7 +1,7 @@
-import 'package:catat_uang_app/models/category_model.dart';
-import 'package:catat_uang_app/providers/category_provider.dart';
-import 'package:catat_uang_app/screens/manage_category/manage_category_screen.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:arthava/models/category_model.dart';
+import 'package:arthava/providers/category_provider.dart';
+import 'package:arthava/screens/manage_category/manage_category_screen.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';

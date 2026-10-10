@@ -2,12 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:catat_uang_app/core/transaction_tags.dart';
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/models/recurring_transaction_model.dart';
-import 'package:catat_uang_app/models/target_model.dart';
-import 'package:catat_uang_app/models/wallet_model.dart';
-import 'package:catat_uang_app/providers/home_summary.dart';
+import 'package:arthava/core/transaction_tags.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/models/recurring_transaction_model.dart';
+import 'package:arthava/models/target_model.dart';
+import 'package:arthava/models/wallet_model.dart';
+import 'package:arthava/providers/home_summary.dart';
 
 /// State untuk tab "Home" HomeScreen: profil singkat, ringkasan saldo
 /// bulan berjalan, total tabungan/investasi, dan daftar dompet. Tidak

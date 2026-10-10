@@ -1,15 +1,15 @@
 ---
-name: dompetku-feature-spec
-description: Use alongside superpowers:brainstorming whenever the user describes a new DompetKu feature or refactor in free-form language. Adds DompetKu-specific clarifying questions, writes the resulting spec document in Bahasa Indonesia, and structures it so flutter-ui-builder, supabase-schema-agent, and other subagents can act on it directly. Never use instead of brainstorming — only to extend its clarifying-questions and design-presentation steps for this repo.
+name: arthava-feature-spec
+description: Use alongside superpowers:brainstorming whenever the user describes a new Arthava feature or refactor in free-form language. Adds Arthava-specific clarifying questions, writes the resulting spec document in Bahasa Indonesia, and structures it so flutter-ui-builder, supabase-schema-agent, and other subagents can act on it directly. Never use instead of brainstorming — only to extend its clarifying-questions and design-presentation steps for this repo.
 ---
 
-# DompetKu Feature/Refactor Spec Intake
+# Arthava Feature/Refactor Spec Intake
 
 Extends `superpowers:brainstorming` for this repo. Follow brainstorming's
 own process in full (classify spike/bounded/architectural, ask one
 question at a time, propose approaches, present design, get approval,
 write the spec to `docs/superpowers/specs/`) — this skill only adds what
-to ask and how to structure the output for DompetKu specifically. It is
+to ask and how to structure the output for Arthava specifically. It is
 never a substitute for brainstorming's approval gate.
 
 ## Additional clarifying questions to weave in
@@ -70,4 +70,4 @@ begins.
 If anything the user said is ambiguous or conflicts with an existing
 `AGENTS.md` convention, ask about it explicitly rather than guessing —
 this is the same rule brainstorming already follows; this skill exists
-to make sure DompetKu-specific ambiguity isn't overlooked.
+to make sure Arthava-specific ambiguity isn't overlooked.

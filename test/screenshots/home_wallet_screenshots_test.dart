@@ -1,16 +1,16 @@
 @Tags(['screenshot'])
 library;
 
-import 'package:catat_uang_app/models/target_model.dart';
-import 'package:catat_uang_app/providers/home_provider.dart';
-import 'package:catat_uang_app/providers/home_summary.dart';
-import 'package:catat_uang_app/providers/user_settings_provider.dart';
-import 'package:catat_uang_app/providers/wallet_provider.dart';
-import 'package:catat_uang_app/screens/all_features/all_features_screen.dart';
-import 'package:catat_uang_app/screens/home/home_screen.dart';
-import 'package:catat_uang_app/screens/settings/include_min_balance_row.dart';
-import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
+import 'package:arthava/models/target_model.dart';
+import 'package:arthava/providers/home_provider.dart';
+import 'package:arthava/providers/home_summary.dart';
+import 'package:arthava/providers/user_settings_provider.dart';
+import 'package:arthava/providers/wallet_provider.dart';
+import 'package:arthava/screens/all_features/all_features_screen.dart';
+import 'package:arthava/screens/home/home_screen.dart';
+import 'package:arthava/screens/settings/include_min_balance_row.dart';
+import 'package:arthava/screens/wallet/wallet_screen.dart';
+import 'package:arthava/widgets/app_grouped_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

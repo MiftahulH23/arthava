@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/models/wallet_model.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/models/wallet_model.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 

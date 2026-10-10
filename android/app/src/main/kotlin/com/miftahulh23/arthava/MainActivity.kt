@@ -1,4 +1,4 @@
-package com.example.catat_uang_app
+package com.miftahulh23.arthava
 
 
 import io.flutter.embedding.android.FlutterFragmentActivity

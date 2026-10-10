@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/providers/edit_profile_provider.dart';
-import 'package:catat_uang_app/screens/edit_profile/edit_profile_screen.dart';
+import 'package:arthava/providers/edit_profile_provider.dart';
+import 'package:arthava/screens/edit_profile/edit_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';

@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/models/transaction_model.dart';
+import 'package:arthava/models/transaction_model.dart';
 
 /// Mengelompokkan transaksi per hari kalender untuk tampilan list bergrup.
 /// Urutan grup mengikuti kemunculan pertama di [transactions] (provider

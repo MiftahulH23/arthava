@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/models/debt_payment_model.dart';
-import 'package:catat_uang_app/models/wallet_model.dart';
-import 'package:catat_uang_app/providers/debt_provider.dart';
-import 'package:catat_uang_app/services/debt_service.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/models/debt_payment_model.dart';
+import 'package:arthava/models/wallet_model.dart';
+import 'package:arthava/providers/debt_provider.dart';
+import 'package:arthava/services/debt_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

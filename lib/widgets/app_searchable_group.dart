@@ -1,6 +1,6 @@
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/widgets/app_grouped_section.dart';
+import 'package:arthava/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 

@@ -1,15 +1,15 @@
 @Tags(['screenshot'])
 library;
 
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/providers/debt_provider.dart';
-import 'package:catat_uang_app/screens/debt/debt_detail_screen.dart';
-import 'package:catat_uang_app/screens/debt/debt_form_sheet.dart';
-import 'package:catat_uang_app/screens/debt/debt_payment_sheet.dart';
-import 'package:catat_uang_app/screens/debt/debt_screen.dart';
-import 'package:catat_uang_app/widgets/app_segmented_control.dart';
-import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
-import 'package:catat_uang_app/widgets/app_switch.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/providers/debt_provider.dart';
+import 'package:arthava/screens/debt/debt_detail_screen.dart';
+import 'package:arthava/screens/debt/debt_form_sheet.dart';
+import 'package:arthava/screens/debt/debt_payment_sheet.dart';
+import 'package:arthava/screens/debt/debt_screen.dart';
+import 'package:arthava/widgets/app_segmented_control.dart';
+import 'package:arthava/widgets/app_swipe_actions.dart';
+import 'package:arthava/widgets/app_switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

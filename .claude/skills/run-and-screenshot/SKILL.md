@@ -1,9 +1,9 @@
 ---
 name: run-and-screenshot
-description: Use when a UI change in DompetKu needs to be visually verified before reporting it done — launches the app and captures its visual state.
+description: Use when a UI change in Arthava needs to be visually verified before reporting it done — launches the app and captures its visual state.
 ---
 
-# Run & Visually Verify DompetKu
+# Run & Visually Verify Arthava
 
 Never claim a UI change looks right without seeing it rendered. Use this
 procedure before reporting UI work complete.

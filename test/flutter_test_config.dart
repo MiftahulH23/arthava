@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:catat_uang_app/theme/app_forui_theme.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
+import 'package:arthava/theme/app_forui_theme.dart';
+import 'package:arthava/theme/app_text_styles.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Konfigurasi global untuk semua test di folder ini.

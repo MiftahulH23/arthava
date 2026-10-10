@@ -1,6 +1,6 @@
-import 'package:catat_uang_app/models/transaction_model.dart';
-import 'package:catat_uang_app/providers/input_transaction_provider.dart';
-import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
+import 'package:arthava/models/transaction_model.dart';
+import 'package:arthava/providers/input_transaction_provider.dart';
+import 'package:arthava/screens/input_transaction/input_transaction_screen.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 

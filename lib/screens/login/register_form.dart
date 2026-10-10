@@ -1,9 +1,9 @@
-import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/login/auth_parts.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:arthava/core/app_notification.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/screens/login/auth_parts.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/widgets/app_buttons.dart';
+import 'package:arthava/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

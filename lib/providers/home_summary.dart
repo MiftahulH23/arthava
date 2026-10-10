@@ -1,7 +1,7 @@
-import 'package:catat_uang_app/core/transaction_tags.dart';
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/models/recurring_transaction_model.dart';
-import 'package:catat_uang_app/models/target_model.dart';
+import 'package:arthava/core/transaction_tags.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/models/recurring_transaction_model.dart';
+import 'package:arthava/models/target_model.dart';
 
 class BudgetSummary {
   final double totalSpent;

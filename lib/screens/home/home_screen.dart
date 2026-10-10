@@ -1,31 +1,31 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/providers/home_provider.dart';
-import 'package:catat_uang_app/providers/stats_provider.dart';
-import 'package:catat_uang_app/providers/transaction_history_provider.dart';
-import 'package:catat_uang_app/screens/input_transaction/input_transaction_screen.dart';
-import 'package:catat_uang_app/screens/settings/settings_screen.dart';
-import 'package:catat_uang_app/screens/stats/stats_screen.dart';
-import 'package:catat_uang_app/screens/transaction_history/transactions_tab_screen.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/providers/home_provider.dart';
+import 'package:arthava/providers/stats_provider.dart';
+import 'package:arthava/providers/transaction_history_provider.dart';
+import 'package:arthava/screens/input_transaction/input_transaction_screen.dart';
+import 'package:arthava/screens/settings/settings_screen.dart';
+import 'package:arthava/screens/stats/stats_screen.dart';
+import 'package:arthava/screens/transaction_history/transactions_tab_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
-import 'package:catat_uang_app/widgets/app_bottom_nav.dart';
-import 'package:catat_uang_app/core/formatters.dart';
-import 'package:catat_uang_app/core/wallet_rules.dart';
-import 'package:catat_uang_app/models/wallet_model.dart';
-import 'package:catat_uang_app/providers/home_summary.dart';
-import 'package:catat_uang_app/screens/all_features/all_features_screen.dart';
-import 'package:catat_uang_app/screens/all_features/app_feature.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_callout.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_hero_card.dart';
-import 'package:catat_uang_app/widgets/app_list_row.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
-import 'package:catat_uang_app/widgets/app_progress.dart';
-import 'package:catat_uang_app/widgets/app_summary_widget.dart';
+import 'package:arthava/screens/wallet/wallet_screen.dart';
+import 'package:arthava/widgets/app_bottom_nav.dart';
+import 'package:arthava/core/formatters.dart';
+import 'package:arthava/core/wallet_rules.dart';
+import 'package:arthava/models/wallet_model.dart';
+import 'package:arthava/providers/home_summary.dart';
+import 'package:arthava/screens/all_features/all_features_screen.dart';
+import 'package:arthava/screens/all_features/app_feature.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/widgets/app_callout.dart';
+import 'package:arthava/widgets/app_grouped_section.dart';
+import 'package:arthava/widgets/app_hero_card.dart';
+import 'package:arthava/widgets/app_list_row.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
+import 'package:arthava/widgets/app_progress.dart';
+import 'package:arthava/widgets/app_summary_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -307,7 +307,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             leading: Column(
               children: [
                 const SizedBox(height: 20),
-                Text("DompetKu", style: AppTextStyles.title.copyWith(fontSize: 24, color: activeColor)),
+                Text("Arthava", style: AppTextStyles.title.copyWith(fontSize: 24, color: activeColor)),
                 const SizedBox(height: 30),
               ],
             ),

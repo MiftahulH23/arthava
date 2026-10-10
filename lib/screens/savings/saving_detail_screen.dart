@@ -1,27 +1,27 @@
-import 'package:catat_uang_app/core/money_rejection.dart';
-import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/core/formatters.dart';
-import 'package:catat_uang_app/models/saving_model.dart';
-import 'package:catat_uang_app/providers/savings_provider.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_amount_display.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_chip.dart';
-import 'package:catat_uang_app/widgets/app_dialogs.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_hero_card.dart';
-import 'package:catat_uang_app/widgets/app_list_row.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
-import 'package:catat_uang_app/widgets/app_sheet.dart';
-import 'package:catat_uang_app/widgets/app_surface_card.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:arthava/core/money_rejection.dart';
+import 'package:arthava/core/app_notification.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/core/formatters.dart';
+import 'package:arthava/models/saving_model.dart';
+import 'package:arthava/providers/savings_provider.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/widgets/app_amount_display.dart';
+import 'package:arthava/widgets/app_buttons.dart';
+import 'package:arthava/widgets/app_chip.dart';
+import 'package:arthava/widgets/app_dialogs.dart';
+import 'package:arthava/widgets/app_grouped_section.dart';
+import 'package:arthava/widgets/app_hero_card.dart';
+import 'package:arthava/widgets/app_list_row.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
+import 'package:arthava/widgets/app_sheet.dart';
+import 'package:arthava/widgets/app_surface_card.dart';
+import 'package:arthava/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
+import 'package:arthava/widgets/app_swipe_actions.dart';
 
 Widget _fieldLabel(String text) => Padding(
   padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),

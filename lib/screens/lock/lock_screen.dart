@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/home/home_screen.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:arthava/core/app_notification.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/screens/home/home_screen.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/widgets/app_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
@@ -85,7 +85,7 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
 
     try {
       final authenticated = await _auth.authenticate(
-        localizedReason: 'Gunakan biometrik untuk membuka DompetKu',
+        localizedReason: 'Gunakan biometrik untuk membuka Arthava',
       );
 
       if (mounted) {
@@ -186,7 +186,7 @@ class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
                 ),
               const Spacer(),
               Text(
-                'Aman bersama DompetKu',
+                'Aman bersama Arthava',
                 style: AppTextStyles.caption.copyWith(
                   fontSize: 11,
                   color: AppColors.textSecondary.withValues(alpha: 0.6),

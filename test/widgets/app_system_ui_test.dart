@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/screens/login/auth_layout.dart';
-import 'package:catat_uang_app/screens/login/auth_parts.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_system_ui.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/screens/login/auth_layout.dart';
+import 'package:arthava/screens/login/auth_parts.dart';
+import 'package:arthava/widgets/app_buttons.dart';
+import 'package:arthava/widgets/app_system_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,7 +15,7 @@ void main() {
       navigatorKey: nav,
       builder: (context, child) => AppSystemUi(child: child!),
       home: AuthLayout(
-        title: 'DompetKu',
+        title: 'Arthava',
         subtitle: 'x',
         leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
         children: [AppPrimaryButton(label: 'Aksi', onPressed: () {})],

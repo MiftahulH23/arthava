@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/core/colors.dart';
+import 'package:arthava/core/colors.dart';
 import 'package:flutter/painting.dart';
 
 class WalletModel {

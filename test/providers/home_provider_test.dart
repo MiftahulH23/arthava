@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/providers/home_provider.dart';
-import 'package:catat_uang_app/providers/home_summary.dart';
+import 'package:arthava/providers/home_provider.dart';
+import 'package:arthava/providers/home_summary.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

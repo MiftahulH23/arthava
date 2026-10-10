@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/theme/app_forui_theme.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/theme/app_forui_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

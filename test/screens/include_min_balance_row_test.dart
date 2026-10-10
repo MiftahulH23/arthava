@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/providers/user_settings_provider.dart';
-import 'package:catat_uang_app/screens/settings/include_min_balance_row.dart';
+import 'package:arthava/providers/user_settings_provider.dart';
+import 'package:arthava/screens/settings/include_min_balance_row.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

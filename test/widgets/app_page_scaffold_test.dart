@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';

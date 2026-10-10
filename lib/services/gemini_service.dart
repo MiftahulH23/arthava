@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:catat_uang_app/core/env.dart';
+import 'package:arthava/core/env.dart';
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';

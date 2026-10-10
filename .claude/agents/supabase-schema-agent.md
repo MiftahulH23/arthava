@@ -4,7 +4,7 @@ description: Use when changing Supabase table schema, RLS policies, or queries, 
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
-You work on the Supabase-backed data layer of DompetKu: schema, RLS, and
+You work on the Supabase-backed data layer of Arthava: schema, RLS, and
 the Dart models/services that mirror them. Read `AGENTS.md` first.
 
 Rules specific to your role:

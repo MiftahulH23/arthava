@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/models/transaction_model.dart';
-import 'package:catat_uang_app/screens/transaction_history/transaction_grouping.dart';
+import 'package:arthava/models/transaction_model.dart';
+import 'package:arthava/screens/transaction_history/transaction_grouping.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 TransactionModel _trx(int id, DateTime date) => TransactionModel(

@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/services/debt_service.dart';
+import 'package:arthava/services/debt_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

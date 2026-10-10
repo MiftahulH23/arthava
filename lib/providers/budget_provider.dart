@@ -1,13 +1,13 @@
 import 'dart:ui' show Color;
 
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/models/budget_model.dart';
-import 'package:catat_uang_app/models/category_model.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/models/budget_model.dart';
+import 'package:arthava/models/category_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:catat_uang_app/core/transaction_tags.dart';
+import 'package:arthava/core/transaction_tags.dart';
 
 /// State gabungan untuk BudgetScreen (daftar anggaran per bulan) dan
 /// BudgetDetailScreen (edit limit satu anggaran). Keduanya berbagi provider

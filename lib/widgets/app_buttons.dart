@@ -1,6 +1,6 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_chip.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/widgets/app_chip.dart';
 import 'package:flutter/material.dart';
 
 /// Tombol aksi utama lebar penuh (spec §4.2: tinggi 52 radius 16).

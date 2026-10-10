@@ -1,7 +1,7 @@
-import 'package:catat_uang_app/providers/debt_provider.dart';
-import 'package:catat_uang_app/screens/debt/debt_detail_screen.dart';
+import 'package:arthava/providers/debt_provider.dart';
+import 'package:arthava/screens/debt/debt_detail_screen.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
+import 'package:arthava/widgets/app_swipe_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

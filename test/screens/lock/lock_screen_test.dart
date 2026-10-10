@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:catat_uang_app/screens/lock/lock_screen.dart';
+import 'package:arthava/screens/lock/lock_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_auth/local_auth.dart';
 // Transitif lewat local_auth; tipe parameter authenticate() yang di-override.
@@ -37,7 +37,7 @@ class _FakeLocalAuth extends LocalAuthentication {
     bool persistAcrossBackgrounding = false,
   }) {
     authenticateCalls++;
-    expect(localizedReason, 'Gunakan biometrik untuk membuka DompetKu');
+    expect(localizedReason, 'Gunakan biometrik untuk membuka Arthava');
     if (throwCode != null) return Future.error(LocalAuthException(code: throwCode!));
     return result == null ? _never.future : Future.value(result);
   }
@@ -53,7 +53,7 @@ void main() {
     expect(find.text('Aplikasi Terkunci'), findsOneWidget);
     expect(find.byIcon(PhosphorIconsFill.lockSimple), findsOneWidget);
     expect(find.byIcon(PhosphorIconsRegular.userFocus), findsOneWidget);
-    expect(find.text('Aman bersama DompetKu'), findsOneWidget);
+    expect(find.text('Aman bersama Arthava'), findsOneWidget);
     expect(find.text('Buka Kunci'), findsOneWidget);
     expect(auth.authenticateCalls, 1);
 

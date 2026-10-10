@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/screens/ai_advisor/ai_advisor_screen.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:arthava/screens/ai_advisor/ai_advisor_screen.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_test/flutter_test.dart';
 

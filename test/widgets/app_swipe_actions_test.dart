@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/widgets/app_swipe_actions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';

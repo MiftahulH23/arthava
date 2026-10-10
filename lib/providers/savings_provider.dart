@@ -1,6 +1,6 @@
-import 'package:catat_uang_app/core/money_rejection.dart';
-import 'package:catat_uang_app/core/formatters.dart';
-import 'package:catat_uang_app/models/saving_model.dart';
+import 'package:arthava/core/money_rejection.dart';
+import 'package:arthava/core/formatters.dart';
+import 'package:arthava/models/saving_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';

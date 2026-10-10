@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/screens/login/login_form.dart';
-import 'package:catat_uang_app/screens/login/login_screen.dart';
-import 'package:catat_uang_app/screens/login/register_form.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:arthava/screens/login/login_form.dart';
+import 'package:arthava/screens/login/login_screen.dart';
+import 'package:arthava/screens/login/register_form.dart';
+import 'package:arthava/widgets/app_buttons.dart';
+import 'package:arthava/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';

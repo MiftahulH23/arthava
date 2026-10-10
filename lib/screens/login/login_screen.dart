@@ -1,13 +1,13 @@
-import 'package:catat_uang_app/core/app_notification.dart';
-import 'package:catat_uang_app/screens/login/auth_layout.dart';
-import 'package:catat_uang_app/screens/login/auth_parts.dart';
-import 'package:catat_uang_app/screens/login/login_form.dart';
-import 'package:catat_uang_app/screens/login/register_form.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_segmented_control.dart';
+import 'package:arthava/core/app_notification.dart';
+import 'package:arthava/screens/login/auth_layout.dart';
+import 'package:arthava/screens/login/auth_parts.dart';
+import 'package:arthava/screens/login/login_form.dart';
+import 'package:arthava/screens/login/register_form.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/widgets/app_segmented_control.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 
 /// Layar auth tunggal: tab Masuk | Daftar di atas sheet putih.
 class LoginScreen extends StatefulWidget {

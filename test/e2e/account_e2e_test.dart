@@ -12,9 +12,9 @@ library;
 import '../../tool/e2e/e2e_env.dart';
 import 'dart:io';
 
-import 'package:catat_uang_app/providers/edit_profile_provider.dart';
-import 'package:catat_uang_app/providers/home_provider.dart';
-import 'package:catat_uang_app/services/biometric_lock_setting.dart';
+import 'package:arthava/providers/edit_profile_provider.dart';
+import 'package:arthava/providers/home_provider.dart';
+import 'package:arthava/services/biometric_lock_setting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';

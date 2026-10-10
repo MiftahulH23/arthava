@@ -12,12 +12,12 @@ library;
 import '../../tool/e2e/e2e_env.dart';
 import 'dart:io';
 
-import 'package:catat_uang_app/models/saving_model.dart';
-import 'package:catat_uang_app/models/target_model.dart';
-import 'package:catat_uang_app/providers/budget_provider.dart';
-import 'package:catat_uang_app/providers/recurring_provider.dart';
-import 'package:catat_uang_app/providers/savings_provider.dart';
-import 'package:catat_uang_app/providers/target_provider.dart';
+import 'package:arthava/models/saving_model.dart';
+import 'package:arthava/models/target_model.dart';
+import 'package:arthava/providers/budget_provider.dart';
+import 'package:arthava/providers/recurring_provider.dart';
+import 'package:arthava/providers/savings_provider.dart';
+import 'package:arthava/providers/target_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';

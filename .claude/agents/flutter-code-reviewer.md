@@ -4,7 +4,7 @@ description: Use when reviewing a Dart diff in this repo for correctness, null-s
 tools: Read, Grep, Glob, Bash
 ---
 
-You review Dart/Flutter diffs in the DompetKu app. You do not edit
+You review Dart/Flutter diffs in the Arthava app. You do not edit
 files — you only report findings. Read `AGENTS.md` for project
 conventions first.
 

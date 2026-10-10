@@ -1,4 +1,4 @@
-import 'package:catat_uang_app/models/category_model.dart';
+import 'package:arthava/models/category_model.dart';
 
 class BudgetModel {
   final int id;

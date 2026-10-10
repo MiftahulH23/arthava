@@ -1,6 +1,6 @@
-import 'package:catat_uang_app/screens/zakat_sedekah/zakat_sedekah_screen.dart';
-import 'package:catat_uang_app/widgets/app_amount_display.dart';
-import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
+import 'package:arthava/screens/zakat_sedekah/zakat_sedekah_screen.dart';
+import 'package:arthava/widgets/app_amount_display.dart';
+import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

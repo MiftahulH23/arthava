@@ -1,8 +1,8 @@
-import 'package:catat_uang_app/models/wallet_model.dart';
-import 'package:catat_uang_app/providers/user_settings_provider.dart';
-import 'package:catat_uang_app/providers/wallet_provider.dart';
-import 'package:catat_uang_app/screens/wallet/wallet_screen.dart';
-import 'package:catat_uang_app/widgets/app_buttons.dart';
+import 'package:arthava/models/wallet_model.dart';
+import 'package:arthava/providers/user_settings_provider.dart';
+import 'package:arthava/providers/wallet_provider.dart';
+import 'package:arthava/screens/wallet/wallet_screen.dart';
+import 'package:arthava/widgets/app_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';

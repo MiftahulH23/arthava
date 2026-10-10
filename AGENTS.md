@@ -1,4 +1,4 @@
-# AGENTS.md — DompetKu
+# AGENTS.md — Arthava
 
 Instructions for any AI coding agent (Claude Code, Codex, Cursor, etc.)
 working in this repository. This file is the canonical source of truth;
@@ -6,7 +6,7 @@ working in this repository. This file is the canonical source of truth;
 
 ## Project Overview
 
-DompetKu (package name `catat_uang_app`) is a personal finance tracker
+Arthava (package name `arthava`) is a personal finance tracker
 built with Flutter, backed by Supabase (Postgres + Auth). Features
 include transactions, wallets, budgets, savings, targets, investments, debts,
 recurring transactions, a financial calendar, PDF export, biometric
@@ -186,4 +186,4 @@ These directories are specific to Claude Code (other tools reading this
 | `add-feature` | skill | Adding a new feature/screen end-to-end. |
 | `run-and-screenshot` | skill | Launching the app and visually verifying a UI change. |
 | `supabase-schema-change` | skill | Safely changing Supabase schema and syncing Dart code. |
-| `dompetku-feature-spec` | skill | Alongside brainstorming, when the user describes a new feature/refactor in free-form language. |
+| `arthava-feature-spec` | skill | Alongside brainstorming, when the user describes a new feature/refactor in free-form language. |

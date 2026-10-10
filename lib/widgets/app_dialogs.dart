@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/core/colors.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/core/colors.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Dialog konfirmasi gaya iOS. `true` hanya bila tombol konfirmasi ditekan.

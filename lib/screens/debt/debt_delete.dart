@@ -1,6 +1,6 @@
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/providers/debt_provider.dart';
-import 'package:catat_uang_app/widgets/app_dialogs.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/providers/debt_provider.dart';
+import 'package:arthava/widgets/app_dialogs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

@@ -1,11 +1,11 @@
 @Tags(['screenshot'])
 library;
 
-import 'package:catat_uang_app/providers/debt_provider.dart';
-import 'package:catat_uang_app/screens/debt/debt_screen.dart';
-import 'package:catat_uang_app/screens/login/login_screen.dart';
-import 'package:catat_uang_app/widgets/app_grouped_section.dart';
-import 'package:catat_uang_app/widgets/app_text_field.dart';
+import 'package:arthava/providers/debt_provider.dart';
+import 'package:arthava/screens/debt/debt_screen.dart';
+import 'package:arthava/screens/login/login_screen.dart';
+import 'package:arthava/widgets/app_grouped_section.dart';
+import 'package:arthava/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,10 +1,10 @@
-import 'package:catat_uang_app/core/colors.dart';
-import 'package:catat_uang_app/core/formatters.dart';
-import 'package:catat_uang_app/models/debt_model.dart';
-import 'package:catat_uang_app/theme/app_text_styles.dart';
-import 'package:catat_uang_app/widgets/app_chip.dart';
-import 'package:catat_uang_app/widgets/app_progress.dart';
-import 'package:catat_uang_app/widgets/app_surface_card.dart';
+import 'package:arthava/core/colors.dart';
+import 'package:arthava/core/formatters.dart';
+import 'package:arthava/models/debt_model.dart';
+import 'package:arthava/theme/app_text_styles.dart';
+import 'package:arthava/widgets/app_chip.dart';
+import 'package:arthava/widgets/app_progress.dart';
+import 'package:arthava/widgets/app_surface_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 

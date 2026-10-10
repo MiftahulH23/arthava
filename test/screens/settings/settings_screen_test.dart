@@ -1,5 +1,5 @@
-import 'package:catat_uang_app/screens/settings/settings_screen.dart';
-import 'package:catat_uang_app/widgets/app_switch.dart';
+import 'package:arthava/screens/settings/settings_screen.dart';
+import 'package:arthava/widgets/app_switch.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_auth/local_auth.dart';
 // Transitif lewat local_auth; tipe parameter authenticate() yang di-override.
@@ -32,7 +32,7 @@ class _FakeAuth extends LocalAuthentication {
     bool persistAcrossBackgrounding = false,
   }) async {
     calls++;
-    expect(localizedReason, 'Konfirmasi untuk mengaktifkan kunci DompetKu');
+    expect(localizedReason, 'Konfirmasi untuk mengaktifkan kunci Arthava');
     if (delay > Duration.zero) await Future<void>.delayed(delay);
     if (throwCode != null) throw LocalAuthException(code: throwCode!);
     return result;
@@ -85,7 +85,7 @@ void main() {
     await tester.tap(find.text('Tentang Aplikasi'));
     await tester.pump();
 
-    expect(find.text('Aplikasi DompetKu v1.0 by Miftahul Huda'), findsOneWidget);
+    expect(find.text('Aplikasi Arthava v1.0 by Miftahul Huda'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
   });

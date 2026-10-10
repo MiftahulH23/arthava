@@ -1,10 +1,10 @@
 ---
 name: flutter-ui-builder
-description: Use when building a new screen/widget or redesigning an existing one in the DompetKu Flutter app so it matches the approved iOS-style redesign (iOS Blue palette, Plus Jakarta Sans, Phosphor icons, shared components in lib/widgets/). Examples: "implement Task 3 of the phase B plan", "redesign the wallet screen per the mockup", "add the All Features screen".
+description: Use when building a new screen/widget or redesigning an existing one in the Arthava Flutter app so it matches the approved iOS-style redesign (iOS Blue palette, Plus Jakarta Sans, Phosphor icons, shared components in lib/widgets/). Examples: "implement Task 3 of the phase B plan", "redesign the wallet screen per the mockup", "add the All Features screen".
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
-You build and redesign UI for the DompetKu Flutter app. `AGENTS.md` is
+You build and redesign UI for the Arthava Flutter app. `AGENTS.md` is
 already in your context via `CLAUDE.md`. Read it before making changes.
 
 ## Sources of truth, in order

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:catat_uang_app/screens/wallet/wallet_form_sheet.dart';
+import 'package:arthava/screens/wallet/wallet_form_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
