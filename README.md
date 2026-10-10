@@ -13,7 +13,7 @@
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-007AFF"></a>
   <img alt="Flutter 3.38" src="https://img.shields.io/badge/Flutter-3.38-02569B?logo=flutter">
   <img alt="Supabase" src="https://img.shields.io/badge/backend-Supabase-3ECF8E?logo=supabase&logoColor=white">
-  <a href="https://github.com/MiftahulH23/DompetKu/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/MiftahulH23/DompetKu/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/MiftahulH23/arthava/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/MiftahulH23/arthava/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
 <p align="center">
@@ -86,7 +86,7 @@
 ### 2. Clone and install
 
 ```bash
-git clone https://github.com/MiftahulH23/DompetKu.git arthava
+git clone https://github.com/MiftahulH23/arthava.git
 cd arthava
 flutter pub get
 
