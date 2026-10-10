@@ -2,6 +2,7 @@ import 'package:catat_uang_app/models/debt_model.dart';
 import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:catat_uang_app/screens/debt/debt_screen.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -84,5 +85,46 @@ void main() {
     await tester.timedDrag(find.text('Total Utang'), const Offset(250, 0), const Duration(milliseconds: 800));
     await tester.pumpAndSettle();
     expect(find.text('Piutang dari:'), findsNothing);
+  });
+
+  testWidgets('geser kartu utang lalu Hapus: dialog lama, deleteDebt terpanggil', (tester) async {
+    final fake = FakeDebtNotifier(state());
+    await pumpApp(tester, const DebtScreen(), overrides: debtOverrides(fake), size: const Size(390, 1400));
+    await tester.pump();
+    await tester.drag(find.text('Rina'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hapus Catatan?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, 'Hapus'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, contains('deleteDebt:2'));
+    expect(find.text('Data berhasil dihapus!'), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets('hapus dari daftar memuat riwayat cicilan dulu sebelum memilih dialog', (tester) async {
+    final fake = FakeDebtNotifier(state());
+    await pumpApp(tester, const DebtScreen(), overrides: debtOverrides(fake), size: const Size(390, 1400));
+    await tester.pump();
+    await tester.drag(find.text('Rina'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hapus'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, contains('fetchPayments:2'));
+    await tester.tap(find.text('Batal'));
+    await tester.pumpAndSettle();
+    expect(fake.calls.where((c) => c.startsWith('deleteDebt')), isEmpty);
+  });
+
+  testWidgets('geser kartu utang lalu Edit membuka form terisi', (tester) async {
+    await pumpApp(tester, const DebtScreen(), overrides: debtOverrides(FakeDebtNotifier(state())), size: const Size(390, 1400));
+    await tester.pump();
+    await tester.drag(find.text('Rina'), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Utang'), findsOneWidget);
+    expect(find.text('Rina'), findsWidgets);
   });
 }

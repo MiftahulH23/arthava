@@ -1,4 +1,7 @@
+import 'package:catat_uang_app/core/app_notification.dart';
 import 'package:catat_uang_app/core/colors.dart';
+import 'package:catat_uang_app/screens/debt/debt_delete.dart';
+import 'package:catat_uang_app/widgets/app_swipe_actions.dart';
 import 'package:catat_uang_app/models/debt_model.dart';
 import 'package:catat_uang_app/providers/debt_provider.dart';
 import 'package:flutter/material.dart';
@@ -72,11 +75,13 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
                   )
                 else
                   for (final debt in debts)
-                    DebtCard(
+                    AppSwipeActions(
                       key: ValueKey('debt-${debt.id}'),
-                      debt: debt,
-                      today: today,
-                      onTap: () => _openDetail(debt),
+                      borderRadius: BorderRadius.circular(24),
+                      confirmDelete: false,
+                      onEdit: () => showDebtFormSheet(context, debt: debt),
+                      onDelete: () => _delete(debt),
+                      child: DebtCard(debt: debt, today: today, onTap: () => _openDetail(debt)),
                     ),
               ],
             ),
@@ -84,6 +89,17 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _delete(DebtModel debt) async {
+    try {
+      final refund = await confirmAndDeleteDebt(context, ref, debt);
+      if (refund == null || !mounted) return;
+      AppNotification.success(context, refund ? 'Utang dihapus dan saldo dikembalikan!' : 'Data berhasil dihapus!');
+    } catch (e) {
+      if (!mounted) return;
+      AppNotification.error(context, e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   Future<void> _openDetail(DebtModel debt) async {
