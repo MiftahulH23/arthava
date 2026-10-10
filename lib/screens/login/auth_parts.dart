@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 
 /// Kotak logo kecil di hero auth (putih 18% di atas gradasi).
 class AuthLogo extends StatelessWidget {
-  const AuthLogo({required this.icon, super.key});
-  final IconData icon;
+  /// Tanpa [icon], tampil logo Arthava (`assets/icon_foreground.png`).
+  const AuthLogo({this.icon, super.key});
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +19,9 @@ class AuthLogo extends StatelessWidget {
         color: AppColors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(icon, size: 24, color: AppColors.white),
+      child: icon != null
+          ? Icon(icon, size: 24, color: AppColors.white)
+          : Image.asset('assets/icon_foreground.png', width: 40, height: 40),
     );
   }
 }

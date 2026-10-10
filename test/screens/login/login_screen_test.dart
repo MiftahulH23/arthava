@@ -21,7 +21,7 @@ void main() {
     await pumpApp(tester, const LoginScreen());
     expect(find.text('Yuk, atur keuanganmu'), findsOneWidget);
     expect(find.text('Masuk atau buat akun untuk mulai mencatat pemasukan dan pengeluaranmu.'), findsOneWidget);
-    expect(find.byIcon(PhosphorIconsFill.wallet), findsOneWidget);
+    expect(find.image(const AssetImage('assets/icon_foreground.png')), findsOneWidget); // logo Arthava
     expect(find.byType(LoginForm), findsOneWidget);
     expect(find.byType(RegisterForm), findsNothing);
     expect(find.text('Email'), findsOneWidget);

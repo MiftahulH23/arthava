@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" width="96" height="96" alt="Arthava icon">
+  <img src="docs/images/logo.png" width="96" height="96" alt="Arthava logo">
 </p>
 
 <h1 align="center">Arthava</h1>

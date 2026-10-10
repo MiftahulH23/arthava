@@ -6,7 +6,6 @@ import 'package:arthava/screens/login/register_form.dart';
 import 'package:arthava/theme/app_text_styles.dart';
 import 'package:arthava/widgets/app_segmented_control.dart';
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:arthava/widgets/app_swipe_tabs.dart';
 
 /// Layar auth tunggal: tab Masuk | Daftar di atas sheet putih.
@@ -60,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: AuthLayout(
         title: 'Yuk, atur keuanganmu',
         subtitle: 'Masuk atau buat akun untuk mulai mencatat pemasukan dan pengeluaranmu.',
-        leading: const AuthLogo(icon: PhosphorIconsFill.wallet),
+        leading: const AuthLogo(),
         footer: _tab == 0
             ? Text(
                 'Datamu hanya bisa dilihat dari akunmu sendiri.',
