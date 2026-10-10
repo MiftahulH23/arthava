@@ -126,9 +126,9 @@ file to match what was approved.
 - `flutter analyze` — static analysis; run before claiming any Dart
   change is complete.
 - `flutter test` — run the test suite.
-- `flutter run -d chrome` — run as a web app (fastest way to visually
+- `flutter run -d chrome --dart-define-from-file=env.json` — run as a web app (fastest way to visually
   verify UI changes).
-- `flutter run -d windows` — run as a Windows desktop app.
+- `flutter run -d windows --dart-define-from-file=env.json` — run as a Windows desktop app.
 - Backend E2E against the real Supabase project (test account, temporary
   data cleaned up; credentials only via env, never committed):
   `E2E_EMAIL=… E2E_PASSWORD=… flutter test test/e2e/` and
@@ -157,19 +157,21 @@ machine/clone.
 
 ## Known Context
 
-- The Supabase anon key is hardcoded in `lib/main.dart`. This is
-  acceptable for a Supabase anon key as long as Row Level Security
-  policies are correctly scoped server-side — it is not a bug to
-  silently "fix" by moving it to an env file; leave it unless
-  explicitly asked to change it.
+- Arthava is open source (MIT). No keys live in the source: the
+  Supabase URL/anon key and the Gemini key come from
+  `--dart-define-from-file=env.json` through `lib/core/env.dart`.
+  `env.json` is git-ignored; `env.example.json` documents its shape.
+  Never commit a key, and never add the `service_role` key to the app.
 - The UI redesign (Phase B) is specified in
   `docs/superpowers/specs/2026-09-24-redesign-phase-b-design.md` (design
   rules, tokens, shared component API, decisions) with the approved
   mockup at `docs/design/dompetku-redesign-mockup.html`. Its plans are
   `docs/superpowers/plans/2026-09-2*-phase-b*.md`, executed in order
   B1 → B2 → B3 → B3b → B4 → B5 → B6 → B7.
-- There is no CI pipeline currently. `flutter analyze` and `flutter
-  test` are the local verification bar before reporting work as done.
+- CI (`.github/workflows/ci.yml`) runs `flutter analyze` and
+  `flutter test` on every pull request; run both locally before
+  reporting work as done. `main` is protected: contributors open PRs,
+  and only the maintainer merges (`.github/CODEOWNERS`).
 
 ## Claude Code Subagents & Skills
 

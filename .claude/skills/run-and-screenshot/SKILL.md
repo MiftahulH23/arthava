@@ -8,14 +8,14 @@ description: Use when a UI change in Arthava needs to be visually verified befor
 Never claim a UI change looks right without seeing it rendered. Use this
 procedure before reporting UI work complete.
 
-1. **Pick a target.** `flutter run -d chrome` is the fastest path to a
+1. **Pick a target.** `flutter run -d chrome --dart-define-from-file=env.json` is the fastest path to a
    visual check (renders as a normal web page, works with browser
-   automation). Use `flutter run -d windows` only when the change is
+   automation). Use `flutter run -d windows --dart-define-from-file=env.json` only when the change is
    platform-specific to desktop behavior chrome can't exercise (e.g.
    window sizing, native file dialogs).
 2. **Launch it** in the background so you can keep working:
    ```bash
-   flutter run -d chrome --web-port=8765
+   flutter run -d chrome --web-port=8765 --dart-define-from-file=env.json
    ```
    Wait for the "Flutter run key commands" banner and the app URL in
    the output before trying to interact with it.

@@ -1,0 +1,30 @@
+name: Bug report
+description: Something does not work as expected.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Wallets
+        2. Tap "Transfer"
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and version
+      placeholder: Android 14 / iOS 18 / Chrome 130, app version
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or logs
