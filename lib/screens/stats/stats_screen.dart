@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
 
 class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
@@ -86,20 +87,22 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
 
       if (i < 5 && percentage >= 2) {
         final isTouched = currentIndex == _touchedIndex;
-        sections.add(PieChartSectionData(
-          color: _chartColors[i % _chartColors.length],
-          value: item['amount'],
-          title: isTouched
-              ? '${item['name']}\n${percentage.toStringAsFixed(1)}%'
-              : '${percentage.toStringAsFixed(0)}%',
-          radius: isTouched ? 40 : 32,
-          titleStyle: AppTextStyles.caption.copyWith(
-            fontSize: isTouched ? 11 : 10,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            shadows: isTouched ? const [Shadow(color: Colors.black45, blurRadius: 2)] : null,
+        sections.add(
+          PieChartSectionData(
+            color: _chartColors[i % _chartColors.length],
+            value: item['amount'],
+            title: isTouched
+                ? '${item['name']}\n${percentage.toStringAsFixed(1)}%'
+                : '${percentage.toStringAsFixed(0)}%',
+            radius: isTouched ? 40 : 32,
+            titleStyle: AppTextStyles.caption.copyWith(
+              fontSize: isTouched ? 11 : 10,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              shadows: isTouched ? const [Shadow(color: Colors.black45, blurRadius: 2)] : null,
+            ),
           ),
-        ));
+        );
         currentIndex++;
       } else {
         otherAmount += (item['amount'] as num).toDouble();
@@ -111,20 +114,22 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       final isTouched = currentIndex == _touchedIndex;
       final remainingCount = state.categoryData.length - currentIndex;
       final labelText = "Gabungan\n($remainingCount)";
-      sections.add(PieChartSectionData(
-        color: AppColors.tintGray,
-        value: otherAmount,
-        title: isTouched
-            ? '$labelText\n${otherPercentage.toStringAsFixed(1)}%'
-            : '${otherPercentage.toStringAsFixed(0)}%\n$labelText',
-        radius: isTouched ? 40 : 32,
-        titleStyle: AppTextStyles.caption.copyWith(
-          fontSize: isTouched ? 10 : 8,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-          shadows: isTouched ? const [Shadow(color: Colors.black45, blurRadius: 2)] : null,
+      sections.add(
+        PieChartSectionData(
+          color: AppColors.tintGray,
+          value: otherAmount,
+          title: isTouched
+              ? '$labelText\n${otherPercentage.toStringAsFixed(1)}%'
+              : '${otherPercentage.toStringAsFixed(0)}%\n$labelText',
+          radius: isTouched ? 40 : 32,
+          titleStyle: AppTextStyles.caption.copyWith(
+            fontSize: isTouched ? 10 : 8,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            shadows: isTouched ? const [Shadow(color: Colors.black45, blurRadius: 2)] : null,
+          ),
         ),
-      ));
+      );
     }
     return sections;
   }
@@ -135,138 +140,151 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     final activeColor = state.isExpense ? AppColors.expense : AppColors.income;
     final activeFilterCount = state.selectedCategoryIds.length + state.selectedWalletIds.length;
 
-    return AppPageScaffold(
-      embedded: true,
-      title: 'Statistik',
-      children: [
-        AppSegmentedControl(
-          labels: const ['Pemasukan', 'Pengeluaran'],
-          selectedIndex: state.isExpense ? 1 : 0,
-          selectedLabelColors: const [AppColors.income, AppColors.expense],
-          onChanged: (i) => _notifier.setIsExpense(i == 1),
-        ),
-        AppChipTabs(
-          labels: kPeriodFilterTypes,
-          selectedIndex: kPeriodFilterTypes.indexOf(state.filterType),
-          onChanged: (index) => _notifier.setFilterType(kPeriodFilterTypes[index]),
-        ),
-        Row(
-          children: [
-            Expanded(
-              child: AppPill(
-                expand: true,
-                icon: PhosphorIconsRegular.calendarBlank,
-                label: periodLabel(state.filterType, state.selectedDate, state.selectedDateRange),
-                trailing: const Icon(PhosphorIconsRegular.caretDown, size: 14, color: AppColors.textSecondary),
-                onTap: () => _pickDate(state),
+    return AppSwipeTabs(
+      index: state.isExpense ? 1 : 0,
+      count: 2,
+      onChanged: (i) => _notifier.setIsExpense(i == 1),
+      child: AppPageScaffold(
+        embedded: true,
+        title: 'Statistik',
+        children: [
+          AppSegmentedControl(
+            labels: const ['Pemasukan', 'Pengeluaran'],
+            selectedIndex: state.isExpense ? 1 : 0,
+            selectedLabelColors: const [AppColors.income, AppColors.expense],
+            onChanged: (i) => _notifier.setIsExpense(i == 1),
+          ),
+          AppChipTabs(
+            labels: kPeriodFilterTypes,
+            selectedIndex: kPeriodFilterTypes.indexOf(state.filterType),
+            onChanged: (index) => _notifier.setFilterType(kPeriodFilterTypes[index]),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: AppPill(
+                  expand: true,
+                  icon: PhosphorIconsRegular.calendarBlank,
+                  label: periodLabel(state.filterType, state.selectedDate, state.selectedDateRange),
+                  trailing: const Icon(PhosphorIconsRegular.caretDown, size: 14, color: AppColors.textSecondary),
+                  onTap: () => _pickDate(state),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            AppPill(
-              icon: PhosphorIconsRegular.funnel,
-              label: 'Filter',
-              badgeCount: activeFilterCount,
-              onTap: _showFilterSheet,
-            ),
-          ],
-        ),
-        if (state.isLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 48),
-            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-          )
-        else if (state.categoryData.isEmpty)
-          const AppEmptyState(icon: PhosphorIconsRegular.chartPieSlice, title: 'Tidak ada data')
-        else ...[
-          AppSurfaceCard(
-            child: Row(
+              const SizedBox(width: 8),
+              AppPill(
+                icon: PhosphorIconsRegular.funnel,
+                label: 'Filter',
+                badgeCount: activeFilterCount,
+                onTap: _showFilterSheet,
+              ),
+            ],
+          ),
+          AppSwipeTabBody(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 14,
               children: [
-                SizedBox(
-                  width: 148,
-                  height: 148,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PieChart(
-                        PieChartData(
-                          pieTouchData: PieTouchData(
-                            touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                              setState(() {
-                                if (event is FlTapUpEvent) {
-                                  if (pieTouchResponse == null ||
-                                      pieTouchResponse.touchedSection == null ||
-                                      pieTouchResponse.touchedSection!.touchedSectionIndex == -1) {
-                                    _touchedIndex = -1;
-                                  } else {
-                                    final newIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                                    _touchedIndex = _touchedIndex == newIndex ? -1 : newIndex;
-                                  }
-                                }
-                              });
-                            },
+                if (state.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  )
+                else if (state.categoryData.isEmpty)
+                  const AppEmptyState(icon: PhosphorIconsRegular.chartPieSlice, title: 'Tidak ada data')
+                else ...[
+                  AppSurfaceCard(
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 148,
+                          height: 148,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              PieChart(
+                                PieChartData(
+                                  pieTouchData: PieTouchData(
+                                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                                      setState(() {
+                                        if (event is FlTapUpEvent) {
+                                          if (pieTouchResponse == null ||
+                                              pieTouchResponse.touchedSection == null ||
+                                              pieTouchResponse.touchedSection!.touchedSectionIndex == -1) {
+                                            _touchedIndex = -1;
+                                          } else {
+                                            final newIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                                            _touchedIndex = _touchedIndex == newIndex ? -1 : newIndex;
+                                          }
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  sectionsSpace: 2,
+                                  centerSpaceRadius: 40,
+                                  sections: _buildSections(state),
+                                ),
+                              ),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text("Total", style: AppTextStyles.caption),
+                                  Text(
+                                    formatRupiahCompact(state.totalAmount),
+                                    style: AppTextStyles.bodyStrong.copyWith(fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 40,
-                          sections: _buildSections(state),
                         ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text("Total", style: AppTextStyles.caption),
-                          Text(
-                            formatRupiahCompact(state.totalAmount),
-                            style: AppTextStyles.bodyStrong.copyWith(fontSize: 13),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _StatLine(
+                                label: "Total ${state.isExpense ? 'Pengeluaran' : 'Pemasukan'}",
+                                value: formatRupiah(state.totalAmount),
+                                valueColor: activeColor,
+                              ),
+                              if (state.totalAmount > 0) ...[
+                                const SizedBox(height: 12),
+                                _StatLine(label: "Rata-rata harian", value: formatRupiah(state.dailyAverage)),
+                                if (state.highestTransaction != null) ...[
+                                  const SizedBox(height: 12),
+                                  _StatLine(
+                                    label: "Terbesar (${state.highestTransaction!['note']})",
+                                    value: formatRupiah(state.highestTransaction!['amount'] as num),
+                                    valueColor: activeColor,
+                                  ),
+                                ],
+                              ],
+                            ],
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _StatLine(
-                        label: "Total ${state.isExpense ? 'Pengeluaran' : 'Pemasukan'}",
-                        value: formatRupiah(state.totalAmount),
-                        valueColor: activeColor,
-                      ),
-                      if (state.totalAmount > 0) ...[
-                        const SizedBox(height: 12),
-                        _StatLine(label: "Rata-rata harian", value: formatRupiah(state.dailyAverage)),
-                        if (state.highestTransaction != null) ...[
-                          const SizedBox(height: 12),
-                          _StatLine(
-                            label: "Terbesar (${state.highestTransaction!['note']})",
-                            value: formatRupiah(state.highestTransaction!['amount'] as num),
-                            valueColor: activeColor,
-                          ),
-                        ],
+                        ),
                       ],
+                    ),
+                  ),
+                  AppGroupedSection(
+                    header: 'Kategori',
+                    children: [
+                      for (var i = 0; i < state.categoryData.length; i++)
+                        _CategoryRankRow(
+                          rank: i + 1,
+                          color: _chartColors[i % _chartColors.length],
+                          item: state.categoryData[i],
+                          totalAmount: state.totalAmount,
+                          walletNames: state.walletNames,
+                          walletColors: state.walletColors,
+                        ),
                     ],
                   ),
-                ),
+                ],
               ],
             ),
           ),
-          AppGroupedSection(
-            header: 'Kategori',
-            children: [
-              for (var i = 0; i < state.categoryData.length; i++)
-                _CategoryRankRow(
-                  rank: i + 1,
-                  color: _chartColors[i % _chartColors.length],
-                  item: state.categoryData[i],
-                  totalAmount: state.totalAmount,
-                  walletNames: state.walletNames,
-                  walletColors: state.walletColors,
-                ),
-            ],
-          ),
         ],
-      ],
+      ),
     );
   }
 }
@@ -312,7 +330,10 @@ class _RankBadge extends StatelessWidget {
         color: Color.alphaBlend(color.withValues(alpha: 0.14), AppColors.surface),
         shape: BoxShape.circle,
       ),
-      child: Text('$rank', style: AppTextStyles.bodyStrong.copyWith(color: color, fontWeight: FontWeight.w800)),
+      child: Text(
+        '$rank',
+        style: AppTextStyles.bodyStrong.copyWith(color: color, fontWeight: FontWeight.w800),
+      ),
     );
   }
 }
@@ -393,11 +414,7 @@ class _CategoryRankRowState extends State<_CategoryRankRow> {
           Container(
             color: AppColors.background,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Column(
-              children: [
-                for (final t in transactions) _buildTransactionLine(t as Map<String, dynamic>),
-              ],
-            ),
+            child: Column(children: [for (final t in transactions) _buildTransactionLine(t as Map<String, dynamic>)]),
           ),
       ],
     );
@@ -427,13 +444,12 @@ class _CategoryRankRowState extends State<_CategoryRankRow> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text(
-                      DateFormat('dd MMM yyyy').format(DateTime.parse(t['date'])),
-                      style: AppTextStyles.caption,
-                    ),
+                    Text(DateFormat('dd MMM yyyy').format(DateTime.parse(t['date'])), style: AppTextStyles.caption),
                     const SizedBox(width: 8),
                     // Flexible: nama dompet panjang terpotong "…", bukan meluap.
-                    Flexible(child: AppChip(label: wName, color: wColor)),
+                    Flexible(
+                      child: AppChip(label: wName, color: wColor),
+                    ),
                   ],
                 ),
               ],

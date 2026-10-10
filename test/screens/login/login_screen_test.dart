@@ -172,4 +172,18 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 5));
     });
   }
+
+  testWidgets('geser layar pindah Masuk ↔ Daftar tanpa membuang isian', (tester) async {
+    await pumpApp(tester, const LoginScreen());
+    await tester.timedDrag(find.text('Yuk, atur keuanganmu'), const Offset(-250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(find.byType(RegisterForm), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Miftahul Huda');
+    await tester.timedDrag(find.text('Yuk, atur keuanganmu'), const Offset(250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginForm), findsOneWidget);
+    await tester.timedDrag(find.text('Yuk, atur keuanganmu'), const Offset(-250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(find.text('Miftahul Huda'), findsOneWidget);
+  });
 }

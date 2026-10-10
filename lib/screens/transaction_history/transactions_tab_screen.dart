@@ -2,6 +2,7 @@ import 'package:catat_uang_app/core/colors.dart';
 import 'package:catat_uang_app/screens/transaction_history/transaction_history_screen.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:flutter/material.dart';
+import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
 
 /// Wrapper yang menggabungkan tab Pemasukan & Pengeluaran ke dalam satu
 /// destinasi navigasi (dipakai oleh [HomeScreen] mobile & web), supaya
@@ -44,23 +45,32 @@ class _TransactionsTabScreenState extends State<TransactionsTabScreen> {
       labels: const ['Pemasukan', 'Pengeluaran'],
       selectedIndex: _tabIndex,
       selectedLabelColors: const [AppColors.income, AppColors.expense],
-      onChanged: (i) {
-        if (i == _tabIndex) return;
-        setState(() => _tabIndex = i);
-        widget.onActiveTabChanged?.call(i == 1);
-      },
+      onChanged: _select,
     );
 
-    return _tabIndex == 0
-        ? TransactionHistoryScreen(
-            key: ValueKey('pemasukan_${widget.refreshCounter}'),
-            isExpense: false,
-            typeSwitcher: switcher,
-          )
-        : TransactionHistoryScreen(
-            key: ValueKey('pengeluaran_${widget.refreshCounter}'),
-            isExpense: true,
-            typeSwitcher: switcher,
-          );
+    return AppSwipeTabs(
+      index: _tabIndex,
+      count: 2,
+      onChanged: _select,
+      child: AppSwipeTabBody(
+        child: _tabIndex == 0
+            ? TransactionHistoryScreen(
+                key: ValueKey('pemasukan_${widget.refreshCounter}'),
+                isExpense: false,
+                typeSwitcher: switcher,
+              )
+            : TransactionHistoryScreen(
+                key: ValueKey('pengeluaran_${widget.refreshCounter}'),
+                isExpense: true,
+                typeSwitcher: switcher,
+              ),
+      ),
+    );
+  }
+
+  void _select(int i) {
+    if (i == _tabIndex) return;
+    setState(() => _tabIndex = i);
+    widget.onActiveTabChanged?.call(i == 1);
   }
 }

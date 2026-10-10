@@ -51,4 +51,13 @@ void main() {
     expect(find.text('Anda belum membuat dompet.'), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
   });
+
+  testWidgets('geser layar ke kiri pindah ke Sedekah', (tester) async {
+    await pumpApp(tester, const ZakatSedekahScreen());
+    await tester.pump();
+    await tester.timedDrag(find.text('Zakat & Sedekah'), const Offset(-250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(find.text('Bayar Sedekah'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+  });
 }

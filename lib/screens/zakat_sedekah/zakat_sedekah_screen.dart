@@ -17,6 +17,7 @@ import 'package:catat_uang_app/screens/wallet/wallet_form_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
 
 class ZakatSedekahScreen extends StatefulWidget {
   const ZakatSedekahScreen({super.key});
@@ -69,11 +70,7 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
   Future<void> _fetchWallets() async {
     try {
       final userId = _supabase.auth.currentUser!.id;
-      final res = await _supabase
-          .from('wallets')
-          .select()
-          .eq('user_id', userId)
-          .order('name');
+      final res = await _supabase.from('wallets').select().eq('user_id', userId).order('name');
 
       if (mounted) {
         setState(() {
@@ -127,12 +124,9 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
     try {
       // Atomik di database (RPC pay_zakat_sedekah, migration 202609260008):
       // kategori, transaksi, dan potong saldo sekaligus.
-      await ZakatService(_supabase).pay(
-        isZakat: isZakat,
-        walletId: _selectedWalletId!,
-        amount: amountToPay,
-        note: note,
-      );
+      await ZakatService(
+        _supabase,
+      ).pay(isZakat: isZakat, walletId: _selectedWalletId!, amount: amountToPay, note: note);
 
       if (mounted) {
         AppNotification.success(context, "$categoryName berhasil dibayarkan! Semoga berkah.");
@@ -151,34 +145,45 @@ class _ZakatSedekahScreenState extends State<ZakatSedekahScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppPageScaffold(
-      title: 'Zakat & Sedekah',
-      backLabel: 'Beranda',
-      bottomBar: AppPrimaryButton(
-        label: _isZakat ? 'Bayar Zakat' : 'Bayar Sedekah',
-        loading: _isLoading,
-        onPressed: () => _processPayment(isZakat: _isZakat),
+    return AppSwipeTabs(
+      index: _isZakat ? 0 : 1,
+      count: 2,
+      onChanged: (index) => setState(() => _isZakat = index == 0),
+      child: AppPageScaffold(
+        title: 'Zakat & Sedekah',
+        backLabel: 'Beranda',
+        bottomBar: AppPrimaryButton(
+          label: _isZakat ? 'Bayar Zakat' : 'Bayar Sedekah',
+          loading: _isLoading,
+          onPressed: () => _processPayment(isZakat: _isZakat),
+        ),
+        children: [
+          AppSegmentedControl(
+            labels: const ['Zakat', 'Sedekah'],
+            selectedIndex: _isZakat ? 0 : 1,
+            onChanged: (index) {
+              final wantZakat = index == 0;
+              if (_isZakat != wantZakat) {
+                setState(() => _isZakat = wantZakat);
+              }
+            },
+          ),
+          AppSwipeTabBody(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 14,
+              children: _isZakat ? _buildZakatSection() : _buildSedekahSection(),
+            ),
+          ),
+          AppWalletSelectRow(
+            header: 'Pilih Dompet Sumber Dana',
+            wallets: _wallets,
+            selectedId: _selectedWalletId,
+            onChanged: (val) => setState(() => _selectedWalletId = val),
+            onCreate: () => showWalletFormSheet(context, onSaved: _fetchWallets),
+          ),
+        ],
       ),
-      children: [
-        AppSegmentedControl(
-          labels: const ['Zakat', 'Sedekah'],
-          selectedIndex: _isZakat ? 0 : 1,
-          onChanged: (index) {
-            final wantZakat = index == 0;
-            if (_isZakat != wantZakat) {
-              setState(() => _isZakat = wantZakat);
-            }
-          },
-        ),
-        if (_isZakat) ..._buildZakatSection() else ..._buildSedekahSection(),
-        AppWalletSelectRow(
-          header: 'Pilih Dompet Sumber Dana',
-          wallets: _wallets,
-          selectedId: _selectedWalletId,
-          onChanged: (val) => setState(() => _selectedWalletId = val),
-          onCreate: () => showWalletFormSheet(context, onSaved: _fetchWallets),
-        ),
-      ],
     );
   }
 

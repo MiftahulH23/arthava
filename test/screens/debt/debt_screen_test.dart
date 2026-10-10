@@ -74,4 +74,15 @@ void main() {
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
+
+  testWidgets('geser layar ke kiri pindah ke Piutang, ke kanan kembali', (tester) async {
+    await pumpApp(tester, const DebtScreen(), overrides: debtOverrides(FakeDebtNotifier(state())));
+    await tester.pump();
+    await tester.timedDrag(find.text('Total Utang'), const Offset(-250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(find.text('Piutang dari:'), findsWidgets);
+    await tester.timedDrag(find.text('Total Utang'), const Offset(250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(find.text('Piutang dari:'), findsNothing);
+  });
 }

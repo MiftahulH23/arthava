@@ -14,6 +14,7 @@ import 'package:catat_uang_app/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
 
 class ManageCategoryScreen extends ConsumerWidget {
   const ManageCategoryScreen({super.key});
@@ -23,39 +24,22 @@ class ManageCategoryScreen extends ConsumerWidget {
     final name = categoryName.toLowerCase();
 
     // 1. Prioritaskan jika iconName dari database cocok dengan string
-    if (iconName == 'food' || name.contains('makan'))
-      return PhosphorIcons.bowlFood(PhosphorIconsStyle.fill);
-    if (iconName == 'drink' ||
-        name.contains('minum') ||
-        name.contains('kopi') ||
-        name.contains('cafe'))
+    if (iconName == 'food' || name.contains('makan')) return PhosphorIcons.bowlFood(PhosphorIconsStyle.fill);
+    if (iconName == 'drink' || name.contains('minum') || name.contains('kopi') || name.contains('cafe'))
       return PhosphorIcons.coffee(PhosphorIconsStyle.fill);
-    if (iconName == 'transport' ||
-        name.contains('transport') ||
-        name.contains('bensin'))
+    if (iconName == 'transport' || name.contains('transport') || name.contains('bensin'))
       return PhosphorIcons.bus(PhosphorIconsStyle.fill);
-    if (iconName == 'shopping' ||
-        name.contains('belanja') ||
-        name.contains('mart'))
+    if (iconName == 'shopping' || name.contains('belanja') || name.contains('mart'))
       return PhosphorIcons.shoppingBag(PhosphorIconsStyle.fill);
-    if (iconName == 'entertainment' ||
-        name.contains('hiburan') ||
-        name.contains('nonton'))
+    if (iconName == 'entertainment' || name.contains('hiburan') || name.contains('nonton'))
       return PhosphorIcons.gameController(PhosphorIconsStyle.fill);
-    if (iconName == 'health' ||
-        name.contains('kesehatan') ||
-        name.contains('obat'))
+    if (iconName == 'health' || name.contains('kesehatan') || name.contains('obat'))
       return PhosphorIcons.firstAid(PhosphorIconsStyle.fill);
-    if (iconName == 'bill' ||
-        name.contains('tagihan') ||
-        name.contains('listrik'))
+    if (iconName == 'bill' || name.contains('tagihan') || name.contains('listrik'))
       return PhosphorIcons.lightning(PhosphorIconsStyle.fill);
-    if (iconName == 'salary' || name.contains('gaji'))
-      return PhosphorIcons.money(PhosphorIconsStyle.fill);
-    if (iconName == 'gift' || name.contains('bonus'))
-      return PhosphorIcons.gift(PhosphorIconsStyle.fill);
-    if (iconName == 'bank' || name.contains('tabung'))
-      return PhosphorIcons.bank(PhosphorIconsStyle.fill);
+    if (iconName == 'salary' || name.contains('gaji')) return PhosphorIcons.money(PhosphorIconsStyle.fill);
+    if (iconName == 'gift' || name.contains('bonus')) return PhosphorIcons.gift(PhosphorIconsStyle.fill);
+    if (iconName == 'bank' || name.contains('tabung')) return PhosphorIcons.bank(PhosphorIconsStyle.fill);
 
     // Default Icon
     return PhosphorIcons.tag(PhosphorIconsStyle.fill);
@@ -64,34 +48,21 @@ class ManageCategoryScreen extends ConsumerWidget {
   Future<void> _deleteCategory(BuildContext context, WidgetRef ref, int id) async {
     try {
       await ref.read(categoryProvider.notifier).deleteCategory(id);
-      if (context.mounted)
-        AppNotification.success(context, "Kategori berhasil dihapus!");
+      if (context.mounted) AppNotification.success(context, "Kategori berhasil dihapus!");
     } catch (e) {
-      if (context.mounted)
-        AppNotification.error(
-          context,
-          "Gagal hapus. Kategori sedang digunakan.",
-        );
+      if (context.mounted) AppNotification.error(context, "Gagal hapus. Kategori sedang digunakan.");
     }
   }
 
-  void _showInputSheet(
-    BuildContext context,
-    WidgetRef ref, {
-    CategoryModel? categoryToEdit,
-  }) {
+  void _showInputSheet(BuildContext context, WidgetRef ref, {CategoryModel? categoryToEdit}) {
     final isEditing = categoryToEdit != null;
     final isExpense = ref.read(categoryProvider).isExpense;
-    final controller = TextEditingController(
-      text: isEditing ? categoryToEdit.name : '',
-    );
+    final controller = TextEditingController(text: isEditing ? categoryToEdit.name : '');
     bool isSaving = false;
 
     showAppFormSheet(
       context: context,
-      title: isEditing
-          ? "Edit Kategori"
-          : (isExpense ? "Tambah Pengeluaran" : "Tambah Pemasukan"),
+      title: isEditing ? "Edit Kategori" : (isExpense ? "Tambah Pengeluaran" : "Tambah Pemasukan"),
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) => Column(
           mainAxisSize: MainAxisSize.min,
@@ -113,22 +84,15 @@ class ManageCategoryScreen extends ConsumerWidget {
                 setSheetState(() => isSaving = true);
                 try {
                   if (isEditing) {
-                    await ref
-                        .read(categoryProvider.notifier)
-                        .editCategory(categoryToEdit.id, controller.text.trim());
+                    await ref.read(categoryProvider.notifier).editCategory(categoryToEdit.id, controller.text.trim());
                   } else {
-                    await ref
-                        .read(categoryProvider.notifier)
-                        .addCategory(controller.text.trim());
+                    await ref.read(categoryProvider.notifier).addCategory(controller.text.trim());
                   }
                   if (sheetContext.mounted) {
                     Navigator.pop(sheetContext);
                   }
                   if (context.mounted) {
-                    AppNotification.success(
-                      context,
-                      isEditing ? "Berhasil diubah!" : "Berhasil ditambah!",
-                    );
+                    AppNotification.success(context, isEditing ? "Berhasil diubah!" : "Berhasil ditambah!");
                   }
                 } catch (e) {
                   if (sheetContext.mounted) {
@@ -150,36 +114,42 @@ class ManageCategoryScreen extends ConsumerWidget {
     final isExpense = state.isExpense;
     final color = isExpense ? AppColors.expense : AppColors.income;
 
-    return AppPageScaffold(
-      title: 'Kelola Kategori',
-      backLabel: 'Beranda',
-      actions: [AppNavAction.add(onPressed: () => _showInputSheet(context, ref))],
-      children: [
-        AppSegmentedControl(
-          labels: const ['Pengeluaran', 'Pemasukan'],
-          selectedIndex: isExpense ? 0 : 1,
-          selectedLabelColors: const [AppColors.expense, AppColors.income],
-          onChanged: (index) {
-            final wantExpense = index == 0;
-            if (isExpense != wantExpense) {
-              ref.read(categoryProvider.notifier).fetchCategories(isExpense: wantExpense);
-            }
-          },
-        ),
-        if (state.isLoading)
-          const Padding(
-            padding: EdgeInsets.only(top: 60),
-            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-          )
-        else if (state.categories.isEmpty)
-          const AppEmptyState(icon: PhosphorIconsRegular.tag, title: 'Belum ada kategori')
-        else
-          AppGroupedSection(
-            children: [
-              for (final cat in state.categories) _buildCategoryRow(context, ref, cat, color),
-            ],
+    void select(int index) {
+      final wantExpense = index == 0;
+      if (isExpense != wantExpense) {
+        ref.read(categoryProvider.notifier).fetchCategories(isExpense: wantExpense);
+      }
+    }
+
+    return AppSwipeTabs(
+      index: isExpense ? 0 : 1,
+      count: 2,
+      onChanged: select,
+      child: AppPageScaffold(
+        title: 'Kelola Kategori',
+        backLabel: 'Beranda',
+        actions: [AppNavAction.add(onPressed: () => _showInputSheet(context, ref))],
+        children: [
+          AppSegmentedControl(
+            labels: const ['Pengeluaran', 'Pemasukan'],
+            selectedIndex: isExpense ? 0 : 1,
+            selectedLabelColors: const [AppColors.expense, AppColors.income],
+            onChanged: select,
           ),
-      ],
+          AppSwipeTabBody(
+            child: state.isLoading
+                ? const Padding(
+                    padding: EdgeInsets.only(top: 60),
+                    child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  )
+                : state.categories.isEmpty
+                ? const AppEmptyState(icon: PhosphorIconsRegular.tag, title: 'Belum ada kategori')
+                : AppGroupedSection(
+                    children: [for (final cat in state.categories) _buildCategoryRow(context, ref, cat, color)],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 

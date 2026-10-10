@@ -11,6 +11,7 @@ import 'package:catat_uang_app/widgets/app_empty_state.dart';
 import 'package:catat_uang_app/widgets/app_page_scaffold.dart';
 import 'package:catat_uang_app/widgets/app_segmented_control.dart';
 import 'package:catat_uang_app/screens/debt/debt_form_sheet.dart';
+import 'package:catat_uang_app/widgets/app_swipe_tabs.dart';
 
 class DebtScreen extends ConsumerStatefulWidget {
   const DebtScreen({super.key});
@@ -28,59 +29,64 @@ class _DebtScreenState extends ConsumerState<DebtScreen> {
     final today = ref.watch(debtClockProvider)();
     final debts = _isMyDebt ? debtState.myDebts(today) : debtState.theirDebts(today);
 
-    return AppPageScaffold(
-      title: 'Utang & Piutang',
-      backLabel: 'Beranda',
-      actions: [
-        AppNavAction.add(
-          onPressed: () => showDebtFormSheet(
-            context,
-            initialType: _isMyDebt ? DebtType.payable : DebtType.receivable,
+    return AppSwipeTabs(
+      index: _isMyDebt ? 0 : 1,
+      count: 2,
+      onChanged: (index) => setState(() => _isMyDebt = index == 0),
+      child: AppPageScaffold(
+        title: 'Utang & Piutang',
+        backLabel: 'Beranda',
+        actions: [
+          AppNavAction.add(
+            onPressed: () =>
+                showDebtFormSheet(context, initialType: _isMyDebt ? DebtType.payable : DebtType.receivable),
           ),
-        ),
-      ],
-      onRefresh: () => ref.read(debtProvider.notifier).fetchData(),
-      children: [
-        DebtTotalsRow(
-          totalPayable: debtState.totalPayable,
-          totalReceivable: debtState.totalReceivable,
-        ),
-        AppSegmentedControl(
-          labels: const ['Utang Saya', 'Piutang'],
-          selectedIndex: _isMyDebt ? 0 : 1,
-          onChanged: (index) => setState(() => _isMyDebt = index == 0),
-        ),
-        if (debtState.isLoading)
-          const Padding(
-            padding: EdgeInsets.only(top: 80),
-            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-          )
-        else if (debts.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 60),
-            child: AppEmptyState(
-              icon: PhosphorIconsRegular.handCoins,
-              title: _isMyDebt
-                  ? 'Belum ada utang yang dicatat.\nAlhamdulillah!'
-                  : 'Belum ada orang yang ngutang ke kamu.',
+        ],
+        onRefresh: () => ref.read(debtProvider.notifier).fetchData(),
+        children: [
+          DebtTotalsRow(totalPayable: debtState.totalPayable, totalReceivable: debtState.totalReceivable),
+          AppSegmentedControl(
+            labels: const ['Utang Saya', 'Piutang'],
+            selectedIndex: _isMyDebt ? 0 : 1,
+            onChanged: (index) => setState(() => _isMyDebt = index == 0),
+          ),
+          AppSwipeTabBody(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 14,
+              children: [
+                if (debtState.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 80),
+                    child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  )
+                else if (debts.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 60),
+                    child: AppEmptyState(
+                      icon: PhosphorIconsRegular.handCoins,
+                      title: _isMyDebt
+                          ? 'Belum ada utang yang dicatat.\nAlhamdulillah!'
+                          : 'Belum ada orang yang ngutang ke kamu.',
+                    ),
+                  )
+                else
+                  for (final debt in debts)
+                    DebtCard(
+                      key: ValueKey('debt-${debt.id}'),
+                      debt: debt,
+                      today: today,
+                      onTap: () => _openDetail(debt),
+                    ),
+              ],
             ),
-          )
-        else
-          for (final debt in debts)
-            DebtCard(
-              key: ValueKey('debt-${debt.id}'),
-              debt: debt,
-              today: today,
-              onTap: () => _openDetail(debt),
-            ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
   Future<void> _openDetail(DebtModel debt) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DebtDetailScreen(debtId: debt.id)),
-    );
+    await Navigator.push(context, MaterialPageRoute(builder: (context) => DebtDetailScreen(debtId: debt.id)));
   }
 }

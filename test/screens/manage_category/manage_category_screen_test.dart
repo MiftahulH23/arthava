@@ -102,4 +102,11 @@ void main() {
     expect(fake.calls, contains('delete:5'));
     await tester.pump(const Duration(seconds: 4));
   });
+
+  testWidgets('geser layar ke kiri memanggil fetchCategories(isExpense: false)', (tester) async {
+    final fake = await _pump(tester);
+    await tester.timedDrag(find.text('Kelola Kategori'), const Offset(-250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(fake.calls, contains('fetch:false'));
+  });
 }

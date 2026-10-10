@@ -216,4 +216,16 @@ void main() {
     expect(find.text('Gagal menghapus transaksi.'), findsNothing);
     await tester.pump(const Duration(seconds: 4));
   });
+
+  testWidgets('TransactionsTabScreen: geser layar ke kiri pindah ke Pengeluaran', (tester) async {
+    final values = <bool>[];
+    await _pump(
+      tester,
+      TransactionsTabScreen(refreshCounter: 0, onActiveTabChanged: values.add),
+      _state([]),
+    );
+    await tester.timedDrag(find.text('Transaksi'), const Offset(-250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(values.last, isTrue);
+  });
 }

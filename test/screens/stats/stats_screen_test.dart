@@ -110,4 +110,11 @@ void main() {
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
+
+  testWidgets('geser layar pindah Pengeluaran → Pemasukan', (tester) async {
+    await _pump(tester, _seed());
+    await tester.timedDrag(find.text('Statistik'), const Offset(250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(_fakes.single.isExpenseCalls, [false]);
+  });
 }
