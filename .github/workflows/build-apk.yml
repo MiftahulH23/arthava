@@ -1,0 +1,50 @@
+name: Build APK
+
+# Jalan hanya saat ditekan manual (Actions → Build APK → Run workflow).
+# Kunci diambil dari repository secrets, tidak pernah di-commit:
+# SUPABASE_URL, SUPABASE_ANON_KEY, GEMINI_API_KEY (opsional).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.38.5
+          channel: stable
+          cache: true
+      - name: Tulis env.json dari secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Secret SUPABASE_URL dan SUPABASE_ANON_KEY wajib diisi (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          jq -n '{SUPABASE_URL: env.SUPABASE_URL, SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY, GEMINI_API_KEY: env.GEMINI_API_KEY}' > env.json
+      - run: flutter pub get
+      - run: flutter build apk --release --dart-define-from-file=env.json
+      - name: Hapus env.json
+        if: always()
+        run: rm -f env.json
+      - run: mv build/app/outputs/flutter-apk/app-release.apk "arthava-${GITHUB_SHA::7}.apk"
+      # APK berisi kunci dari env.json; artifact repo publik bisa diunduh siapa pun
+      # yang login GitHub, jadi disimpan sesingkat mungkin.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arthava-apk
+          path: arthava-*.apk
+          retention-days: 1
+          if-no-files-found: error

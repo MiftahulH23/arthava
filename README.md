@@ -171,6 +171,8 @@ flutter build web --release --dart-define-from-file=env.json      # Web
 ```
 
 Anything passed with `--dart-define` ends up inside the app binary. Treat the Gemini key as visible to anyone who has the app, and restrict it in Google Cloud (API restrictions and quotas) before you publish a build.
+
+**APK from GitHub Actions:** add `SUPABASE_URL`, `SUPABASE_ANON_KEY` and (optionally) `GEMINI_API_KEY` under *Settings → Secrets and variables → Actions*, then run *Actions → Build APK → Run workflow*. The APK is attached to the run as an artifact for one day. It is signed with the runner's fresh debug key, so uninstall the previous build before installing a new one.
 </details>
 
 <details>
