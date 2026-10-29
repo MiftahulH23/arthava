@@ -128,4 +128,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Scan Struk AI'), findsNothing); // tetap pengeluaran, toggle terkunci
   });
+
+  testWidgets('geser layar ke kiri pindah ke Pengeluaran, nominal tetap', (tester) async {
+    await _pump(tester, const InputTransactionScreen());
+    expect(find.text('SIMPAN KE'), findsOneWidget);
+    await tester.enterText(find.byType(EditableText).first, '50000');
+    await tester.timedDrag(find.text('Kategori'), const Offset(-250, 0), const Duration(milliseconds: 800));
+    await tester.pumpAndSettle();
+    expect(find.text('SUMBER DANA'), findsOneWidget);
+    expect(find.text('Scan Struk AI'), findsOneWidget);
+    expect(tester.widget<EditableText>(find.byType(EditableText).first).controller.text, contains('50'));
+  });
+
+  testWidgets('switch Dompet/Tabungan tidak ikut bergeser saat halaman digeser', (tester) async {
+    await _pump(tester, const InputTransactionScreen(initialIsExpense: true));
+    final thumbs = find.byKey(const ValueKey('segmented-thumb'));
+    expect(thumbs, findsNWidgets(2));
+    final inner = tester.widget<AnimatedAlign>(thumbs.last).alignment;
+    final outer = tester.widget<AnimatedAlign>(thumbs.first).alignment;
+    final gesture = await tester.startGesture(tester.getCenter(find.text('Kategori')));
+    await gesture.moveBy(const Offset(40, 0));
+    await gesture.moveBy(const Offset(80, 0));
+    await tester.pump();
+    expect(tester.widget<AnimatedAlign>(thumbs.last).alignment, inner);
+    expect(tester.widget<AnimatedAlign>(thumbs.first).alignment, isNot(outer));
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
 }

@@ -12,6 +12,7 @@ import 'package:arthava/widgets/app_grouped_section.dart';
 import 'package:arthava/widgets/app_list_row.dart';
 import 'package:arthava/widgets/app_pickers.dart';
 import 'package:arthava/widgets/app_segmented_control.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 import 'package:arthava/widgets/app_sheet.dart';
 import 'package:arthava/widgets/app_switch.dart';
 import 'package:arthava/widgets/app_text_field.dart';
@@ -181,7 +182,7 @@ class _DebtFormState extends ConsumerState<_DebtForm> {
     final wallets = ref.watch(debtProvider.select((s) => s.wallets));
     final isPayable = _type == DebtType.payable;
 
-    return Column(
+    final form = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -283,6 +284,14 @@ class _DebtFormState extends ConsumerState<_DebtForm> {
           onPressed: _submitting ? null : _submit,
         ),
       ],
+    );
+    if (_isEdit) return form;
+    // Geser sheet ke kiri/kanan = ganti Utang/Piutang.
+    return AppSwipeTabs(
+      index: isPayable ? 0 : 1,
+      count: 2,
+      onChanged: (i) => setState(() => _type = i == 0 ? DebtType.payable : DebtType.receivable),
+      child: form,
     );
   }
 }

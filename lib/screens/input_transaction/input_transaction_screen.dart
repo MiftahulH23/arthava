@@ -16,6 +16,7 @@ import 'package:arthava/widgets/app_pickers.dart';
 import 'package:arthava/widgets/app_searchable_group.dart';
 import 'package:arthava/widgets/app_segmented_control.dart';
 import 'package:arthava/widgets/app_sheet.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 import 'package:arthava/widgets/app_text_field.dart';
 import 'package:arthava/screens/wallet/wallet_form_sheet.dart';
 import 'package:arthava/widgets/app_create_row.dart';
@@ -398,6 +399,8 @@ class _InputTransactionScreenState
             child: AppSegmentedControl(
               labels: const ['Dompet', 'Tabungan'],
               selectedIndex: _isFromSaving ? 1 : 0,
+              // Bukan penanda tab halaman: jangan ikut geser Pemasukan/Pengeluaran.
+              position: AlwaysStoppedAnimation(_isFromSaving ? 1.0 : 0.0),
               onChanged: (i) => i == 0 ? _useWallet(state) : _useSaving(state),
             ),
           ),
@@ -456,7 +459,7 @@ class _InputTransactionScreenState
     final selectedCategory = filteredCategories.where((c) => c['id'] == _selectedCategoryId).firstOrNull;
     final isNewTransaction = !_isReadOnly && widget.transactionToEdit == null;
 
-    return AppPageScaffold(
+    final page = AppPageScaffold(
       title: _isReadOnly
           ? "Detail Transaksi"
           : (widget.transactionToEdit == null ? "Tambah Transaksi" : "Edit Transaksi"),
@@ -491,45 +494,54 @@ class _InputTransactionScreenState
           AppAmountDisplay(label: "Nominal", amountText: "Rp ${_amountController.text}")
         else
           AppAmountField(controller: _amountController, label: "Nominal"),
-        if (_isExpense && !_isReadOnly)
-          Center(
-            child: AppPillButton(
-              label: "Scan Struk AI",
-              icon: PhosphorIconsFill.sparkle,
-              onPressed: _showImageSourceBottomSheet,
-            ),
-          ),
-        if (isNewTransaction) _buildFundSourceSection(state),
-        if (widget.transactionToEdit != null && _selectedWalletId != null) _buildEditWalletNote(state),
-        AppGroupedSection(
-          children: [
-            AppListRow(
-              leading: AppIconTile(
-                icon: selectedCategory != null
-                    ? categoryIcon(selectedCategory['name'].toString())
-                    : PhosphorIconsFill.tag,
-                color: selectedCategory != null
-                    ? categoryColor(selectedCategory['name'].toString())
-                    : AppColors.tintOrange,
+        // Bagian yang bergantung pada jenis transaksi ikut digeser; Nominal &
+        // Catatan tetap diam supaya isiannya tidak terasa ikut pindah.
+        AppSwipeTabBody(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: _spaced([
+              if (_isExpense && !_isReadOnly)
+                Center(
+                  child: AppPillButton(
+                    label: "Scan Struk AI",
+                    icon: PhosphorIconsFill.sparkle,
+                    onPressed: _showImageSourceBottomSheet,
+                  ),
+                ),
+              if (isNewTransaction) _buildFundSourceSection(state),
+              if (widget.transactionToEdit != null && _selectedWalletId != null) _buildEditWalletNote(state),
+              AppGroupedSection(
+                children: [
+                  AppListRow(
+                    leading: AppIconTile(
+                      icon: selectedCategory != null
+                          ? categoryIcon(selectedCategory['name'].toString())
+                          : PhosphorIconsFill.tag,
+                      color: selectedCategory != null
+                          ? categoryColor(selectedCategory['name'].toString())
+                          : AppColors.tintOrange,
+                    ),
+                    title: "Kategori",
+                    value: selectedCategory != null
+                        ? selectedCategory['name'].toString()
+                        : (state.categories.isEmpty ? "Memuat..." : "Pilih Kategori"),
+                    // Chevron hanya bila memang ada yang bisa dipilih.
+                    showChevron: !_isReadOnly && filteredCategories.isNotEmpty,
+                    onTap: (_isReadOnly || filteredCategories.isEmpty)
+                        ? null
+                        : () => _showCategoryPicker(filteredCategories),
+                  ),
+                  AppListRow(
+                    leading: const AppIconTile(icon: PhosphorIconsFill.calendarBlank, color: AppColors.tintRed),
+                    title: "Tanggal",
+                    value: DateFormat('EEE, d MMM yyyy', 'id_ID').format(_selectedDate),
+                    showChevron: !_isReadOnly,
+                    onTap: _isReadOnly ? null : _pickDate,
+                  ),
+                ],
               ),
-              title: "Kategori",
-              value: selectedCategory != null
-                  ? selectedCategory['name'].toString()
-                  : (state.categories.isEmpty ? "Memuat..." : "Pilih Kategori"),
-              // Chevron hanya bila memang ada yang bisa dipilih.
-              showChevron: !_isReadOnly && filteredCategories.isNotEmpty,
-              onTap: (_isReadOnly || filteredCategories.isEmpty)
-                  ? null
-                  : () => _showCategoryPicker(filteredCategories),
-            ),
-            AppListRow(
-              leading: const AppIconTile(icon: PhosphorIconsFill.calendarBlank, color: AppColors.tintRed),
-              title: "Tanggal",
-              value: DateFormat('EEE, d MMM yyyy', 'id_ID').format(_selectedDate),
-              showChevron: !_isReadOnly,
-              onTap: _isReadOnly ? null : _pickDate,
-            ),
-          ],
+            ]),
+          ),
         ),
         AppGroupedSection(
           header: "Catatan (Opsional)",
@@ -543,6 +555,21 @@ class _InputTransactionScreenState
         ),
       ],
     );
+    if (_isReadOnly) return page;
+    return AppSwipeTabs(
+      index: _isExpense ? 1 : 0,
+      count: 2,
+      onChanged: (i) => _onTypeSelected(i == 1),
+      child: page,
+    );
   }
+
+  /// Jarak antarblok sama dengan [AppPageScaffold.blockGap].
+  static List<Widget> _spaced(List<Widget> blocks) => [
+        for (var i = 0; i < blocks.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppPageScaffold.blockGap),
+          blocks[i],
+        ],
+      ];
 
 }
