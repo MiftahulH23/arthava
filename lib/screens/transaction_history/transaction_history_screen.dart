@@ -20,6 +20,7 @@ import 'package:arthava/widgets/app_buttons.dart';
 import 'package:arthava/widgets/app_period_picker.dart';
 import 'package:arthava/widgets/app_surface_card.dart';
 import 'package:arthava/widgets/app_swipe_actions.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -145,34 +146,45 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
             ),
           ],
         ),
-        AppSurfaceCard(
-          child: Row(
+        // Hanya ringkasan + daftar yang ikut digeser antar tab Pemasukan/Pengeluaran.
+        AppSwipeTabBody(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              AppSurfaceCard(
+                child: Row(
                   children: [
-                    Text("Total Real", style: AppTextStyles.caption),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatRupiah(state.totalAmount),
-                      style: AppTextStyles.title.copyWith(color: color),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Total Real", style: AppTextStyles.caption),
+                          const SizedBox(height: 4),
+                          Text(
+                            formatRupiah(state.totalAmount),
+                            style: AppTextStyles.title.copyWith(color: color),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    AppIconTile(
+                      icon: widget.isExpense ? PhosphorIconsBold.trendDown : PhosphorIconsBold.trendUp,
+                      color: color,
+                      round: true,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              AppIconTile(
-                icon: widget.isExpense ? PhosphorIconsBold.trendDown : PhosphorIconsBold.trendUp,
-                color: color,
-                round: true,
-              ),
+              for (final block in _buildTransactionList(state)) ...[
+                const SizedBox(height: AppPageScaffold.blockGap),
+                block,
+              ],
             ],
           ),
         ),
-        ..._buildTransactionList(state),
       ],
     );
   }

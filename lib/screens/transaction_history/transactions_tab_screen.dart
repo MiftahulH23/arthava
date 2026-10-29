@@ -8,10 +8,8 @@ import 'package:arthava/widgets/app_swipe_tabs.dart';
 /// destinasi navigasi (dipakai oleh [HomeScreen] mobile & web), supaya
 /// bottom nav / rail hanya punya 3 destinasi alih-alih 4.
 ///
-/// Tidak mengubah [TransactionHistoryScreen] sama sekali — widget ini
-/// hanya menaruh AppSegmentedControl di bawah judul TransactionHistoryScreen dan menukar child mana yang
-/// ditampilkan lewat kondisi sederhana (bukan IndexedStack/TabBarView,
-/// mengikuti pola sederhana yang sudah dipakai di codebase ini).
+/// Widget ini menaruh AppSegmentedControl di bawah judul TransactionHistoryScreen
+/// dan mengganti `isExpense`-nya; geser layar ditangani [AppSwipeTabs].
 class TransactionsTabScreen extends StatefulWidget {
   final int refreshCounter;
   final bool initialIsExpense;
@@ -48,22 +46,17 @@ class _TransactionsTabScreenState extends State<TransactionsTabScreen> {
       onChanged: _select,
     );
 
+    // Satu instance untuk kedua tab: judul, switcher, dan filter tetap diam;
+    // hanya isi di dalam AppSwipeTabBody (milik TransactionHistoryScreen) yang
+    // tertarik jari dan meluncur saat tab berganti.
     return AppSwipeTabs(
       index: _tabIndex,
       count: 2,
       onChanged: _select,
-      child: AppSwipeTabBody(
-        child: _tabIndex == 0
-            ? TransactionHistoryScreen(
-                key: ValueKey('pemasukan_${widget.refreshCounter}'),
-                isExpense: false,
-                typeSwitcher: switcher,
-              )
-            : TransactionHistoryScreen(
-                key: ValueKey('pengeluaran_${widget.refreshCounter}'),
-                isExpense: true,
-                typeSwitcher: switcher,
-              ),
+      child: TransactionHistoryScreen(
+        key: ValueKey('transaksi_${widget.refreshCounter}'),
+        isExpense: _tabIndex == 1,
+        typeSwitcher: switcher,
       ),
     );
   }

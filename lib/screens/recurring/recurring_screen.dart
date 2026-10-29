@@ -14,6 +14,7 @@ import 'package:arthava/widgets/app_list_row.dart';
 import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:arthava/widgets/app_pickers.dart';
 import 'package:arthava/widgets/app_segmented_control.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 import 'package:arthava/widgets/app_select_row.dart';
 import 'package:arthava/widgets/app_sheet.dart';
 import 'package:arthava/widgets/app_surface_card.dart';
@@ -93,122 +94,131 @@ class _RecurringScreenState extends ConsumerState<RecurringScreen> {
           final wallets = ref.read(recurringProvider).wallets;
           final filteredCats = categories.where((c) => c['is_expense'] == isExpense).toList();
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AppSegmentedControl(
-                labels: const ['Pemasukan', 'Pengeluaran'],
-                selectedIndex: isExpense ? 1 : 0,
-                selectedLabelColors: const [AppColors.income, AppColors.expense],
-                onChanged: (index) => setSheetState(() {
-                  isExpense = index == 1;
-                  selectedCatId = null;
-                }),
-              ),
-              const SizedBox(height: 14),
-              AppSurfaceCard(
-                child: AppAmountField(
-                  controller: amountController,
-                  label: "Nominal",
-                  color: isExpense ? AppColors.expense : AppColors.income,
+          // Geser sheet ke kiri/kanan = ganti Pemasukan/Pengeluaran.
+          return AppSwipeTabs(
+            index: isExpense ? 1 : 0,
+            count: 2,
+            onChanged: (index) => setSheetState(() {
+              isExpense = index == 1;
+              selectedCatId = null;
+            }),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppSegmentedControl(
+                  labels: const ['Pemasukan', 'Pengeluaran'],
+                  selectedIndex: isExpense ? 1 : 0,
+                  selectedLabelColors: const [AppColors.income, AppColors.expense],
+                  onChanged: (index) => setSheetState(() {
+                    isExpense = index == 1;
+                    selectedCatId = null;
+                  }),
                 ),
-              ),
-              const SizedBox(height: 14),
-              AppGroupedSection(
-                children: [
-                  AppSelectRow<int>(
-                    leading: const AppIconTile(icon: PhosphorIconsFill.wallet, color: AppColors.primary),
-                    title: isExpense ? "Potong Dari Dompet Mana?" : "Masuk Ke Dompet Mana?",
-                    placeholder: wallets.isEmpty ? "Belum ada dompet" : "Pilih Dompet",
-                    value: selectedWalletId,
-                    options: [for (final w in wallets) AppSelectOption(w['id'] as int, "${w['name']}")],
-                    onChanged: (val) => setSheetState(() => selectedWalletId = val),
-                    onCreate: () =>
-                        showWalletFormSheet(context, onSaved: ref.read(recurringProvider.notifier).fetchWallets),
+                const SizedBox(height: 14),
+                AppSurfaceCard(
+                  child: AppAmountField(
+                    controller: amountController,
+                    label: "Nominal",
+                    color: isExpense ? AppColors.expense : AppColors.income,
                   ),
-                  AppSelectRow<int>(
-                    leading: AppIconTile(
-                      icon: PhosphorIconsFill.tag,
-                      color: isExpense ? AppColors.expense : AppColors.income,
+                ),
+                const SizedBox(height: 14),
+                AppGroupedSection(
+                  children: [
+                    AppSelectRow<int>(
+                      leading: const AppIconTile(icon: PhosphorIconsFill.wallet, color: AppColors.primary),
+                      title: isExpense ? "Potong Dari Dompet Mana?" : "Masuk Ke Dompet Mana?",
+                      placeholder: wallets.isEmpty ? "Belum ada dompet" : "Pilih Dompet",
+                      value: selectedWalletId,
+                      options: [for (final w in wallets) AppSelectOption(w['id'] as int, "${w['name']}")],
+                      onChanged: (val) => setSheetState(() => selectedWalletId = val),
+                      onCreate: () =>
+                          showWalletFormSheet(context, onSaved: ref.read(recurringProvider.notifier).fetchWallets),
                     ),
-                    title: "Kategori",
-                    placeholder: "Pilih Kategori",
-                    value: filteredCats.any((c) => c['id'] == selectedCatId) ? selectedCatId : null,
-                    options: [for (final cat in filteredCats) AppSelectOption(cat['id'] as int, "${cat['name']}")],
-                    onChanged: (val) => setSheetState(() => selectedCatId = val),
-                  ),
-                  AppSelectRow<String>(
-                    leading: const AppIconTile(icon: PhosphorIconsFill.repeat, color: AppColors.tintBlue),
-                    title: "Diulang Setiap",
-                    value: selectedFreq,
-                    options: [for (final f in frequencies) AppSelectOption(f, f)],
-                    onChanged: (val) => setSheetState(() => selectedFreq = val),
-                  ),
-                  AppListRow(
-                    leading: const AppIconTile(icon: PhosphorIconsFill.calendarBlank, color: AppColors.tintRed),
-                    title: "Mulai Tanggal",
-                    subtitle: "Jatuh Tempo Pertama",
-                    value: DateFormat('dd MMM yyyy', 'id_ID').format(selectedDate),
-                    showChevron: true,
-                    onTap: () async {
-                      final picked = await showAppDatePicker(
-                        context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (picked != null) setSheetState(() => selectedDate = picked);
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _fieldLabel("Catatan (Cth: Bayar Kos / Tagihan WiFi)"),
-              AppTextField(controller: noteController, hint: "Tulis catatan..."),
-              const SizedBox(height: 20),
-              AppPrimaryButton(
-                label: isEdit ? "Perbarui Jadwal" : "Simpan Jadwal",
-                onPressed: () async {
-                  // Id lama milik dompet/kategori yang sudah dihapus dianggap kosong.
-                  final walletExists = ref.read(recurringProvider).wallets.any((w) => w['id'] == selectedWalletId);
-                  final categoryExists = filteredCats.any((c) => c['id'] == selectedCatId);
-                  if (amountController.text.isEmpty || !categoryExists || !walletExists) {
-                    AppNotification.error(context, "Nominal, Kategori, dan Dompet wajib diisi!");
-                    return;
-                  }
-
-                  final double amount = parseRupiah(amountController.text).toDouble();
-                  final userId = Supabase.instance.client.auth.currentUser!.id;
-                  final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-                  try {
-                    final data = {
-                      'user_id': userId,
-                      'category_id': selectedCatId,
-                      'wallet_id': selectedWalletId,
-                      'amount': amount,
-                      'note': noteController.text.trim(),
-                      'frequency': selectedFreq,
-                      'start_date': dateStr,
-                      'next_run_date': isEdit ? item.nextRunDate.toIso8601String() : dateStr,
-                    };
-
-                    if (isEdit) {
-                      await ref.read(recurringProvider.notifier).updateRecurring(item.id, data);
-                    } else {
-                      await ref.read(recurringProvider.notifier).addRecurring(data);
+                    AppSelectRow<int>(
+                      leading: AppIconTile(
+                        icon: PhosphorIconsFill.tag,
+                        color: isExpense ? AppColors.expense : AppColors.income,
+                      ),
+                      title: "Kategori",
+                      placeholder: "Pilih Kategori",
+                      value: filteredCats.any((c) => c['id'] == selectedCatId) ? selectedCatId : null,
+                      options: [for (final cat in filteredCats) AppSelectOption(cat['id'] as int, "${cat['name']}")],
+                      onChanged: (val) => setSheetState(() => selectedCatId = val),
+                    ),
+                    AppSelectRow<String>(
+                      leading: const AppIconTile(icon: PhosphorIconsFill.repeat, color: AppColors.tintBlue),
+                      title: "Diulang Setiap",
+                      value: selectedFreq,
+                      options: [for (final f in frequencies) AppSelectOption(f, f)],
+                      onChanged: (val) => setSheetState(() => selectedFreq = val),
+                    ),
+                    AppListRow(
+                      leading: const AppIconTile(icon: PhosphorIconsFill.calendarBlank, color: AppColors.tintRed),
+                      title: "Mulai Tanggal",
+                      subtitle: "Jatuh Tempo Pertama",
+                      value: DateFormat('dd MMM yyyy', 'id_ID').format(selectedDate),
+                      showChevron: true,
+                      onTap: () async {
+                        final picked = await showAppDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) setSheetState(() => selectedDate = picked);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _fieldLabel("Catatan (Cth: Bayar Kos / Tagihan WiFi)"),
+                AppTextField(controller: noteController, hint: "Tulis catatan..."),
+                const SizedBox(height: 20),
+                AppPrimaryButton(
+                  label: isEdit ? "Perbarui Jadwal" : "Simpan Jadwal",
+                  onPressed: () async {
+                    // Id lama milik dompet/kategori yang sudah dihapus dianggap kosong.
+                    final walletExists = ref.read(recurringProvider).wallets.any((w) => w['id'] == selectedWalletId);
+                    final categoryExists = filteredCats.any((c) => c['id'] == selectedCatId);
+                    if (amountController.text.isEmpty || !categoryExists || !walletExists) {
+                      AppNotification.error(context, "Nominal, Kategori, dan Dompet wajib diisi!");
+                      return;
                     }
 
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      AppNotification.success(context, isEdit ? "Jadwal diperbarui!" : "Jadwal berhasil dibuat!");
+                    final double amount = parseRupiah(amountController.text).toDouble();
+                    final userId = Supabase.instance.client.auth.currentUser!.id;
+                    final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+                    try {
+                      final data = {
+                        'user_id': userId,
+                        'category_id': selectedCatId,
+                        'wallet_id': selectedWalletId,
+                        'amount': amount,
+                        'note': noteController.text.trim(),
+                        'frequency': selectedFreq,
+                        'start_date': dateStr,
+                        'next_run_date': isEdit ? item.nextRunDate.toIso8601String() : dateStr,
+                      };
+
+                      if (isEdit) {
+                        await ref.read(recurringProvider.notifier).updateRecurring(item.id, data);
+                      } else {
+                        await ref.read(recurringProvider.notifier).addRecurring(data);
+                      }
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        AppNotification.success(context, isEdit ? "Jadwal diperbarui!" : "Jadwal berhasil dibuat!");
+                      }
+                    } catch (e) {
+                      if (context.mounted) AppNotification.error(context, "Gagal menyimpan jadwal");
                     }
-                  } catch (e) {
-                    if (context.mounted) AppNotification.error(context, "Gagal menyimpan jadwal");
-                  }
-                },
-              ),
-            ],
+                  },
+                ),
+              ],
+            ),
           );
         },
       ),

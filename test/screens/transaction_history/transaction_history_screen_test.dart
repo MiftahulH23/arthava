@@ -228,4 +228,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(values.last, isTrue);
   });
+
+  testWidgets('TransactionsTabScreen: saat digeser hanya isi yang ikut, judul & filter tetap', (tester) async {
+    await _pump(
+      tester,
+      TransactionsTabScreen(refreshCounter: 0, onActiveTabChanged: (_) {}),
+      _state([]),
+    );
+    final title = tester.getTopLeft(find.text('Transaksi'));
+    final filter = tester.getTopLeft(find.text('Filter'));
+    final total = tester.getTopLeft(find.text('Total Real'));
+    final gesture = await tester.startGesture(tester.getCenter(find.text('Total Real')));
+    await gesture.moveBy(const Offset(-40, 0));
+    await gesture.moveBy(const Offset(-80, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(find.text('Transaksi')), title);
+    expect(tester.getTopLeft(find.text('Filter')), filter);
+    expect(tester.getTopLeft(find.text('Total Real')).dx, lessThan(total.dx - 60));
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
 }

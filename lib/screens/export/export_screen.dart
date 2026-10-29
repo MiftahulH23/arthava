@@ -10,6 +10,7 @@ import 'package:arthava/widgets/app_page_scaffold.dart';
 import 'package:arthava/widgets/app_pickers.dart';
 import 'package:arthava/widgets/app_segmented_control.dart';
 import 'package:arthava/widgets/app_surface_card.dart';
+import 'package:arthava/widgets/app_swipe_tabs.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -125,58 +126,65 @@ class _ExportScreenState extends State<ExportScreen> {
         ? "${DateFormat('dd MMM yy', 'id_ID').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM yy', 'id_ID').format(_selectedDateRange!.end)}"
         : "Pilih rentang";
 
-    return AppPageScaffold(
-      title: 'Export Laporan',
-      backLabel: 'Beranda',
-      bottomBar: AppPrimaryButton(
-        label: 'Cetak Laporan PDF',
-        icon: PhosphorIconsFill.printer,
-        loading: _isGenerating,
-        onPressed: _isGenerating ? null : _generatePdf,
-      ),
-      children: [
-        AppSurfaceCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Column(
-            children: [
-              const AppIconTile(icon: PhosphorIconsFill.filePdf, color: AppColors.primary, size: 72),
-              const SizedBox(height: 12),
-              Text('Cetak Laporan Keuangan', style: AppTextStyles.headline, textAlign: TextAlign.center),
-              const SizedBox(height: 4),
-              Text(
-                'Pilih mode periode laporan di bawah ini',
-                style: AppTextStyles.subhead,
-                textAlign: TextAlign.center,
-              ),
-            ],
+    return AppSwipeTabs(
+      index: _isCustomRange ? 1 : 0,
+      count: 2,
+      onChanged: (index) => setState(() => _isCustomRange = index == 1),
+      child: AppPageScaffold(
+        title: 'Export Laporan',
+        backLabel: 'Beranda',
+        bottomBar: AppPrimaryButton(
+          label: 'Cetak Laporan PDF',
+          icon: PhosphorIconsFill.printer,
+          loading: _isGenerating,
+          onPressed: _isGenerating ? null : _generatePdf,
+        ),
+        children: [
+          AppSurfaceCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: Column(
+              children: [
+                const AppIconTile(icon: PhosphorIconsFill.filePdf, color: AppColors.primary, size: 72),
+                const SizedBox(height: 12),
+                Text('Cetak Laporan Keuangan', style: AppTextStyles.headline, textAlign: TextAlign.center),
+                const SizedBox(height: 4),
+                Text(
+                  'Pilih mode periode laporan di bawah ini',
+                  style: AppTextStyles.subhead,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
-        ),
-        AppSegmentedControl(
-          labels: const ['Satu Bulan', 'Pilih Tanggal'],
-          selectedIndex: _isCustomRange ? 1 : 0,
-          onChanged: (index) => setState(() => _isCustomRange = index == 1),
-        ),
-        AppGroupedSection(
-          children: [
-            if (!_isCustomRange)
-              AppListRow(
-                leading: const AppIconTile(icon: PhosphorIconsFill.calendarBlank, color: AppColors.primary),
-                title: 'Bulan Laporan',
-                value: DateFormat('MMMM yyyy', 'id_ID').format(_selectedMonth),
-                showChevron: true,
-                onTap: _pickMonth,
-              )
-            else
-              AppListRow(
-                leading: const AppIconTile(icon: PhosphorIconsFill.calendarPlus, color: AppColors.primary),
-                title: 'Rentang Tanggal',
-                value: rangeLabel,
-                showChevron: true,
-                onTap: _pickDateRange,
-              ),
-          ],
-        ),
-      ],
+          AppSegmentedControl(
+            labels: const ['Satu Bulan', 'Pilih Tanggal'],
+            selectedIndex: _isCustomRange ? 1 : 0,
+            onChanged: (index) => setState(() => _isCustomRange = index == 1),
+          ),
+          AppSwipeTabBody(
+            child: AppGroupedSection(
+              children: [
+                if (!_isCustomRange)
+                  AppListRow(
+                    leading: const AppIconTile(icon: PhosphorIconsFill.calendarBlank, color: AppColors.primary),
+                    title: 'Bulan Laporan',
+                    value: DateFormat('MMMM yyyy', 'id_ID').format(_selectedMonth),
+                    showChevron: true,
+                    onTap: _pickMonth,
+                  )
+                else
+                  AppListRow(
+                    leading: const AppIconTile(icon: PhosphorIconsFill.calendarPlus, color: AppColors.primary),
+                    title: 'Rentang Tanggal',
+                    value: rangeLabel,
+                    showChevron: true,
+                    onTap: _pickDateRange,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
